@@ -1,0 +1,19 @@
+export(propaneStackWarpInVar)
+export(propaneStackWarpMed)
+export(propaneStackFlatInVar)
+export(propaneStackFlatFunc)
+
+useDynLib(ProPane, .registration=TRUE)
+
+import("Rcpp")
+import("Rfits")
+import("Rwcs")
+import("checkmate")
+import("magicaxis")
+import("foreach")
+import("doParallel")
+import("data.table")
+import("doParallel")
+
+importFrom("stats", "quantile")
+importFrom("utils", "packageVersion")
