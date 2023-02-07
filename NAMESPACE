@@ -1,3 +1,11 @@
+#Image warping routines:
+export(propaneWarp)
+export(propaneRebin)
+export(propaneTran)
+export(propaneWarpProPane)
+export(propaneTweak)
+
+#Image stacking routines:
 export(propaneStackWarpInVar)
 export(propaneStackWarpMed)
 export(propaneStackFlatInVar)
@@ -15,5 +23,5 @@ import("doParallel")
 import("data.table")
 import("doParallel")
 
-importFrom("stats", "quantile")
+importFrom("stats", "quantile", "median", "optim")
 importFrom("utils", "packageVersion")

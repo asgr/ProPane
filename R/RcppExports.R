@@ -5,6 +5,10 @@
     .Call(`_ProPane_dilate_cpp`, segim, kern, expand)
 }
 
+.mat_diff_sum <- function(mat1, mat2, scale = 1, delta_x = 0L, delta_y = 0L) {
+    .Call(`_ProPane_mat_diff_sum`, mat1, mat2, scale, delta_x, delta_y)
+}
+
 .stack_image_inVar_cpp <- function(post_image, post_inVar, post_weight, pre_image, pre_inVar, pre_weight_sexp, offset, post_mask = NULL) {
     .Call(`_ProPane_stack_image_inVar`, post_image, post_inVar, post_weight, pre_image, pre_inVar, pre_weight_sexp, offset, post_mask)
 }

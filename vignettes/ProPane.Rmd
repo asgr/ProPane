@@ -26,7 +26,7 @@ library(foreach)
 library(magicaxis)
 ```
 
-The **Rwcs** package comes with key utilities for warping between different WCS systems: **Rwcs_warp** (for warping individual frames once). **ProPane** itself contains the various functions for creating large stacks of many warped frames (which is of class *ProPane*, which is roughly meant to suggest the idea of many *panes* of glass being stacked together). 
+The **ProPane** package comes with key utilities for warping between different WCS systems: **propaneWarp** (for warping individual frames once). **ProPane** also contains the various functions for creating large stacks of many warped frames (which is of class *ProPane*, which is roughly meant to suggest the idea of many *panes* of glass being stacked together). 
 
 ## A Stacking Case Study
 
@@ -90,7 +90,7 @@ So about 83% of the image has 8 frames contributing.
 We can visually see the change in depth:
 
 ```{r, fig.width=8, fig.height=8, dpi=40}
-Rwcs_warp(image_list[[1]][,], keyvalues_out = keyvalues_out, plot=TRUE, qdiff=TRUE)
+propaneWarp(image_list[[1]][,], keyvalues_out = keyvalues_out, plot=TRUE, qdiff=TRUE)
 ```
 
 We can also check the pixel statistics of the stack:

@@ -233,7 +233,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       }
 
       suppressMessages({
-        temp_warp = Rwcs_warp(
+        temp_warp = propaneWarp(
           image_in = temp_image,
           keyvalues_out = keyvalues_out,
           dim_out = dim_out,
@@ -280,7 +280,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
         }
 
         suppressMessages({
-          temp_warp = Rwcs_warp(
+          temp_warp = propaneWarp(
             image_in = temp_inVar,
             keyvalues_out = keyvalues_out,
             dim_out = dim_out,
@@ -324,7 +324,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
         }
 
         suppressMessages({
-          temp_warp = Rwcs_warp(
+          temp_warp = propaneWarp(
             image_in = temp_exp,
             keyvalues_out = keyvalues_out,
             dim_out = dim_out,
@@ -368,7 +368,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
           }
 
           suppressMessages({
-            temp_warp = Rwcs_warp(
+            temp_warp = propaneWarp(
               image_in = temp_weight,
               keyvalues_out = keyvalues_out,
               dim_out = dim_out,
@@ -696,7 +696,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
               rm(temp_inVar)
             }
 
-            return(Rwcs_warp(
+            return(propaneWarp(
               image_in = temp_image,
               keyvalues_out = keyvalues_out,
               dim_out = dim_out,
@@ -742,7 +742,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
               }
 
               suppressMessages({
-                return(Rwcs_warp(
+                return(propaneWarp(
                   image_in = temp_inVar,
                   keyvalues_out = keyvalues_out,
                   dim_out = dim_out,
@@ -791,7 +791,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
                   temp_weight$imDat[] = weight_list[[i]]
                 }
 
-                return(Rwcs_warp(
+                return(propaneWarp(
                   image_in = temp_weight,
                   keyvalues_out = keyvalues_out,
                   dim_out = dim_out,
@@ -938,12 +938,13 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
   keyvalues_out$EXTNAME = 'image'
   keyvalues_out$MAGZERO = magzero_out
   keyvalues_out$R_VER = R.version$version.string
-  keyvalues_out$RWCS_VER = as.character(packageVersion('Rwcs'))
+  keyvalues_out$PROPANE_V = as.character(packageVersion('ProPane'))
+  keyvalues_out$RWCS_V = as.character(packageVersion('Rwcs'))
 
   image_out = Rfits_create_image(image=post_stack_image,
                                  keyvalues=keyvalues_out,
                                  keypass=FALSE,
-                                 history='Stacked with Rwcs_stack')
+                                 history='Stacked with propaneStackWarpInVar')
 
   keyvalues_out$EXTNAME = 'weight'
   keyvalues_out$MAGZERO = NULL
