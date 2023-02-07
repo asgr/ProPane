@@ -938,8 +938,8 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
   keyvalues_out$EXTNAME = 'image'
   keyvalues_out$MAGZERO = magzero_out
   keyvalues_out$R_VER = R.version$version.string
-  keyvalues_out$PROPANE_V = as.character(packageVersion('ProPane'))
-  keyvalues_out$RWCS_V = as.character(packageVersion('Rwcs'))
+  keyvalues_out$PANE_VER = as.character(packageVersion('ProPane'))
+  keyvalues_out$RWCS_VER = as.character(packageVersion('Rwcs'))
 
   image_out = Rfits_create_image(image=post_stack_image,
                                  keyvalues=keyvalues_out,

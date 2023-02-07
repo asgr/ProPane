@@ -8,13 +8,14 @@ propaneStackWarpMed = function(
     keyvalues_out = NULL,
     cores = 4,
     chunk = 1e3,
-    doweight = TRUE){
+    doweight = TRUE,
+    useCUTLO = TRUE){
 
   timestart = proc.time()[3]
 
   j = NULL
 
-  assertList(keyvalues_out)
+  assertList(keyvalues_out, null.ok = TRUE)
   assertIntegerish(cores, len=1)
   assertIntegerish(chunk, len=1)
 
@@ -43,16 +44,27 @@ propaneStackWarpMed = function(
                                cores = cores,
                                zap = zap)
 
-  which_overlap = which(foreach(i = 1:length(image_list), .combine='c')%dopar%{
-    Rwcs_overlap(image_list[[i]]$keyvalues, keyvalues_ref = keyvalues_out)
-  })
-
-  if(isTRUE(keyvalues_out$ZIMAGE)){
-    NAXIS1 = keyvalues_out$ZNAXIS1
-    NAXIS2 = keyvalues_out$ZNAXIS2
+  if(!is.null(keyvalues_out)){
+    which_overlap = which(foreach(i = 1:length(image_list), .combine='c')%dopar%{
+      Rwcs_overlap(image_list[[i]]$keyvalues, keyvalues_ref = keyvalues_out)
+    })
+    image_list = image_list[which_overlap]
   }else{
-    NAXIS1 = keyvalues_out$NAXIS1
-    NAXIS2 = keyvalues_out$NAXIS2
+    which_overlap = 1:length(image_list)
+    temp_overlap = 1:length(image_list)
+  }
+
+  if(!is.null(keyvalues_out)){
+    if(isTRUE(keyvalues_out$ZIMAGE)){
+      NAXIS1 = keyvalues_out$ZNAXIS1
+      NAXIS2 = keyvalues_out$ZNAXIS2
+    }else{
+      NAXIS1 = keyvalues_out$NAXIS1
+      NAXIS2 = keyvalues_out$NAXIS2
+    }
+  }else{
+    NAXIS1 = dim(image_list[[1]])[1]
+    NAXIS2 = dim(image_list[[1]])[2]
   }
 
   stack_grid = expand.grid(seq(1,NAXIS1,by=chunk), seq(1,NAXIS2,by=chunk))
@@ -68,11 +80,13 @@ propaneStackWarpMed = function(
     xsub = as.integer(stack_grid[i, c(1,3)])
     ysub = as.integer(stack_grid[i, c(2,4)])
 
-    keyvalues_sub = Rwcs_keyvalues_sub(keyvalues_out, xsub=xsub, ysub=ysub)
+    if(!is.null(keyvalues_out)){
+      keyvalues_sub = Rwcs_keyvalues_sub(keyvalues_out, xsub=xsub, ysub=ysub)
 
-    temp_overlap = which(foreach(j = 1:length(image_list), .combine = 'c')%dopar%{
-      Rwcs_overlap(image_list[[j]]$keyvalues, keyvalues_sub)
-    })
+      temp_overlap = which(foreach(j = 1:length(image_list), .combine = 'c')%dopar%{
+        Rwcs_overlap(image_list[[j]]$keyvalues, keyvalues_sub)
+      })
+    }
 
     if(length(temp_overlap) == 0L){
       return(
@@ -83,14 +97,14 @@ propaneStackWarpMed = function(
       )
     }
 
-    image_list = foreach(j = temp_overlap)%do%{ #not sure why this won't work in dopar... Rfits race conditions?
-      if(!is.null(image_list[[j]]$keyvalues$XCUTLO)){
+    image_list_cut = foreach(j = temp_overlap)%do%{ #not sure why this won't work in dopar... Rfits race conditions?
+      if(!is.null(image_list[[j]]$keyvalues$XCUTLO) & useCUTLO){
         XCUTLO = image_list[[j]]$keyvalues$XCUTLO
       }else{
         XCUTLO = 1L #implictly assumed to be aligned images if XCUTLO is missing
       }
 
-      if(!is.null(image_list[[j]]$keyvalues$YCUTLO)){
+      if(!is.null(image_list[[j]]$keyvalues$YCUTLO) & useCUTLO){
         YCUTLO = image_list[[j]]$keyvalues$YCUTLO
       }else{
         YCUTLO = 1L #implictly assumed to be aligned images if YCUTLO is missing
@@ -101,11 +115,11 @@ propaneStackWarpMed = function(
       return(imager::as.cimg(image_list[[j]][xrange, yrange]$imDat))
     }
 
-    image = as.matrix(imager::parmed(image_list, na.rm=TRUE))
+    image = as.matrix(imager::parmed(image_list_cut, na.rm=TRUE))
 
     if(doweight){
-      weight_list = foreach(j = 1:length(image_list))%do%{
-        return(imager::as.cimg(!is.na(image_list[[j]])))
+      weight_list = foreach(j = 1:length(image_list_cut))%do%{
+        return(imager::as.cimg(!is.na(image_list_cut[[j]])))
       }
 
       weight = as.matrix(imager::add(weight_list))
@@ -118,41 +132,39 @@ propaneStackWarpMed = function(
     )
   }
 
-  big_med = matrix(0, NAXIS1, NAXIS2)
+  image_out = matrix(0, NAXIS1, NAXIS2)
   if(doweight){
-    big_weight = matrix(0L, NAXIS1, NAXIS2)
+    weight_out = matrix(0L, NAXIS1, NAXIS2)
   }else{
-    big_weight = NULL
+    weight_out = NULL
   }
 
   for(i in 1:dim(stack_grid)[1]){
-    big_med[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_med[[i]]$image
+    image_out[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_med[[i]]$image
     if(doweight){
-      big_weight[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_med[[i]]$weight
+      weight_out[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_med[[i]]$weight
     }
   }
 
-  keyvalues_out$EXTNAME = 'image'
-  keyvalues_out$MAGZERO = image_list[[1]]$keyvalues$MAGZERO
-  keyvalues_out$R_VER = R.version$version.string
-  keyvalues_out$RWCS_VER = as.character(packageVersion('Rwcs'))
+  if(!is.null(keyvalues_out)){
+    keyvalues_out$EXTNAME = 'image'
+    keyvalues_out$MAGZERO = image_list[[1]]$keyvalues$MAGZERO
+    keyvalues_out$R_VER = R.version$version.string
+    keyvalues_out$PANE_VER = as.character(packageVersion('ProPane'))
+    keyvalues_out$RWCS_VER = as.character(packageVersion('Rwcs'))
 
-  image_out = Rfits_create_image(image=big_med,
-                                        keyvalues=keyvalues_out,
-                                        keypass=FALSE,
-                                        history='Stacked with Rwcs_stack')
-  rm(big_med)
+    image_out = Rfits_create_image(image=image_out,
+                                          keyvalues=keyvalues_out,
+                                          keypass=FALSE,
+                                          history='Stacked with Rwcs_stack')
 
-  if(doweight){
-    keyvalues_out$EXTNAME = 'weight'
-    keyvalues_out$MAGZERO = NULL
-    weight_out = Rfits_create_image(image=big_weight,
-                                           keyvalues=keyvalues_out,
-                                           keypass=FALSE)
-
-    rm(big_weight)
-  }else{
-    weight_out = NULL
+    if(doweight){
+      keyvalues_out$EXTNAME = 'weight'
+      keyvalues_out$MAGZERO = NULL
+      weight_out = Rfits_create_image(image=weight_out,
+                                      keyvalues=keyvalues_out,
+                                      keypass=FALSE)
+    }
   }
 
   time_taken = proc.time()[3] - timestart

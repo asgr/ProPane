@@ -17,8 +17,8 @@ propaneStackWarpInVar(image_list = NULL, inVar_list = NULL, exp_list = NULL,
   clip_sigma = 5, return_all = FALSE, dump_frames = FALSE, dump_dir = tempdir(), ...)
 
 propaneStackWarpMed(filelist = NULL, dirlist = NULL, extlist = 1,
-  pattern = "^.*image_warp_.*fits$", recursive = TRUE, zap = NULL, keyvalues_out = NULL,
-  cores = 4, chunk = 1e3, doweight = TRUE, ...)
+  pattern = ".fits$", recursive = TRUE, zap = NULL, keyvalues_out = NULL,
+  cores = 4, chunk = 1e3, doweight = TRUE, useCUTLO = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -80,7 +80,7 @@ Logical; should the pre stack projected images and inverse variances be returns 
 Logical; if TRUE then warped frames will be dumped out to the specified \option{dump_dir} as the stacking continues. This can be useful to inspect the pre-stack inputs (if too large for the \option{return_all} = TRUE option), or if the stack is failing unexpectedly. Frames will inherit the names image_i, inVar_i, weight_i and exp_i as appropriate (i.e. only if warping is occurring for these data).
 }
   \item{dump_dir}{
-Character scalar; target directory to write out the dumped frames or (in the case of \code{Rwcs_stack_median}) read them in.
+Character scalar; target directory to write out the dumped frames or (in the case of \code{propaneStackWarpMed}) read them in.
 }
   \item{filelist}{
 Character vector; vector of full paths of FITS files to analyse. This is written as an attribute (called \option{filename}) to the output 'Rfits_list' object.
@@ -104,14 +104,17 @@ Character vector; optional unique strings to zap out of the header. See \code{\l
 Integer scalar; chunk sizes to maximally break the image up into to compute the median stacks. The sweet spot seems to be around 1000 - 2000 depending on sytem RAM and number of \option{cores}.
 }
   \item{doweight}{
-Logical; should weights (so number of frames contributing to pixel medians) be computed? If this is FALSE then the weight attribute of the list returns from \code{Rwcs_stack_median} will be NULL.
+Logical; should weights (so number of frames contributing to pixel medians) be computed? If this is FALSE then the weight attribute of the list returns from \code{propaneStackWarpMed} will be NULL.
+}
+  \item{useCUTLO}{
+Logical; should the \option{XCUTLO} and \option{YCUTLO} keyvalues in the header be used? This is usually what you want if using aligned WCS which have different cropping (like the \option{dump_frames} output of \code{\link{propaneStackWarpInVar}}), but if you have manually aligned the frames (e.g. for stacking stars to create a PSF) then you might want to ignore the \option{XCUTLO} and \option{YCUTLO} keyvalues created by \code{\link{Rfits}} methods.
 }
   \item{\dots}{
-Other arguments to pass into \code{\link{Rwcs_warp}}.
+Other arguments to pass into \code{\link{propaneWarp}}.
 }
 }
 \details{
-The warping code used here is effectively \code{\link{Rwcs_warp}}, and the stacking part is very similar to that used in \code{profoundMakeStack}. It uses inverse-variance weighted stacking when \option{inVar_list} is provided, and a simple average stack otherwise.
+The warping code used here is \code{\link{propaneWarp}}, and the stacking part is very similar to that used in \code{\link{propaneStackFlatInVar}}. It uses inverse-variance weighted stacking when \option{inVar_list} is provided, and a simple average stack otherwise.
 
 \option{image_list} can be provided as a list of \code{Rfits_image} or \code{Rfits_pointer}. The advantage of the former is raw speed (no disk IO required) but the advantage of the latter is memory footprint (only the required pixels are loaded at any given stage of stacking).
 
@@ -121,12 +124,12 @@ The warping code used here is effectively \code{\link{Rwcs_warp}}, and the stack
 
 Which route is better to use depends on the memory available- passing in in-memory matrices will be faster than using an \code{Rfits_pointer}, but using a pointer means only the required pixels are loaded at a given time (reducing the memory footprint).
 
-Care needs to be taken to choose appropriate values for \option{cores} and \option{Nbatch}. Ultimately at least a few copies of the full target image will need to be kept in memory at some point in this stacking process, since the stacking happens in RAM not on disk. For that reason there is an upper limit on how big the target image can be without hitting some pretty brutal performance issues (when you start using disk swap, things become very very slow). As an idea, a 10k x 10k pixel image with bitpix = -32 (sinlge precision) will take up 400 MB on disk and loaded in \code{R} 800 MB (since \code{R} only supports double precision floats internally). This means a 40k x 40k will require 12.8 GB of RAM. Given that number at least doubles during any \code{\link{Rwcs_warp}} process, and we possibly have a weight map and exposure to compute, you want to be pretty certain that x4 this value fits well within half of available RAM even if we are using \code{Nbatch} = 1. Even on a machine with 128 GB of RAM (my local machine) that is about as big an image as we could possibly target for stacking.
+Care needs to be taken to choose appropriate values for \option{cores} and \option{Nbatch}. Ultimately at least a few copies of the full target image will need to be kept in memory at some point in this stacking process, since the stacking happens in RAM not on disk. For that reason there is an upper limit on how big the target image can be without hitting some pretty brutal performance issues (when you start using disk swap, things become very very slow). As an idea, a 10k x 10k pixel image with bitpix = -32 (sinlge precision) will take up 400 MB on disk and loaded in \code{R} 800 MB (since \code{R} only supports double precision floats internally). This means a 40k x 40k will require 12.8 GB of RAM. Given that number at least doubles during any \code{\link{propaneWarp}} process, and we possibly have a weight map and exposure to compute, you want to be pretty certain that x4 this value fits well within half of available RAM even if we are using \code{Nbatch} = 1. Even on a machine with 128 GB of RAM (my local machine) that is about as big an image as we could possibly target for stacking.
 
-\code{Rwcs_stack_median} is a dedicated median combine stacking function. The difference in operation is that it only works on pre-dumped frames that will have been projected with \code{Rwcs_stack} with the \option{dump_frames} option set to TRUE. The reason for this is that the median combine can generally only be run on quite small chunked subsets (usually in the range 1000 - 2000 and set with the \option{chunk} argument). Warping on the fly to such subsets is expensive (for reasonable sized inputs most pixels get thrown away each time), so it is faster to compute frame overlap on the dumped frames and combine them together as needed. The actual median combine is done using the \code{parmed} function of the \code{imager} package. If this has been compiled with OpenMP flags then you will also see massive speed up during the combining phase. The keen user will probably need to do some Googling to get this right, but for large stacking it could be worth the effort.
+\code{propaneStackWarpMed} is a dedicated median combine stacking function. The difference in operation is that it only works on pre-dumped frames that will have been projected with \code{propaneStackWarpInVar} with the \option{dump_frames} option set to TRUE. The reason for this is that the median combine can generally only be run on quite small chunked subsets (usually in the range 1000 - 2000 and set with the \option{chunk} argument). Warping on the fly to such subsets is expensive (for reasonable sized inputs most pixels get thrown away each time), so it is faster to compute frame overlap on the dumped frames and combine them together as needed. The actual median combine is done using the \code{parmed} function of the \code{imager} package. If this has been compiled with OpenMP flags then you will also see massive speed up during the combining phase. The keen user will probably need to do some Googling to get this right, but for large stacking it could be worth the effort.
 }
 \value{
-The output of \code{Rwcs_stack} is an object of class 'ProMo' containing:
+The output of \code{propaneStackWarpInVar} is an object of class 'ProPane' containing:
 
 \item{image}{The stacked image, of class Rfits_image.}
 \item{weight}{The number of available un-masked pixels in every output pixel of \option{image}. Class Rfits_image.}
@@ -146,7 +149,7 @@ And optionally (if \option{returnall} = TRUE) these outputs are appended to the 
 \item{inVar_pre_stack}{The projected pre stack inverse variance.}
 \item{exp_pre_stack}{The projected pre stack exposure times.}
 
-The output of \code{Rwcs_stack} is an object of class 'ProMo' containing:
+The output of \code{propaneStackWarpMed} is an object of class 'ProPane' containing:
 
 \item{image}{The median stacked image, of class Rfits_image.}
 \item{weight}{The number of available un-masked pixels in every output pixel of \option{image}. Class Rfits_image.}
@@ -160,7 +163,7 @@ Aaron Robotham
 }
 
 \seealso{
-\code{\link{Rwcs_warp}}, \code{\link{propaneStackFlat}}
+\code{\link{propaneWarp}}, \code{\link{propaneStackFlat}}
 }
 \examples{
 \dontrun{

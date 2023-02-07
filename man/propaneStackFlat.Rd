@@ -88,6 +88,7 @@ Aaron Robotham
 \code{\link{propaneStackWarp}}
 }
 \examples{
+library(ProFound)
 library(Rfits)
 library(magicaxis)
 
