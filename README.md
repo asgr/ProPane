@@ -2,7 +2,7 @@
 
 ## Synopsis
 
-Package of stacking related functions, converting (and eventually replacing) older **Rwcs** and **ProFound** related functions.
+Package of warping and stacking related functions, converting (and eventually replacing) older **Rwcs** and **ProFound** related functions.
 
 The old to new function conversions are:
 
