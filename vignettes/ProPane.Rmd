@@ -304,7 +304,8 @@ We can make use of the frames we have already dumped to do this with *Rwcs_stack
 ```{r}
 stack_med2 = propaneStackWarpMed(dirlist = stack_clip$dump_dir,
                                  keyvalues_out = keyvalues_out,
-                                 cores = 8
+                                 cores = 8,
+                                 pattern = glob2rx('*image*fits') #to only stack images
                                  )
 ```
 
