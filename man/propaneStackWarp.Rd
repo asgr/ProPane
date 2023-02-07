@@ -16,8 +16,9 @@ propaneStackWarpInVar(image_list = NULL, inVar_list = NULL, exp_list = NULL,
   keep_extreme_pix = FALSE, doclip = FALSE, clip_tol = 100, clip_dilate = 0,
   clip_sigma = 5, return_all = FALSE, dump_frames = FALSE, dump_dir = tempdir(), ...)
 
-propaneStackWarpMed(keyvalues_out = NULL, dump_dir = NULL, cores = 4, chunk = 1e3,
-  doweight = TRUE)
+propaneStackWarpMed(filelist = NULL, dirlist = NULL, extlist = 1,
+  pattern = "^.*image_warp_.*fits$", recursive = TRUE, zap = NULL, keyvalues_out = NULL,
+  cores = 4, chunk = 1e3, doweight = TRUE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -80,6 +81,24 @@ Logical; if TRUE then warped frames will be dumped out to the specified \option{
 }
   \item{dump_dir}{
 Character scalar; target directory to write out the dumped frames or (in the case of \code{Rwcs_stack_median}) read them in.
+}
+  \item{filelist}{
+Character vector; vector of full paths of FITS files to analyse. This is written as an attribute (called \option{filename}) to the output 'Rfits_list' object.
+}
+  \item{dirlist}{
+Character vector; vector of full paths of directories to analyse.
+}
+  \item{extlist}{
+Integer vector; the extensions to use. If length 1 then it will be used for all \option{filelist}, but otherwise it should be the same length as the final \option{filelist}
+}
+  \item{pattern}{
+Scalar character; regular expression to filter \option{filelist} by. The default limits to files ending ".fits", which is usually what you want. Most people find it easier to work via \code{\link{glob2rx}} since then you can specify file wild cards in the usual shell way, e.g. glob2rx("*F200W*fits") becomes "^.*F200W.*fits$" (which I can never remember!) The default works for images dumped out by \code{\link{propaneStackWarpInVar}} when \option{dump_frames} = TRUE.
+}
+  \item{recursive}{
+Logical; if using \option{dirlist} should all sub-directories be checked recursively?
+}
+  \item{zap}{
+Character vector; optional unique strings to zap out of the header. See \code{\link{Rfits_point}}.
 }
   \item{chunk}{
 Integer scalar; chunk sizes to maximally break the image up into to compute the median stacks. The sweet spot seems to be around 1000 - 2000 depending on sytem RAM and number of \option{cores}.
@@ -176,12 +195,12 @@ plot(stack2$weight, magmap=FALSE)
 
 #A better example with some real data that we can stack!
 
-#Define a distinct WCS to stack to (otherwise it uses the first in the image_list):
+#Load in the target images
 
-image_list = foreach(i=1:8)\%do\%{
-  Rfits_read_image(system.file(paste0('extdata/stack/image_',i,'.fits'),
-    package="ProPane"), ext=2)
-}
+image_list = Rfits_make_list(dirlist = system.file('extdata/stack/', package="ProPane"),
+                             extlist = 2) #extlist=2 because these are compressed images
+
+#Define a distinct WCS to stack to (otherwise it uses the first in the image_list):
 
 keyvalues_out = Rwcs_setkeyvalues(
     CRVAL1 = 36.8962,

@@ -1,14 +1,20 @@
-propaneStackWarpMed = function(keyvalues_out = NULL,
-                             dump_dir = NULL,
-                             cores = 4,
-                             chunk = 1e3,
-                             doweight = TRUE){
+propaneStackWarpMed = function(
+    filelist = NULL,
+    dirlist = NULL,
+    extlist = 1,
+    pattern = "^.*image_warp_.*fits$",
+    recursive = TRUE,
+    zap = NULL,
+    keyvalues_out = NULL,
+    cores = 4,
+    chunk = 1e3,
+    doweight = TRUE){
+
   timestart = proc.time()[3]
 
   j = NULL
 
   assertList(keyvalues_out)
-  assertCharacter(dump_dir, len=1)
   assertIntegerish(cores, len=1)
   assertIntegerish(chunk, len=1)
 
@@ -22,14 +28,23 @@ propaneStackWarpMed = function(keyvalues_out = NULL,
 
   registerDoParallel(cores=cores)
 
-  image_files = list.files(dump_dir, full.names=TRUE, pattern = 'image_warp_')
+  #image_files = list.files(dump_dir, full.names=TRUE, pattern = pattern)
 
-  dump_list = foreach(i = 1:length(image_files))%dopar%{
-    Rfits_point(filename = image_files[i], ext=1, header=TRUE)
-  }
+  # dump_list = foreach(i = 1:length(image_files))%dopar%{
+  #   Rfits_point(filename = image_files[i], ext=1, header=TRUE)
+  # }
 
-  which_overlap = which(foreach(i = 1:length(dump_list), .combine='c')%dopar%{
-    Rwcs_overlap(dump_list[[i]]$keyvalues, keyvalues_ref = keyvalues_out)
+  image_list = Rfits_make_list(filelist = filelist,
+                               dirlist = dirlist,
+                               extlist = extlist,
+                               pattern = pattern,
+                               recursive = recursive,
+                               pointer = TRUE,
+                               cores = cores,
+                               zap = zap)
+
+  which_overlap = which(foreach(i = 1:length(image_list), .combine='c')%dopar%{
+    Rwcs_overlap(image_list[[i]]$keyvalues, keyvalues_ref = keyvalues_out)
   })
 
   if(isTRUE(keyvalues_out$ZIMAGE)){
@@ -55,8 +70,8 @@ propaneStackWarpMed = function(keyvalues_out = NULL,
 
     keyvalues_sub = Rwcs_keyvalues_sub(keyvalues_out, xsub=xsub, ysub=ysub)
 
-    temp_overlap = which(foreach(j = 1:length(dump_list), .combine = 'c')%dopar%{
-      Rwcs_overlap(dump_list[[j]]$keyvalues, keyvalues_sub)
+    temp_overlap = which(foreach(j = 1:length(image_list), .combine = 'c')%dopar%{
+      Rwcs_overlap(image_list[[j]]$keyvalues, keyvalues_sub)
     })
 
     if(length(temp_overlap) == 0L){
@@ -69,9 +84,21 @@ propaneStackWarpMed = function(keyvalues_out = NULL,
     }
 
     image_list = foreach(j = temp_overlap)%do%{ #not sure why this won't work in dopar... Rfits race conditions?
-      xrange = c(1,(diff(range(xsub)) + 1L)) + (xsub[1] - dump_list[[j]]$keyvalues$XCUTLO)
-      yrange = c(1,(diff(range(ysub)) + 1L)) + (ysub[1] - dump_list[[j]]$keyvalues$YCUTLO)
-      return(imager::as.cimg(dump_list[[j]][xrange, yrange]$imDat))
+      if(!is.null(image_list[[j]]$keyvalues$XCUTLO)){
+        XCUTLO = image_list[[j]]$keyvalues$XCUTLO
+      }else{
+        XCUTLO = 1L #implictly assumed to be aligned images if XCUTLO is missing
+      }
+
+      if(!is.null(image_list[[j]]$keyvalues$YCUTLO)){
+        YCUTLO = image_list[[j]]$keyvalues$YCUTLO
+      }else{
+        YCUTLO = 1L #implictly assumed to be aligned images if YCUTLO is missing
+      }
+
+      xrange = c(1,(diff(range(xsub)) + 1L)) + (xsub[1] - XCUTLO)
+      yrange = c(1,(diff(range(ysub)) + 1L)) + (ysub[1] - YCUTLO)
+      return(imager::as.cimg(image_list[[j]][xrange, yrange]$imDat))
     }
 
     image = as.matrix(imager::parmed(image_list, na.rm=TRUE))
@@ -106,7 +133,7 @@ propaneStackWarpMed = function(keyvalues_out = NULL,
   }
 
   keyvalues_out$EXTNAME = 'image'
-  keyvalues_out$MAGZERO = dump_list[[1]]$keyvalues$MAGZERO
+  keyvalues_out$MAGZERO = image_list[[1]]$keyvalues$MAGZERO
   keyvalues_out$R_VER = R.version$version.string
   keyvalues_out$RWCS_VER = as.character(packageVersion('Rwcs'))
 
@@ -136,8 +163,7 @@ propaneStackWarpMed = function(keyvalues_out = NULL,
     weight = weight_out,
     which_overlap = which_overlap,
     time = time_taken,
-    Nim = length(which_overlap),
-    dump_dir = dump_dir
+    Nim = length(which_overlap)
   )
 
   class(output) = "ProPane"
