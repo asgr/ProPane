@@ -67,7 +67,7 @@ propaneStackWarpMed = function(
     NAXIS2 = dim(image_list[[1]])[2]
   }
 
-  stack_grid = expand.grid(seq(1,NAXIS1,by=chunk), seq(1,NAXIS2,by=chunk))
+  stack_grid = expand.grid(seq(1L,NAXIS1,by=chunk), seq(1L,NAXIS2,by=chunk))
   stack_grid[,3] = stack_grid[,1] + chunk
   stack_grid[stack_grid[,3] > NAXIS1,3] = NAXIS1
   stack_grid[,4] = stack_grid[,2] + chunk

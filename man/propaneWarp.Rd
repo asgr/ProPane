@@ -13,12 +13,11 @@ Remaps an input projection system to a different target WCS.
 \code{propaneWarp} does precise remapping of one WCS to another, \code{propaneRebin} does quick coarse down-sampling (via re-binning), which can be useful for faster visualisations (since fewer pixels to worry about). Both conserve flux correctly. \code{propaneTran} just applies a translational shift. \code{propaneWarpProPane} warps all elements of a ProPane class object (as returned by e.g. \code{\link{propaneStackWarpInVar}}).
 }
 \usage{
-propaneWarp(image_in, keyvalues_out = NULL, keyvalues_in = NULL, dim_out = NULL,
-  pixscale_out = NULL, pixscale_in = NULL, direction = "auto", boundary = "dirichlet",
-  interpolation = "cubic", doscale = TRUE, dofinenorm = TRUE, plot = FALSE,
-  header_out = NULL, header_in = NULL, dotightcrop = TRUE, keepcrop = FALSE,
+propaneWarp(image_in, keyvalues_out = NULL, dim_out = NULL, direction = "auto",
+  boundary = "dirichlet", interpolation = "cubic", doscale = TRUE, dofinenorm = TRUE,
+  plot = FALSE, header_out = NULL, dotightcrop = TRUE, keepcrop = FALSE,
   WCSref_out = NULL, WCSref_in = NULL, magzero_out = NULL, magzero_in = NULL,
-  blank = NA, warpfield = NULL, warpfield_return = FALSE, ...)
+  blank = NA, warpfield = NULL, warpfield_return = FALSE, cores = 1, ...)
 
 propaneWarpProPane(propane_in, keyvalues_out = NULL, dim_out = NULL,
   magzero_out = NULL, ...)
@@ -31,28 +30,19 @@ propaneTran(image, delta_x = 0, delta_y = 0, direction = 'backward', padNA = TRU
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{image_in}{
-Numeric matrix; required, the image we want to warp. If \option{image} is a list as created by \code{Rfits_read_image} then the image part of the list is parsed to \option{image} and the correct header part is parsed to \option{keyvalues}.
+List; required, the image we want to warp. \option{image_in} must be either object class Rfits_image or Rfits_pointer, i.e. as read in by \code{\link{Rfits_read_image}}.
 }
   \item{propane_in}{
 List; object of class 'ProPane', e.g. the output of \code{\link{propaneStackWarpInVar}}. All present list elements will be warp as appropriate (so conserving flux, inverse-Variance, or value as required): image (flux), weight (value), inVar (rebinned inVar), exp (value), cold (flux), hot (flux), clip (value).
 }
   \item{image}{
-Numeric matrix; required, the image we want to rebin. If \option{image} is a list as created by \code{Rfits_read_image} then the image part of the list is parsed to \option{image} and the correct header part is parsed to \option{keyvalues}.
+Numeric matrix; required, the image we want to rebin. If \option{image} is a list as created by \code{Rfits_read_image} then the imDat part of the list is parsed to \option{image} and the correct header part is parsed to \option{keyvalues}.
 }
   \item{keyvalues_out}{
 List; output header values to be used for the WCS. This is the target WCS projection that \option{image_in} will be mapped onto.
 }
-  \item{keyvalues_in}{
-List; input header values to be used for the WCS. This should be the header WCS that matches \option{image_in}.
-}
   \item{dim_out}{
 Integer vector; this defines the desired dimensions of the output image. If this is not provided then the output image is made to be the same size as the NAXIS1 and NAXIS2 arguments taken from \option{header_out} (which is usually what you will want TBH).
-}
-  \item{pixscale_out}{
-Numeric scalar; output pixel scale in asec/pixel. If not provided it will be computed from the \option{keyvalues_out} using \code{\link{Rwcs_pixscale}}, which is only an issue if the CD matrix is defined a long way from the actual projected image which can lead to distorted pixel scales.
-}
-  \item{pixscale_in}{
-Numeric scalar; input pixel scale in asec/pixel. If not provided it will be computed from the \option{keyvalues_in} using \code{\link{Rwcs_pixscale}}, which is only an issue if the CD matrix is defined a long way from the actual projected image which can lead to distorted pixel scales.
 }
   \item{direction}{
 Character scalar; "auto" (default), "forward" or "backward", see \code{imwarp}. Since it is usally better to go from the higher resolution image and map this onto the lower resolution grid, "auto" selects the better direction given the pixel scales recovered from the header information.
@@ -74,9 +64,6 @@ Logical; should a \code{\link{Rwcs_image}} plot of the output be generated?
 }
   \item{header_out}{
 Optional output header. To aid backwards compatibility, you can also pass in a 1D character vector of header values, e.g. the \option{hdr} component of \option{readFITS} from the \code{FITSio} package. \option{keyvalues_out} must be left as NULL in this case. If you want to use all distortion terms you can also pass in the raw header output of \code{Rfits_read_header_raw}.
-}
-  \item{header_in}{
-Optional input header. To aid backwards compatibility, you can also pass in a 1D character vector of header values, e.g. the \option{hdr} component of \option{readFITS} from the \code{FITSio} package. \option{keyvalues_in} must be left as NULL in this case. If you want to use all distortion terms you can also pass in the raw header output of \code{Rfits_read_header_raw}.
 }
   \item{dotightcrop}{
 Logical; should an internal tight crop be made. If the images are approximately the same angular size this should be left as FALSE (it will run faster), but when there is a big difference between the input and output WCS (the latter being much larger) then setting this to TRUE might speed the warping up a lot.
@@ -119,6 +106,9 @@ Cimg imager_array; a warp field to be used. You almost very certainly never want
 }
   \item{warpfield_return}{
 Logical; should a \option{warpfield} be appended to the output list? This can be used later with the \option{warpfield} argument to speed up identical WCS warping operations.
+}
+  \item{cores}{
+Integer scalar; the number of cores to run on. Because of the overhead in launching jobs, running in multicore mode is rarely much faster, and always uses significantly more RAM. Probably rarely useful! The caveat would be when 1e8 length inputs are being provided (e.g. a 10k x 10k image warp)- at this scale the multicore mode can be a factor of a few faster.
 }
   \item{\dots}{
 For \code{propaneWarp} dots are passed to \code{\link{Rwcs_image}} (only relevant if \option{plot}=TRUE). For \code{propaneWarpProPane} dots are passed to \code{propaneWarp}.
