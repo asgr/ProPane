@@ -1,6 +1,7 @@
-propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL, weight_list=NULL, mask_list=NULL, magzero_in=0,
-                      magzero_out=23.9, keyvalues_out=NULL, dim_out=NULL, cores=4, Nbatch=cores, keepcrop=TRUE,
-                      keep_extreme_pix=FALSE, doclip=FALSE, clip_tol=100, clip_dilate=0, clip_sigma=5,
+propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL, weight_list=NULL,
+                      mask_list=NULL, magzero_in=0, magzero_out=23.9, keyvalues_out=NULL,
+                      dim_out=NULL, cores=4, Nbatch=cores, keepcrop=TRUE,keep_extreme_pix=FALSE,
+                      doclip=FALSE, clip_tol=100, clip_dilate=0, clip_sigma=5,
                       return_all=FALSE, dump_frames=FALSE, dump_dir=tempdir(), ...){
 
   if(!requireNamespace("Rfits", quietly = TRUE)){
@@ -116,11 +117,9 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
   if(keep_extreme_pix | doclip){
     post_stack_cold = matrix(Inf, dim_im[1], dim_im[2])
     post_stack_hot = matrix(-Inf, dim_im[1], dim_im[2])
-    #mask_clip = matrix(0L, dim_im[1], dim_im[2])
   }else{
     post_stack_cold = NULL
     post_stack_hot = NULL
-    #mask_clip = NULL
   }
 
   mask_clip = NULL
@@ -191,15 +190,12 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
 
     message('Projecting Images ',seq_start,' to ',seq_end,' of ',Nim)
 
-    pre_stack_image_list = foreach(i = seq_start:seq_end, .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp'))%dopar%{
+    pre_stack_image_list = foreach(i = seq_start:seq_end,
+                                   .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp'))%dopar%{
       if(inherits(image_list[[i]], 'Rfits_pointer')){
         temp_image = image_list[[i]][,]
       }else{
         temp_image = image_list[[i]]
-      }
-
-      if(zero_point_scale[i] != 1){
-        temp_image$imDat = temp_image$imDat*zero_point_scale[i]
       }
 
       if(any(!is.finite(temp_image$imDat))){
@@ -244,6 +240,10 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
           ...
         )
 
+        if(zero_point_scale[i] != 1){
+          temp_warp$imDat = temp_warp$imDat*zero_point_scale[i]
+        }
+
         if(dump_frames){
           temp_warp$keyvalues$MAGZERO = magzero_out
           temp_warp$keycomments$MAGZERO = ""
@@ -254,12 +254,13 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       return(temp_warp)
     }
 
-    gc()
+
 
     if(!is.null(inVar_list)){
       message('Projecting Inverse Variance ',seq_start,' to ',seq_end,' of ',Nim)
 
-      pre_stack_inVar_list = foreach(i = seq_start:seq_end, .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp'))%dopar%{
+      pre_stack_inVar_list = foreach(i = seq_start:seq_end,
+                                     .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp'))%dopar%{
         if(inherits(image_list[[i]], 'Rfits_pointer')){
           temp_inVar = image_list[[i]][,]
         }else{
@@ -275,10 +276,6 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
           temp_inVar$imDat[] = inVar_list[[i]]
         }
 
-        if(zero_point_scale[i] != 1){
-          temp_inVar$imDat = temp_inVar$imDat/(zero_point_scale[i]^2)
-        }
-
         suppressMessages({
           temp_warp = propaneWarp(
             image_in = temp_inVar,
@@ -289,7 +286,15 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             keepcrop = keepcrop,
             warpfield = pre_stack_image_list[[i - seq_start + 1L]]$warpfield,
             ...
-            )*(Rwcs_pixscale(temp_inVar$keyvalues)^4 / Rwcs_pixscale(keyvalues_out)^4) #this is because RMS scales as linear pixel area. Using Rfits * method here
+            )
+
+          if(zero_point_scale[i] != 1){
+            #because the RMS scales with zero_point_scale
+            temp_warp$imDat = temp_warp$imDat/(zero_point_scale[i]^2)
+          }
+
+          #this is because RMS scales as linear pixel area. Using Rfits * method here
+          temp_warp$imDat = temp_warp$imDat * (Rwcs_pixscale(temp_inVar$keyvalues)^4 / Rwcs_pixscale(keyvalues_out)^4)
 
           if(dump_frames){
             Rfits_write_image(temp_warp, paste0(dump_dir,'/inVar_warp_',i,'.fits'))
@@ -299,14 +304,15 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       }
     }
 
-    gc()
+
 
     if(!is.null(exp_list)){
       message('Projecting Exposure Times ',seq_start,' to ',seq_end,' of ',Nim)
       if(length(exp_list) != Nim){
         stop("Length of Exposure Times not equal to length of image_list!")
       }
-      pre_stack_exp_list = foreach(i = seq_start:seq_end, .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp', 'pre_stack_inVar_list'))%dopar%{
+      pre_stack_exp_list = foreach(i = seq_start:seq_end,
+                                   .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp', 'pre_stack_inVar_list'))%dopar%{
         if(inherits(image_list[[i]], 'Rfits_pointer')){
           temp_exp = image_list[[i]][,]
         }else{
@@ -343,7 +349,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       }
     }
 
-    gc()
+
 
     #new weight projections (if relevant)
 
@@ -389,7 +395,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
         }
       }
 
-      gc()
+
     }else{
       pre_stack_weight_list = weight_list
     }
@@ -428,7 +434,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       }
     }
 
-    gc()
+
 
     if(!is.null(pre_stack_exp_list)){
       message('Stacking Exposure Times ',seq_start,' to ',seq_end,' of ',Nim)
@@ -440,7 +446,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       }
     }
 
-    gc()
+
 
     if(keep_extreme_pix | doclip){
       message('Calculating Extreme Pixels ',seq_start,' to ',seq_end,' of ',Nim)
@@ -461,7 +467,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       }
     }
 
-    gc()
+
   }
 
   if(return_all==FALSE){
@@ -504,7 +510,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
     rm(bad_cold)
     rm(bad_hot)
     rm(post_stack_inRMS)
-    gc()
+
 
     #reset post stack outputs
 
@@ -537,7 +543,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
 
     rm(post_stack_cold_id)
     rm(post_stack_hot_id)
-    gc()
+
 
     if(Nbatch == Nim){ #if we already have all projections in memory we can just re-stack
       message('Restacking without clipped cold/hot pixels')
@@ -582,7 +588,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
           }
         }
 
-        gc()
+
       }else{
         # if('fastmatch' %in% .packages()){ #remove things that will not be dilated
         #   segim_new[fastmatch::fmatch(segim_new, expand, nomatch = 0L) == 0L] = 0L
@@ -629,7 +635,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
           }
         }
 
-        gc()
+
       }
     }else{
       # If we need to batch process the image_list then we need to re-project everything again
@@ -662,10 +668,6 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
               temp_image = image_list[[i]]
             }
 
-            if(zero_point_scale[i] != 1){
-              temp_image$imDat = temp_image$imDat*zero_point_scale[i]
-            }
-
             if(any(!is.finite(temp_image$imDat))){
               temp_image$imDat[!is.finite(temp_image$imDat)] = NA
             }
@@ -696,19 +698,25 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
               rm(temp_inVar)
             }
 
-            return(propaneWarp(
-              image_in = temp_image,
-              keyvalues_out = keyvalues_out,
-              dim_out = dim_out,
-              doscale = TRUE,
-              dotightcrop = TRUE,
-              keepcrop = keepcrop,
-              warpfield_return = TRUE,
-              ...
-            ))
+            suppressWarnings({
+              temp_warp = propaneWarp(
+                image_in = temp_image,
+                keyvalues_out = keyvalues_out,
+                dim_out = dim_out,
+                doscale = TRUE,
+                dotightcrop = TRUE,
+                keepcrop = keepcrop,
+                warpfield_return = TRUE,
+                ...
+              )
+
+              if(zero_point_scale[i] != 1){
+                temp_warp$imDat = temp_warp$imDat*zero_point_scale[i]
+              }
+            })
+            return(temp_warp)
           }
 
-          gc()
         }
 
         if(!is.null(inVar_list)){
@@ -721,7 +729,8 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
           }else{
             message('Projecting Inverse Variance ',seq_start,' to ',seq_end,' of ',Nim)
 
-            pre_stack_inVar_list = foreach(i = seq_start:seq_end, .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp'))%dopar%{
+            pre_stack_inVar_list = foreach(i = seq_start:seq_end,
+                                           .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp'))%dopar%{
               if(inherits(image_list[[i]], 'Rfits_pointer')){
                 temp_inVar = image_list[[i]][,]
               }else{
@@ -737,12 +746,8 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
                 temp_inVar$imDat[] = inVar_list[[i]]
               }
 
-              if(zero_point_scale[i] != 1){
-                temp_inVar$imDat = temp_inVar$imDat/(zero_point_scale[i]^2)
-              }
-
               suppressMessages({
-                return(propaneWarp(
+                temp_warp = propaneWarp(
                   image_in = temp_inVar,
                   keyvalues_out = keyvalues_out,
                   dim_out = dim_out,
@@ -751,12 +756,20 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
                   keepcrop = keepcrop,
                   warpfield = pre_stack_image_list[[i - seq_start + 1L]]$warpfield,
                   ...
-                  )*(Rwcs_pixscale(temp_inVar$keyvalues)^4 / Rwcs_pixscale(keyvalues_out)^4) #this is because RMS scales as linear pixel area
-                )
+                  )
+                #this is because RMS scales as linear pixel area
+
+                if(zero_point_scale[i] != 1){
+                  #because the RMS scales with zero_point_scale
+                  temp_warp$imDat = temp_warp$imDat/(zero_point_scale[i]^2)
+                }
+
+                temp_warp$imDat = temp_warp$imDat*(Rwcs_pixscale(temp_inVar$keyvalues)^4 / Rwcs_pixscale(keyvalues_out)^4)
+
+                return(temp_warp)
               })
             }
 
-            gc()
           }
         }
 
@@ -807,7 +820,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             }
             }
 
-          gc()
+
         }else{
           pre_stack_weight_list = weight_list
         }
@@ -841,7 +854,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             )
           }
 
-          gc()
+
         }else{
           message('Stacking Images and InVar ',seq_start,' to ',seq_end,' of ',Nim)
           for(i in 1:Nbatch_sub){
@@ -874,7 +887,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             )
           }
 
-          gc()
+
         }
 
         if(keep_extreme_pix){
@@ -902,7 +915,6 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             post_stack_hot[xsub,ysub][new_hot] = pre_stack_image_list[[i]]$imDat[new_hot]
           }
 
-          gc()
         }
       }
     }
