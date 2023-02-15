@@ -1,7 +1,7 @@
 propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL, weight_list=NULL,
                       mask_list=NULL, magzero_in=0, magzero_out=23.9, keyvalues_out=NULL,
-                      dim_out=NULL, cores=4, Nbatch=cores, keepcrop=TRUE,keep_extreme_pix=FALSE,
-                      doclip=FALSE, clip_tol=100, clip_dilate=0, clip_sigma=5,
+                      dim_out=NULL, cores=4, cores_warp=1, Nbatch=cores, keepcrop=TRUE,
+                      keep_extreme_pix=FALSE, doclip=FALSE, clip_tol=100, clip_dilate=0, clip_sigma=5,
                       return_all=FALSE, dump_frames=FALSE, dump_dir=tempdir(), ...){
 
   if(!requireNamespace("Rfits", quietly = TRUE)){
@@ -22,7 +22,6 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       dir.create(dump_dir, recursive = TRUE)
     }
     message('Frames being dumped to ', dump_dir)
-
   }
 
   registerDoParallel(cores=cores)
@@ -114,30 +113,6 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
 
   post_stack_weight = matrix(0L, dim_im[1], dim_im[2])
 
-  if(keep_extreme_pix | doclip){
-    post_stack_cold = matrix(Inf, dim_im[1], dim_im[2])
-    post_stack_hot = matrix(-Inf, dim_im[1], dim_im[2])
-  }else{
-    post_stack_cold = NULL
-    post_stack_hot = NULL
-  }
-
-  mask_clip = NULL
-
-  if(doclip){
-
-    if(length(clip_tol) == 1){
-      clip_tol = rep(clip_tol, 2)
-    }
-
-    if(!is.null(inVar_list)){
-      post_stack_cold_id = matrix(0L, dim_im[1], dim_im[2])
-      post_stack_hot_id = matrix(0L, dim_im[1], dim_im[2])
-    }else{
-      stop('inVar_list required if doclip = TRUE!')
-    }
-  }
-
   # Check all supplied frames are in WCS:
 
   which_overlap = which(foreach(i = 1:length(image_list), .combine='c')%dopar%{
@@ -147,7 +122,35 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
   Ncheck = length(which_overlap)
 
   if(Ncheck == 0){
-    stop('No frames exist within target WCS!')
+    message('No frames exist within target WCS!')
+
+    keyvalues_out$EXTNAME = 'image'
+    keyvalues_out$MAGZERO = magzero_out
+    keyvalues_out$R_VER = R.version$version.string
+    keyvalues_out$PANE_VER = as.character(packageVersion('ProPane'))
+    keyvalues_out$RWCS_VER = as.character(packageVersion('Rwcs'))
+
+    image_out = Rfits_create_image(image=post_stack_image,
+                                   keyvalues=keyvalues_out,
+                                   keypass=FALSE,
+                                   history='Stacked with propaneStackWarpInVar')
+
+    keyvalues_out$EXTNAME = 'weight'
+    keyvalues_out$MAGZERO = NULL
+    weight_out = Rfits_create_image(image=post_stack_weight,
+                                    keyvalues=keyvalues_out,
+                                    keypass=FALSE)
+
+    time_taken = proc.time()[3] - timestart
+    message('Time taken: ',signif(time_taken,4),' seconds')
+
+    output = list(image = image_out,
+                  weight = weight_out,
+                  which_overlap = 0L,
+                  time = time_taken,
+                  Nim = 0L)
+    class(output) = "ProPane"
+    return(invisible(output))
   }
 
   if(Nim > Ncheck){
@@ -173,6 +176,30 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
 
     if(!is.null(mask_list)){
       mask_list = mask_list[which_overlap]
+    }
+  }
+
+  if(keep_extreme_pix | doclip){
+    post_stack_cold = matrix(Inf, dim_im[1], dim_im[2])
+    post_stack_hot = matrix(-Inf, dim_im[1], dim_im[2])
+  }else{
+    post_stack_cold = NULL
+    post_stack_hot = NULL
+  }
+
+  mask_clip = NULL
+
+  if(doclip){
+
+    if(length(clip_tol) == 1){
+      clip_tol = rep(clip_tol, 2)
+    }
+
+    if(!is.null(inVar_list)){
+      post_stack_cold_id = matrix(0L, dim_im[1], dim_im[2])
+      post_stack_hot_id = matrix(0L, dim_im[1], dim_im[2])
+    }else{
+      stop('inVar_list required if doclip = TRUE!')
     }
   }
 
@@ -237,6 +264,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
           dotightcrop = TRUE,
           keepcrop = keepcrop,
           warpfield_return = TRUE,
+          cores = cores_warp,
           ...
         )
 
@@ -285,6 +313,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             dotightcrop = TRUE,
             keepcrop = keepcrop,
             warpfield = pre_stack_image_list[[i - seq_start + 1L]]$warpfield,
+            cores = cores_warp,
             ...
             )
 
@@ -338,6 +367,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             dotightcrop = TRUE,
             keepcrop = keepcrop,
             warpfield = pre_stack_image_list[[i - seq_start + 1L]]$warpfield,
+            cores = cores_warp,
             ...
           )
 
@@ -382,6 +412,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
               dotightcrop = TRUE,
               keepcrop = keepcrop,
               warpfield = pre_stack_image_list[[i - seq_start + 1L]]$warpfield,
+              cores = cores_warp,
               ...
             )
 
@@ -707,6 +738,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
                 dotightcrop = TRUE,
                 keepcrop = keepcrop,
                 warpfield_return = TRUE,
+                cores = cores_warp,
                 ...
               )
 
@@ -755,6 +787,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
                   dotightcrop = TRUE,
                   keepcrop = keepcrop,
                   warpfield = pre_stack_image_list[[i - seq_start + 1L]]$warpfield,
+                  cores = cores_warp,
                   ...
                   )
                 #this is because RMS scales as linear pixel area
@@ -812,6 +845,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
                   dotightcrop = TRUE,
                   keepcrop = keepcrop,
                   warpfield = pre_stack_image_list[[i - seq_start + 1L]]$warpfield,
+                  cores = cores_warp,
                   ...
                 ))
               }

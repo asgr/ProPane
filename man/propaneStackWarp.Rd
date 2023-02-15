@@ -12,9 +12,10 @@ Stacks multiple un-aligned images. This required warping to a common WCS before 
 \usage{
 propaneStackWarpInVar(image_list = NULL, inVar_list = NULL, exp_list = NULL,
   weight_list = NULL, mask_list = NULL, magzero_in = 0, magzero_out = 23.9,
-  keyvalues_out = NULL, dim_out = NULL, cores = 4, Nbatch = cores, keepcrop = TRUE,
-  keep_extreme_pix = FALSE, doclip = FALSE, clip_tol = 100, clip_dilate = 0,
-  clip_sigma = 5, return_all = FALSE, dump_frames = FALSE, dump_dir = tempdir(), ...)
+  keyvalues_out = NULL, dim_out = NULL, cores = 4, cores_warp = 1, Nbatch = cores,
+  keepcrop = TRUE, extratight = FALSE, keep_extreme_pix = FALSE, doclip = FALSE,
+  clip_tol = 100, clip_dilate = 0, clip_sigma = 5, return_all = FALSE,
+  dump_frames = FALSE, dump_dir = tempdir(), ...)
 
 propaneStackWarpMed(filelist = NULL, dirlist = NULL, extlist = 1,
   pattern = ".fits$", recursive = TRUE, zap = NULL, keyvalues_out = NULL,
@@ -50,13 +51,19 @@ List; output header values to be used for the WCS. This is the target WCS projec
 Integer vector; this defines the desired dimensions of the output image. If this is not provided then the output image is made to be the same size as the NAXIS1 and NAXIS2 arguments taken from \option{header_out} (which is usually what you will want TBH).
 }
   \item{cores}{
-Integer scalar; the number of cores to run on. In general larger will be faster, assuming you have enough memory to hold that many images in memory. Once you are using around half of the available RAM you will see bigger performance loss due to memory pressure than gains due to more CPU power. Make sure not to set \option{cores} to more than the available cores, see \code{detectCores} in the \code{parallel} package (and probably no more than available cores minus 2).
+Integer scalar; the number of cores to run top level stacking on. In general larger will be faster, assuming you have enough memory to hold that many images in memory. Once you are using around half of the available RAM you will see bigger performance loss due to memory pressure than gains due to more CPU power. Make sure not to set \option{cores} to more than the available cores, see \code{detectCores} in the \code{parallel} package (and probably no more than available cores minus 2). This needs to be used carefully in combination with the \option{cores_warp} argument since in total you do not want to set \option{cores} x \option{cores_warp} than you have have machine cores/threads available (probably machine cores/threads - 2).
+}
+  \item{cores_warp}{
+Integer scalar; the number of cores used for warping. This needs to be used carefully in combination with the \option{cores} argument since in total you do not want to set \option{cores} x \option{cores_warp} than you have have machine cores/threads available (probably machine cores/threads - 2).
+}
+  \item{Nbatch}{
+Integer scalar; the size of processing batches to be used internally. This can be larger than \option{cores}, but usually it makes more sense to set \option{Nbatch} = \option{cores} since that will minimise memory and maximise CPU usage. If \option{return_all} = TRUE or \option{doclip} = TRUE then \option{Nbatch} will be set to the number of images (since all pre-stack projected images will either be returned or need to be processed for clipped stacking). The fastest possible speed (but maximal memory impact) will be \option{Nbatch} = \option{cores} = length(\option{image_list}). The slowest speed (but minimal memory impact) will be \option{Nbatch} = 1. A good compromise is to work out how many images will fit within half of the available RAM (Nsafe), and set \option{Nbatch} = \option{cores} = Nsafe (making sure not to set \option{cores} to more than the available cores, see \code{detectCores} in the \code{parallel} package).
 }
   \item{keepcrop}{
 Logical; this flag specifies if just the minimally cut down projection should be used internally. The only reason to set this to FALSE is if one of \option{return_all} or \option{dump_frames} is TRUE and the user once to inspect the warped frames easily (since they will be pixel aligned in this case). Setting \option{keepcrop} = TRUE will use much less memory and in general create stacks faster.
 }
-  \item{Nbatch}{
-Integer scalar; the size of processing batches to be used internally. This can be larger than \option{cores}, but usually it makes more sense to set \option{Nbatch} = \option{cores} since that will minimise memory and maximise CPU usage. If \option{return_all} = TRUE or \option{doclip} = TRUE then \option{Nbatch} will be set to the number of images (since all pre-stack projected images will either be returned or need to be processed for clipped stacking). The fastest possible speed (but maximal memory impact) will be \option{Nbatch} = \option{cores} = length(\option{image_list}). The slowest speed (but minimal memory impact) will be \option{Nbatch} = 1. A good compromise is to work out how many images will fit within half of the available RAM (Nsafe), and set \option{Nbatch} = \option{cores} = Nsafe (making sure not to set \option{cores} to more than the available cores, see \code{detectCores} in the \code{parallel} package).
+  \item{extratight}{
+Logical; should an extra tight crop be made after warping. If TRUE then it will check for the extremity of non-NA pixels and crop to this. In some cases this produces much smaller cropped images because pixels might be rotated during warping- this means a thin strip on a vertical edge becomes a thin strip on a horizontal edge, wasting a lot of space if we do not crop. When stacking it is often best not to set this to TRUE since we want to ensure the \option{image} and \option{inVar} frames are exactly pixel aligned.
 }
   \item{keep_extreme_pix}{
 Logical; should a \option{cold} and \option{hot} pixel matrix be stored and returned? This can be useful for diagnosing and later masking bad cold and hot pixels from the stacked \option{image}. Potentially you can use these outputs to detect hot/cold biased pixels in the output \option{image} and replace them with the \option{cold}/\option{hot} pixel in the location, or alternatively just mask them entirely. Note when using \option{doclip} = TRUE then the \option{cold}/\option{hot} will be the coldest and hottest pixels remaining after the clipping is applied (so the originally most extreme pixels will no longer be present).

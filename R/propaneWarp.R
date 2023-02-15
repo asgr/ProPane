@@ -12,8 +12,9 @@
 propaneWarp = function(image_in, keyvalues_out=NULL, dim_out = NULL,
                       direction = "auto", boundary = "dirichlet", interpolation = "cubic",
                       doscale = TRUE, dofinenorm = TRUE, plot = FALSE, header_out = NULL, dotightcrop = TRUE,
-                      keepcrop = FALSE, WCSref_out = NULL, WCSref_in = NULL, magzero_out = NULL, magzero_in = NULL,
-                      blank=NA, warpfield=NULL, warpfield_return=FALSE, cores=1, ...)
+                      keepcrop = FALSE, extratight = FALSE, WCSref_out = NULL, WCSref_in = NULL,
+                      magzero_out = NULL, magzero_in = NULL, blank=NA, warpfield=NULL,
+                      warpfield_return=FALSE, cores=1, ...)
 {
   if(!requireNamespace("Rwcs", quietly = TRUE)){
     stop("The Rwcs package is needed for this function to work. Please install it from GitHub asgr/Rwcs", call. = FALSE)
@@ -327,20 +328,22 @@ propaneWarp = function(image_in, keyvalues_out=NULL, dim_out = NULL,
       max_y_in = dim_out[2]
     }
 
-    final_pix = which(!is.na(image_out$imDat), arr.ind = TRUE)
-    crop_x_lo = min(final_pix[,1])
-    crop_x_hi = max(final_pix[,1])
-    crop_y_lo = min(final_pix[,2])
-    crop_y_hi = max(final_pix[,2])
+    if(extratight){
+      final_pix = which(!is.na(image_out$imDat), arr.ind = TRUE)
+      crop_x_lo = min(final_pix[,1])
+      crop_x_hi = max(final_pix[,1])
+      crop_y_lo = min(final_pix[,2])
+      crop_y_hi = max(final_pix[,2])
 
-    #final extra tight crop
-    image_out = image_out[c(crop_x_lo, crop_x_hi), c(crop_y_lo, crop_y_hi)]
+      #final extra tight crop
+      image_out = image_out[c(crop_x_lo, crop_x_hi), c(crop_y_lo, crop_y_hi)]
 
-    #update where we are in the parent frame
-    min_x_in = min_x_in + crop_x_lo - 1L
-    max_x_in = min_x_in + dim(image_out)[1] -1L
-    min_y_in = min_y_in + crop_y_lo - 1L
-    max_y_in = min_y_in + dim(image_out)[2] -1L
+      #update where we are in the parent frame
+      min_x_in = min_x_in + crop_x_lo - 1L
+      max_x_in = min_x_in + dim(image_out)[1] -1L
+      min_y_in = min_y_in + crop_y_lo - 1L
+      max_y_in = min_y_in + dim(image_out)[2] -1L
+    }
 
     image_out$keyvalues$XCUTLO = min_x_in
     image_out$keyvalues$XCUTHI = max_x_in
