@@ -13,9 +13,9 @@ Stacks multiple un-aligned images. This required warping to a common WCS before 
 propaneStackWarpInVar(image_list = NULL, inVar_list = NULL, exp_list = NULL,
   weight_list = NULL, mask_list = NULL, magzero_in = 0, magzero_out = 23.9,
   keyvalues_out = NULL, dim_out = NULL, cores = 4, cores_warp = 1, Nbatch = cores,
-  keepcrop = TRUE, extratight = FALSE, keep_extreme_pix = FALSE, doclip = FALSE,
-  clip_tol = 100, clip_dilate = 0, clip_sigma = 5, return_all = FALSE,
-  dump_frames = FALSE, dump_dir = tempdir(), ...)
+  keepcrop = TRUE, keep_extreme_pix = FALSE, doclip = FALSE, clip_tol = 100,
+  clip_dilate = 0, clip_sigma = 5, return_all = FALSE, dump_frames = FALSE,
+  dump_dir = tempdir(), ...)
 
 propaneStackWarpMed(filelist = NULL, dirlist = NULL, extlist = 1,
   pattern = ".fits$", recursive = TRUE, zap = NULL, keyvalues_out = NULL,
@@ -61,9 +61,6 @@ Integer scalar; the size of processing batches to be used internally. This can b
 }
   \item{keepcrop}{
 Logical; this flag specifies if just the minimally cut down projection should be used internally. The only reason to set this to FALSE is if one of \option{return_all} or \option{dump_frames} is TRUE and the user once to inspect the warped frames easily (since they will be pixel aligned in this case). Setting \option{keepcrop} = TRUE will use much less memory and in general create stacks faster.
-}
-  \item{extratight}{
-Logical; should an extra tight crop be made after warping. If TRUE then it will check for the extremity of non-NA pixels and crop to this. In some cases this produces much smaller cropped images because pixels might be rotated during warping- this means a thin strip on a vertical edge becomes a thin strip on a horizontal edge, wasting a lot of space if we do not crop. When stacking it is often best not to set this to TRUE since we want to ensure the \option{image} and \option{inVar} frames are exactly pixel aligned.
 }
   \item{keep_extreme_pix}{
 Logical; should a \option{cold} and \option{hot} pixel matrix be stored and returned? This can be useful for diagnosing and later masking bad cold and hot pixels from the stacked \option{image}. Potentially you can use these outputs to detect hot/cold biased pixels in the output \option{image} and replace them with the \option{cold}/\option{hot} pixel in the location, or alternatively just mask them entirely. Note when using \option{doclip} = TRUE then the \option{cold}/\option{hot} will be the coldest and hottest pixels remaining after the clipping is applied (so the originally most extreme pixels will no longer be present).

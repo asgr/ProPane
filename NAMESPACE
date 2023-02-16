@@ -11,6 +11,9 @@ export(propaneStackWarpMed)
 export(propaneStackFlatInVar)
 export(propaneStackFlatFunc)
 
+#Utility
+export(propaneFrameFinder)
+
 useDynLib(ProPane, .registration=TRUE)
 
 import("Rcpp")
@@ -25,3 +28,6 @@ import("doParallel")
 
 importFrom("stats", "quantile", "median", "optim")
 importFrom("utils", "packageVersion")
+importFrom("celestial", "coordmatchsing")
+importFrom("grDevices", "hsv")
+importFrom("graphics", "legend", "mtext", "polygon")

@@ -16,8 +16,9 @@ Remaps an input projection system to a different target WCS.
 propaneWarp(image_in, keyvalues_out = NULL, dim_out = NULL, direction = "auto",
   boundary = "dirichlet", interpolation = "cubic", doscale = TRUE, dofinenorm = TRUE,
   plot = FALSE, header_out = NULL, dotightcrop = TRUE, keepcrop = FALSE,
-  WCSref_out = NULL, WCSref_in = NULL, magzero_out = NULL, magzero_in = NULL,
-  blank = NA, warpfield = NULL, warpfield_return = FALSE, cores = 1, ...)
+  extratight = FALSE, WCSref_out = NULL, WCSref_in = NULL, magzero_out = NULL,
+  magzero_in = NULL, blank = NA, warpfield = NULL, warpfield_return = FALSE, cores = 1,
+  ...)
 
 propaneWarpProPane(propane_in, keyvalues_out = NULL, dim_out = NULL,
   magzero_out = NULL, ...)
@@ -70,6 +71,9 @@ Logical; should an internal tight crop be made. If the images are approximately 
 }
   \item{keepcrop}{
 Logical; if \option{dotightcrop} is TRUE, then this flag specifies if just the minimally cut down projection should be returned (TRUE; using less memory, but perhaps harder to work with) or the output should be fully cast onto the target WCS (FALSE).
+}
+  \item{extratight}{
+Logical; should an extra tight crop be made after warping. If TRUE then it will check for the extremity of non-NA pixels and crop to this. In some cases this produces much smaller cropped images because pixels might be rotated during warping- this means a thin strip on a vertical edge becomes a thin strip on a horizontal edge, wasting a lot of space if we do not crop. When stacking it is often best not to set this to TRUE since we want to ensure the \option{image} and \option{inVar} frames are exactly pixel aligned.
 }
   \item{WCSref_out}{
 Scalar; optional output \option{WCSref}. Either NULL for base WCS (default), or a letter [a-z] for the relevant projection desired. Only used if using a raw \option{header}, and obviously this has to exist within the provided raw \option{header}.
