@@ -14,7 +14,7 @@ propaneWarp = function(image_in, keyvalues_out=NULL, dim_out = NULL,
                       doscale = TRUE, dofinenorm = TRUE, plot = FALSE, header_out = NULL, dotightcrop = TRUE,
                       keepcrop = FALSE, extratight = FALSE, WCSref_out = NULL, WCSref_in = NULL,
                       magzero_out = NULL, magzero_in = NULL, blank=NA, warpfield=NULL,
-                      warpfield_return=FALSE, cores=1, ...)
+                      warpfield_return=FALSE, cores=1, checkWCSequal=FALSE, ...)
 {
   if(!requireNamespace("Rwcs", quietly = TRUE)){
     stop("The Rwcs package is needed for this function to work. Please install it from GitHub asgr/Rwcs", call. = FALSE)
@@ -62,6 +62,31 @@ propaneWarp = function(image_in, keyvalues_out=NULL, dim_out = NULL,
 
   keyvalues_in = keyvalues_in[!is.na(keyvalues_in)]
   keyvalues_out = keyvalues_out[!is.na(keyvalues_out)]
+
+  if(checkWCSequal){
+    if(Rfits_key_match(keyvalues_out, keyvalues_in,
+                       check = c('NAXIS',
+                                 'NAXIS1',
+                                 'NAXIS2',
+                                 'CRPIX1',
+                                 'CRPIX2',
+                                 'CRVAL1',
+                                 'CRVAL2',
+                                 'CTYPE1',
+                                 'CTYPE2',
+                                 'CUNIT1',
+                                 'CUNIT1',
+                                 'CD1_1',
+                                 'CD1_2',
+                                 'CD2_1',
+                                 'CD2_2'
+                                 )
+                       )
+       ){
+      message('WCS appears to be the same, directly returning input!')
+      return(invisible(image_in))
+    }
+  }
 
   if (!is.null(keyvalues_out) & is.null(dim_out)){
     if(is.null(keyvalues_out$ZNAXIS1)){

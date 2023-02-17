@@ -44,7 +44,7 @@ propaneFrameFinder = function(filelist = NULL,
             longlim = longlim,
             latlim = latlim,
             centre = c(RAcen, Deccen),
-            labloc = c(longlim[1] - rad/cos(Deccen*pi/180)/20, latlim[1] -  rad/20),
+            labloc = c(longlim[2] + rad/cos(Deccen*pi/180)/20, latlim[1] -  rad/20),
             pch = 4, cex = 5,
             fliplong = TRUE
     )
@@ -72,7 +72,7 @@ propaneFrameFinder = function(filelist = NULL,
 
     for(i in 1:dim(FrameInfo)[1]){
       polygon(as.numeric(FrameInfo[i,c('corner_BL_RA','corner_TL_RA','corner_TR_RA','corner_BR_RA')]),
-              as.numeric(FrameInfo[i,c('corner_BL_RA','corner_TL_RA','corner_TR_RA','corner_BR_RA')]),
+              as.numeric(FrameInfo[i,c('corner_BL_Dec','corner_TL_Dec','corner_TR_Dec','corner_BR_Dec')]),
               border = border,
               col = col
               )

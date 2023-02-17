@@ -18,7 +18,7 @@ propaneWarp(image_in, keyvalues_out = NULL, dim_out = NULL, direction = "auto",
   plot = FALSE, header_out = NULL, dotightcrop = TRUE, keepcrop = FALSE,
   extratight = FALSE, WCSref_out = NULL, WCSref_in = NULL, magzero_out = NULL,
   magzero_in = NULL, blank = NA, warpfield = NULL, warpfield_return = FALSE, cores = 1,
-  ...)
+  checkWCSequal = FALSE, ...)
 
 propaneWarpProPane(propane_in, keyvalues_out = NULL, dim_out = NULL,
   magzero_out = NULL, ...)
@@ -113,6 +113,9 @@ Logical; should a \option{warpfield} be appended to the output list? This can be
 }
   \item{cores}{
 Integer scalar; the number of cores to run on. Because of the overhead in launching jobs, running in multicore mode is rarely much faster, and always uses significantly more RAM. Probably rarely useful! The caveat would be when 1e8 length inputs are being provided (e.g. a 10k x 10k image warp)- at this scale the multicore mode can be a factor of a few faster.
+}
+  \item{checkWCSequal}{
+Logical; should the WCS be checked to see if the keyvalues_in is the same as keyvalues_out? If TRUE, and the WCS appears to match (when comparing: NAXIS, NAXIS1, NAXIS2, CRPIX1, CRPIX2, CRVAL1, CRVAL2, CTYPE1, CTYPE2, CUNIT1, CUNIT1, CD1_1, CD1_2, CD2_1, CD2_2), then the input \option{image_in} is simply returns. This increases speed and means you do not need to carefully check the input and output WCS.
 }
   \item{\dots}{
 For \code{propaneWarp} dots are passed to \code{\link{Rwcs_image}} (only relevant if \option{plot}=TRUE). For \code{propaneWarpProPane} dots are passed to \code{propaneWarp}.
