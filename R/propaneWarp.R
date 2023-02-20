@@ -65,8 +65,7 @@ propaneWarp = function(image_in, keyvalues_out=NULL, dim_out = NULL,
 
   if(checkWCSequal){
     if(Rfits_key_match(keyvalues_out, keyvalues_in,
-                       check = c('NAXIS',
-                                 'NAXIS1',
+                       check = c('NAXIS1',
                                  'NAXIS2',
                                  'CRPIX1',
                                  'CRPIX2',
@@ -84,6 +83,21 @@ propaneWarp = function(image_in, keyvalues_out=NULL, dim_out = NULL,
                        )
        ){
       message('WCS appears to be the same, directly returning input!')
+      image_in$keyvalues$XCUTLO = 1L
+      image_in$keyvalues$XCUTHI = dim(image_in)[1]
+      image_in$keyvalues$YCUTLO = 1L
+      image_in$keyvalues$YCUTHI = dim(image_in)[2]
+
+      image_in$keycomments$XCUTLO = 'Low image x range'
+      image_in$keycomments$XCUTHI = 'High image x range'
+      image_in$keycomments$YCUTLO = 'Low image y range'
+      image_in$keycomments$YCUTHI = 'High image y range'
+
+      image_in$keynames['XCUTLO'] = 'XCUTLO'
+      image_in$keynames['XCUTHI'] = 'XCUTHI'
+      image_in$keynames['YCUTLO'] = 'YCUTLO'
+      image_in$keynames['YCUTHI'] = 'YCUTHI'
+
       return(invisible(image_in))
     }
   }
@@ -339,6 +353,16 @@ propaneWarp = function(image_in, keyvalues_out=NULL, dim_out = NULL,
     image_out$keyvalues$XCUTHI = dim_out[1]
     image_out$keyvalues$YCUTLO = 1L
     image_out$keyvalues$YCUTHI = dim_out[2]
+
+    image_out$keycomments$XCUTLO = 'Low image x range'
+    image_out$keycomments$XCUTHI = 'High image x range'
+    image_out$keycomments$YCUTLO = 'Low image y range'
+    image_out$keycomments$YCUTHI = 'High image y range'
+
+    image_out$keynames['XCUTLO'] = 'XCUTLO'
+    image_out$keynames['XCUTHI'] = 'XCUTHI'
+    image_out$keynames['YCUTLO'] = 'YCUTLO'
+    image_out$keynames['YCUTHI'] = 'YCUTHI'
   }else{
 
     if(max_x_in > dim_out[1]){
