@@ -48,8 +48,6 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
     magzero_in = rep(magzero_in, Nim)
   }
 
-  zero_point_scale = 10^(-0.4*(magzero_in - magzero_out))
-
   if(is.null(keyvalues_out)){
     keyvalues_out = image_list[[1]]$keyvalues
   }
@@ -178,6 +176,8 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       mask_list = mask_list[which_overlap]
     }
   }
+
+  zero_point_scale = 10^(-0.4*(magzero_in - magzero_out))
 
   if(keep_extreme_pix | doclip){
     post_stack_cold = matrix(Inf, dim_im[1], dim_im[2])

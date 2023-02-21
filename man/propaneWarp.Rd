@@ -191,8 +191,10 @@ For working with segmentation maps, the following options should usually be used
 \code{\link{Rwcs}}, \code{\link{propaneStackWarp}}
 }
 \examples{
-\dontrun{
 library(Rfits)
+library(magicaxis)
+
+\dontrun{
 GALEX_NUV = Rfits_read_image(system.file('extdata/GALEX_NUV.fits', package="magicaxis"))
 VST_r = Rfits_read_image(system.file('extdata/VST_r.fits', package="magicaxis"))
 VISTA_K = Rfits_read_image(system.file('extdata/VISTA_K.fits', package="magicaxis"))

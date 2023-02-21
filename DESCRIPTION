@@ -1,7 +1,7 @@
 Package: ProPane
 Type: Package
 Title: Image Warping and Stacking
-Version: 1.1.8
+Version: 1.1.9
 Date: 2023-02-21
 Authors@R: c(
     person(given='Aaron', family='Robotham', email='aaron.robotham@uwa.edu.au',
