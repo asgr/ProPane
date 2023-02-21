@@ -1,4 +1,4 @@
-propaneTweak = function(image_ref, image_pre_fix, delta_max=3, quan_cut=0.99, Nmeta=3,
+propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.99, Nmeta=3,
                       cores=4, shift_int=TRUE, return_image=FALSE, direction='backward',
                       final_centre=TRUE, verbose=TRUE){
 
@@ -42,19 +42,19 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=3, quan_cut=0.99, Nm
   if(shift_int){
     registerDoParallel(cores=cores)
 
-    Ndelta = length(-delta_max:delta_max)
+    Ndelta = length(-delta_max[1]:delta_max[1])
 
     for(Nshift in 1:Nmeta){
 
       if(verbose){
-        message('  Meta shift ', Nshift)
+        message('  Meta shift ', Nshift, ' of ', length(Nmeta))
       }
 
       if(Nshift == 1){
         current_par = c(0L, 0L)
       }
 
-      grid_search = expand.grid(-delta_max:delta_max + current_par[1], -delta_max:delta_max + current_par[2])
+      grid_search = expand.grid(-delta_max[1]:delta_max[1] + current_par[1], -delta_max[1]:delta_max[1] + current_par[2])
 
       cost_mat = foreach(i = 1:dim(grid_search)[1], .combine='c')%dopar%{
         cost = .mat_diff_sum(image_ref, image_pre_fix, scale, grid_search[i,1], grid_search[i,2])
@@ -111,11 +111,20 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=3, quan_cut=0.99, Nm
     optim_out$par_weight = c(par_weight_x, par_weight_y)
 
   }else{
-    optim_out = optim(par = c(0,0),
+    if(delta_max[2] == 0){
+      par = c(0,0)
+      lower = c(-delta_max[1], -delta_max[1])
+      upper = c(delta_max[1], delta_max[1])
+    }else{
+      par = c(0,0,0)
+      lower = c(-delta_max[1], -delta_max[1], -delta_max[2])
+      upper = c(delta_max[1], delta_max[1], delta_max[2])
+    }
+    optim_out = optim(par =par,
                       fn = .cost_fn,
                       method = "L-BFGS-B",
-                      lower = c(-delta_max,-delta_max),
-                      upper = c(delta_max,delta_max),
+                      lower = lower,
+                      upper = upper,
                       image_ref = image_ref,
                       image_pre_fix = image_pre_fix,
                       scale = scale,
@@ -151,13 +160,18 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=3, quan_cut=0.99, Nm
   }
 }
 
-propaneTran = function(image, delta_x=0, delta_y=0, direction='backward', padNA=TRUE, shift_int=TRUE){
+propaneTran = function(image, delta_x = 0, delta_y = 0, delta_rot = 0, xcen_rot = dim(image)[1]/2,
+                       ycen_rot = dim(image)[1]/2, direction='backward', padNA=TRUE, shift_int=TRUE){
   #delta refers to the direction we shift the image, not the view point.
-  #postive delta_x moves image to the right
-  #positive delta_y moves image up
+  #postive delta_x moves image on our viewer to the right
+  #positive delta_y moves image on our viewer up
 
   if(!requireNamespace("imager", quietly = TRUE)){
     stop('The imager package is needed for smoothing to work. Please install from CRAN.', call. = FALSE)
+  }
+
+  if(delta_rot != 0){
+    shift_int = FALSE
   }
 
   if(shift_int){
@@ -175,10 +189,16 @@ propaneTran = function(image, delta_x=0, delta_y=0, direction='backward', padNA=
     if(direction == 'forward'){
       formals(.map.tran)$delta_x = delta_x
       formals(.map.tran)$delta_y = delta_y
+      formals(.map.tran)$delta_rot = delta_rot
+      formals(.map.tran)$xcen_rot = xcen_rot
+      formals(.map.tran)$ycen_rot = ycen_rot
     }
     if(direction == 'backward'){
       formals(.map.tran)$delta_x = -delta_x
       formals(.map.tran)$delta_y = -delta_y
+      formals(.map.tran)$delta_rot = -delta_rot
+      formals(.map.tran)$xcen_rot = xcen_rot
+      formals(.map.tran)$ycen_rot = ycen_rot
     }
     local_fun = function(x, y){
       .map.tran(x = x, y = y)
@@ -199,8 +219,17 @@ propaneTran = function(image, delta_x=0, delta_y=0, direction='backward', padNA=
   }
 }
 
-.map.tran = function(x=0, y=0, delta_x=0, delta_y=0){
-  list(x = x + delta_x, y = y + delta_y)
+.map.tran = function(x=0, y=0, delta_x=0, delta_y=0, delta_rot=0, xcen_rot=0, ycen_rot=0){
+  if(delta_rot != 0){
+    x_mod = (x - xcen_rot)*cos(delta_rot*pi/180) + (y - ycen_rot)*sin(delta_rot*pi/180)
+    y_mod = -(x - xcen_rot)*sin(delta_rot*pi/180) + (y - ycen_rot)*cos(delta_rot*pi/180)
+    x_mod = x_mod + xcen_rot + delta_x
+    y_mod = y_mod + ycen_rot + delta_y
+  }else{
+    x_mod = x + delta_x
+    y_mod = y + delta_y
+  }
+  list(x = x_mod, y = y_mod)
 }
 
 .cost_fn = function(par, image_ref, image_pre_fix, scale=1, direction='backward', pix_cost_use=NULL, shift_int = TRUE, return='cost'){
@@ -209,7 +238,11 @@ propaneTran = function(image, delta_x=0, delta_y=0, direction='backward', padNA=
     message(par[1],' ',par[2],' ',cost)
     return(cost)
   }else{
-    image_post_fix = Rwcs_tran(image_pre_fix, delta_x=par[1], delta_y=par[2], padNA=FALSE, shift_int=FALSE)
+    if(length(par) == 2){
+      image_post_fix = propaneTran(image_pre_fix, delta_x=par[1], delta_y=par[2], padNA=FALSE, shift_int=FALSE)
+    }else if (length(par)==3){
+      image_post_fix = propaneTran(image_pre_fix, delta_x=par[1], delta_y=par[2], delta_rot=par[3], padNA=FALSE, shift_int=FALSE)
+    }
     if(return=='image_post_fix'){
       return(image_post_fix)
     }

@@ -10,7 +10,7 @@ Remap and Rebin Image WCS via Warping
 \description{
 Remaps an input projection system to a different target WCS.
 
-\code{propaneWarp} does precise remapping of one WCS to another, \code{propaneRebin} does quick coarse down-sampling (via re-binning), which can be useful for faster visualisations (since fewer pixels to worry about). Both conserve flux correctly. \code{propaneTran} just applies a translational shift. \code{propaneWarpProPane} warps all elements of a ProPane class object (as returned by e.g. \code{\link{propaneStackWarpInVar}}).
+\code{propaneWarp} does precise remapping of one WCS to another, \code{propaneRebin} does quick coarse down-sampling (via re-binning), which can be useful for faster visualisations (since fewer pixels to worry about). Both conserve flux correctly. \code{propaneTran} just applies a translational shift and rotation. \code{propaneWarpProPane} warps all elements of a ProPane class object (as returned by e.g. \code{\link{propaneStackWarpInVar}}).
 }
 \usage{
 propaneWarp(image_in, keyvalues_out = NULL, dim_out = NULL, direction = "auto",
@@ -25,8 +25,8 @@ propaneWarpProPane(propane_in, keyvalues_out = NULL, dim_out = NULL,
 
 propaneRebin(image, scale = 1, interpolation = 6)
 
-propaneTran(image, delta_x = 0, delta_y = 0, direction = 'backward', padNA = TRUE,
-  shift_int = TRUE)
+propaneTran(image, delta_x = 0, delta_y = 0, delta_rot = 0, xcen_rot = dim(image)[1]/2,
+  ycen_rot = dim(image)[1]/2, direction = 'backward', padNA = TRUE, shift_int = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -96,11 +96,20 @@ Numeric scalar; the shift in apply in the x-axis of the input \option{image}. Po
   \item{delta_y}{
 Numeric scalar; the shift in apply in the y-axis of the input \option{image}. Positive means a visual shift up (with padding applied to the bottom).
 }
+  \item{delta_rot}{
+Numeric scalar; rotation in degrees to apply to the image around \option{xcen_rot}, \option{ycen_rot}. Positive means a visual rotation anti-clockwise around the pivot point.
+}
+  \item{xcen_rot}{
+Numeric scalar; the x pivot point for the rotation specified by \option{delta_rot}. The default is around the x centre of the image.
+}
+  \item{ycen_rot}{
+Numeric scalar; the y pivot point for the rotation specified by \option{delta_rot}. The default is around the y centre of the image.
+}
   \item{padNA}{
 Logical; should vacant pixels be padded with NA (TRUE) or left as 0 (FALSE).
 }
   \item{shift_int}{
-Logical; should the shift applied be purely integer (TRUE) or fractional pixel (FALSE). Integer shifts are much faster to compute, and are better at conserving flux and not introducing pixel covariance, so think carefully before setting to FALSE.
+Logical; should the shift applied be purely integer (TRUE) or fractional pixel (FALSE). Integer shifts are much faster to compute, and are better at conserving flux and not introducing pixel covariance, so think carefully before setting to FALSE. If \option{delta_rot} is not 0 then \option{shift_int} is always FALSE (since you can no longer simply do integer pixel shifts).
 }
   \item{blank}{
 Scalar; the value to initially fill the output blank matrix with. In effect, this means that regions that receive to warped data (empty/blank regions) will all inherit this value. Sensibly you might want this to be NA (the default, implying missing), or for stacking purposes 0.
@@ -184,9 +193,9 @@ For working with segmentation maps, the following options should usually be used
 \examples{
 \dontrun{
 library(Rfits)
-GALEX_NUV=Rfits_read_image(system.file("extdata", 'GALEX_NUV.fits', package="magicaxis"))
-VST_r=Rfits_read_image(system.file("extdata", 'VST_r.fits', package="magicaxis"))
-VISTA_K=Rfits_read_image(system.file("extdata", 'VISTA_K.fits', package="magicaxis"))
+GALEX_NUV = Rfits_read_image(system.file('extdata/GALEX_NUV.fits', package="magicaxis"))
+VST_r = Rfits_read_image(system.file('extdata/VST_r.fits', package="magicaxis"))
+VISTA_K = Rfits_read_image(system.file('extdata/VISTA_K.fits', package="magicaxis"))
 
 propaneWarp(VST_r, GALEX_NUV$keyvalues, plot=TRUE)
 propaneWarp(VISTA_K, GALEX_NUV$keyvalues, plot=TRUE)
@@ -204,6 +213,15 @@ propaneWarp(GALEX_NUV, GALEX_NUV$keyvalues, plot=TRUE)
 propaneWarp(propaneWarp(GALEX_NUV, VST_r$keyvalues, interpolation='nearest'),
         GALEX_NUV$keyvalues, interpolation='nearest', plot=TRUE)
 }
+
+# We can also do a simple translation and rotation:
+
+image = Rfits_read_image(system.file('extdata/VIKING/mystery_VIKING_Z.fits',
+  package="ProFound"), header=FALSE)
+magimage(image)
+
+image_tran = propaneTran(image, 2, 2, 5)
+magimage(image_tran)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

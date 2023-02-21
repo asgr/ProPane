@@ -8,7 +8,7 @@ Tweak the Translation Astrometry of an Image
 Function to rapidly find translation tweaks directly in the image domain (i.e. it does not require a catalogue to be generated first). This is generally pretty fast, especially when running in integer shift mode.
 }
 \usage{
-propaneTweak(image_ref, image_pre_fix, delta_max = 3, quan_cut = 0.99, Nmeta = 3,
+propaneTweak(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99, Nmeta = 3,
   cores = 4, shift_int = TRUE, return_image = FALSE, direction = "backward",
   final_centre = TRUE, verbose = TRUE)
 }
@@ -21,7 +21,7 @@ Numeric matrix; static reference image (must be exactly the same dimensions as \
 Numeric matrix; image to be tweaked (must be exactly the same dimensions as \option{image_ref})
 }
   \item{delta_max}{
-Numeric scalar; maximum number of pixels to explore in +/-x and +/- y.
+Numeric vector; the first element is maximum number of pixels to explore in +/-x and +/- y; the second element is the maximum rotation to apply in degrees. If \option{delta_max}[2] = 0 then only translation optimisation is computed (no rotation).
 }
   \item{quan_cut}{
 Numeric scalar; bright pixel thesholding to apply to \option{image_ref} and \option{image_pre_fix}. Generally you want this quite high so that only cores of bright objects are compared.
@@ -75,12 +75,26 @@ Aaron Robotham
 }
 \examples{
 library(Rfits)
+library(magicaxis)
 
-image = Rfits_read_image(system.file("extdata", 'VIKING/mystery_VIKING_Z.fits',
+image = Rfits_read_image(system.file('extdata/VIKING/mystery_VIKING_Z.fits',
   package="ProFound"), header=FALSE)
+magimage(image)
 
-tweak = propaneTweak(image, propaneTran(image, 6, 6), cores=1, verbose=FALSE)
-tweak$optim_out$par
+# below we shift the image by +2, +2 and rotate it by 5 degrees:
+image_tran = propaneTran(image, 2, 2, 5)
+magimage(image_tran)
+
+\dontrun{
+tweak = propaneTweak(image, image_tran, delta_max = c(5,10),
+  shift_int = FALSE)
+# our tweaked image is pretty close to this:
+best = tweak$optim_out$par
+print(best)
+
+image_fix = propaneTran(image_tran, best[1], best[2], best[3])
+magimage(image_fix)
+}
 }
 
 \concept{ ~tweak }
