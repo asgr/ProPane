@@ -18,7 +18,7 @@ propaneStackWarpInVar(image_list = NULL, inVar_list = NULL, exp_list = NULL,
   dump_dir = tempdir(), ...)
 
 propaneStackWarpMed(filelist = NULL, dirlist = NULL, extlist = 1,
-  pattern = ".fits$", recursive = TRUE, zap = NULL, keyvalues_out = NULL,
+  pattern = NULL, recursive = TRUE, zap = NULL, keyvalues_out = NULL,
   cores = 4, chunk = 1e3, doweight = TRUE, useCUTLO = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -75,7 +75,7 @@ Numeric scalar or vector; determines how should cold (\option{clip_tol}[1]) and 
 Integer scalar; how much to dilate around cold/hot pixels you wish to mask out. This is only relevant when \option{doclip} is TRUE. The value of \option{clip_dilate} is the diameter of the circular kernal used, so it should be odd valued and >= 3 (which would be one pixel of dilation) to have any effect.
 }
   \item{clip_sigma}{
-Numeric scalar; cipping significance threshold for hot pixels. Only pixels where the \option{cold} pixel is below \option{clip_sigma} of the sky RMS will be flagged for hot pixel clipping. Generally you want this to be a value between 5-10, and it stops the cores of bright stars/galaxies being erroneously flagged as containing hot pixels. The trade off from setting this to higher values is you might start to lose the cores of bright objects, and the trade off setting this lower is you might not remove genuine hot pixels. In general this parameter should not need much fine-tuning.
+Numeric scalar; clipping significance threshold for hot pixels. Only pixels where the \option{cold} pixel is below \option{clip_sigma} of the sky RMS will be flagged for hot pixel clipping. Generally you want this to be a value between 5-10, and it stops the cores of bright stars/galaxies being erroneously flagged as containing hot pixels. The trade off from setting this to higher values is you might start to lose the cores of bright objects, and the trade off setting this lower is you might not remove genuine hot pixels. In general this parameter should not need much fine-tuning.
 }
   \item{return_all}{
 Logical; should the pre stack projected images and inverse variances be returns also? Note if this is TRUE then the stacking can no longer be computed in batch mode, so be sure that you have enough memory to hold all pre stack projected images and inverse variances in memory (where note these will each have the dimensions of the desired output stacked image, which can be very large).
@@ -96,7 +96,7 @@ Character vector; vector of full paths of directories to analyse.
 Integer vector; the extensions to use. If length 1 then it will be used for all \option{filelist}, but otherwise it should be the same length as the final \option{filelist}
 }
   \item{pattern}{
-Scalar character; regular expression to filter \option{filelist} by. The default limits to files ending ".fits", which is usually what you want. Most people find it easier to work via \code{\link{glob2rx}} since then you can specify file wild cards in the usual shell way, e.g. glob2rx("*F200W*fits") becomes "^.*F200W.*fits$" (which I can never remember!) The default works for images dumped out by \code{\link{propaneStackWarpInVar}} when \option{dump_frames} = TRUE.
+Character vector; regular expressions to filter \option{filelist} by. Most people find it easier to work via \code{\link{glob2rx}} since then you can specify file wild cards in the usual shell way, e.g. glob2rx("*F200W*fits") becomes "^.*F200W.*fits$". Note an extra check that all files are FITS files (a pattern of ".fits$") will be made whether requested or not. Note you should nearly always use a leading and trailing '*' search because the pattern match is made on the full file path string, i.e. glob2rx('u*.fits') = '^u.*\\\\.fits$' would fail on '/path/to/file/u_GAMA.fits' (because of the '/path/to/file/' before 'u_GAMA.fits'), but glob2rx('*u*.fits') = '^.*u.*\\\\.fits$' would work as expected. For images dumped out by \code{\link{propaneStackWarpInVar}} when \option{dump_frames} = TRUE you will want to use glob2rx('*image_warp*').
 }
   \item{recursive}{
 Logical; if using \option{dirlist} should all sub-directories be checked recursively?

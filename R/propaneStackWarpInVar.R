@@ -379,8 +379,6 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       }
     }
 
-
-
     #new weight projections (if relevant)
 
     if(any(weight_image)){
@@ -594,6 +592,10 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
           mask_clip = mask_clip + temp_mask_clip
           mode(temp_mask_clip) = 'logical'
 
+          if(dump_frames){
+            Rfits_write_image(temp_mask_clip, paste0(dump_dir,'/mask_warp_',i,'.fits'))
+          }
+
           if(weight_image[i]){
             pre_weight = pre_stack_weight_list[[i]]$imDat
           }else{
@@ -638,6 +640,10 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
           }
           mask_clip = mask_clip + temp_mask_clip
           mode(temp_mask_clip) = 'logical'
+
+          if(dump_frames){
+            Rfits_write_image(temp_mask_clip, paste0(dump_dir,'/mask_warp_',i,'.fits'))
+          }
 
           if(weight_image[i]){
             pre_weight = pre_stack_weight_list[[i]]$imDat
@@ -874,6 +880,10 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             mask_clip = mask_clip + temp_mask_clip
             mode(temp_mask_clip) = 'logical'
 
+            if(dump_frames){
+              Rfits_write_image(temp_mask_clip, paste0(dump_dir,'/mask_warp_',i,'.fits'))
+            }
+
             if(weight_image[i]){
               pre_weight = pre_stack_weight_list[[i]]$imDat
             }else{
@@ -904,6 +914,10 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             }
             mask_clip = mask_clip + temp_mask_clip
             mode(temp_mask_clip) = 'logical'
+
+            if(dump_frames){
+              Rfits_write_image(temp_mask_clip, paste0(dump_dir,'/mask_warp_',i,'.fits'))
+            }
 
             if(weight_image[i]){
               pre_weight = pre_stack_weight_list[[i]]$imDat
@@ -948,7 +962,6 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             post_stack_cold[xsub,ysub][new_cold] = pre_stack_image_list[[i]]$imDat[new_cold]
             post_stack_hot[xsub,ysub][new_hot] = pre_stack_image_list[[i]]$imDat[new_hot]
           }
-
         }
       }
     }
