@@ -81,7 +81,7 @@ Numeric scalar; clipping significance threshold for hot pixels. Only pixels wher
 Logical; should the pre stack projected images and inverse variances be returns also? Note if this is TRUE then the stacking can no longer be computed in batch mode, so be sure that you have enough memory to hold all pre stack projected images and inverse variances in memory (where note these will each have the dimensions of the desired output stacked image, which can be very large).
 }
   \item{dump_frames}{
-Logical; if TRUE then warped frames will be dumped out to the specified \option{dump_dir} as the stacking continues. This can be useful to inspect the pre-stack inputs (if too large for the \option{return_all} = TRUE option), or if the stack is failing unexpectedly. Frames will inherit the names image_i, inVar_i, weight_i and exp_i as appropriate (i.e. only if warping is occurring for these data).
+Logical; if TRUE then warped frames will be dumped out to the specified \option{dump_dir} as the stacking continues. This can be useful to inspect the pre-stack inputs (if too large for the \option{return_all} = TRUE option), or if the stack is failing unexpectedly. Frames will inherit the names image_warp_i, inVar_warp_i, weight_warp_i and exp_warp_i as appropriate (i.e. only if warping is occurring for these data). If \option{doclip} = TRUE then the boolean frame masks will also be dumped to mask_warp_i.
 }
   \item{dump_dir}{
 Character scalar; target directory to write out the dumped frames or (in the case of \code{propaneStackWarpMed}) read them in.
