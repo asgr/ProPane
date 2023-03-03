@@ -93,7 +93,8 @@ propaneWarp(image_list[[1]][,], keyvalues_out = keyvalues_out, plot=TRUE, qdiff=
 
 We can also check the pixel statistics of the stack:
 
-```{r}
+```{r, fig.width=8, fig.height=8, dpi=40}
+par(mar=c(3.1,3.1,1.1,1.1))
 maghist(stack$image$imDat[stack$weight$imDat==8], xlim=5)
 ```
 
@@ -156,8 +157,10 @@ plot(stack_2_backward$image, qdiff=TRUE)
 
 Is there a different in apparent depth?
 
-```{r}
+```{r, fig.width=8, fig.height=8, dpi=40}
+par(mar=c(3.1,3.1,1.1,1.1))
 maghist(stack_2_forward$image$imDat, xlim=5)
+par(mar=c(3.1,3.1,1.1,1.1))
 maghist(stack_2_backward$image$imDat, xlim=5)
 ```
 
@@ -290,8 +293,10 @@ magimage(stack_med$image - stack_clip3$image$imDat, qdiff=TRUE); legend('topleft
 
 We can see there is a difference in depth when comparing the image histograms:
 
-```{r}
+```{r, fig.width=8, fig.height=8, dpi=40}
+par(mar=c(3.1,3.1,1.1,1.1))
 maghist(stack_med$image, xlim=5)
+par(mar=c(3.1,3.1,1.1,1.1))
 maghist(stack_clip3$image$imDat, xlim=5)
 ```
 
@@ -319,3 +324,39 @@ plot(stack_med2$image[1000,500,box=500])
 ```
 
 In general the best quality data will come from using clipped inverse variance weighted stacks (since it will remove the outliers and keep the higher $S/N$), but if little is known about the data then a median might be the best practical solution, being quite robust to artefacts and not requiring data specific clipping tuning (**clip_tol**, **clip_dilate** etc).
+
+To help automate this patching process we can use the *propanePatch* function. Here we use our worst (not clipped) image and combine with the median stack:
+
+```{r}
+stack_patch = propanePatch(image_inVar = stack$image, image_med = stack_med2$image)
+```
+
+Note we just run with defaults, but there are quite a few options to determine optimal patching- most importantly the **threshold** (where lower mean more patching with the median combined image). We can also specify just patching **hot** or **cold** pixels (if you are very certain only certain types of bad pixel exist in the data).
+
+Relatively few very pixels in the `stack$image` are replaced with stack_med2$image value using the default arguments (0.14%). We can see the resulting patched image and check which pixels were replaced:
+
+```{r, fig.width=8, fig.height=8, dpi=40}
+plot(stack_patch$image[1000,500,box=500])
+plot(stack_patch$patch[1000,500,box=500], qdiff=T)
+```
+
+Now we can see if we see much difference using the already clipped version:
+
+```{r}
+stack_patch3 = propanePatch(image_inVar = stack_clip3$image, image_med = stack_med2$image)
+```
+
+And we again check the patched plots:
+
+```{r, fig.width=8, fig.height=8, dpi=40}
+plot(stack_patch3$image[1000,500,box=500])
+plot(stack_patch3$patch[1000,500,box=500], qdiff=TRUE)
+```
+
+And finally lets check the differences in the patched images:
+
+```{r, fig.width=8, fig.height=8, dpi=40}
+plot(stack_patch$image[1000,500,box=500] - stack_patch3$image[1000,500,box=500], qdiff=TRUE)
+```
+
+This would suggest a marginal preference for the clipped and patched version of the image.

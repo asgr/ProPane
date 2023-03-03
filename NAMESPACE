@@ -10,6 +10,7 @@ export(propaneStackWarpInVar)
 export(propaneStackWarpMed)
 export(propaneStackFlatInVar)
 export(propaneStackFlatFunc)
+export(propanePatch)
 
 #Utility
 export(propaneFrameFinder)
