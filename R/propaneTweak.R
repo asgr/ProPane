@@ -77,7 +77,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
             message('  Final centre shift')
           }
 
-          grid_search = expand.grid(-delta_max:delta_max + current_par[1], -delta_max:delta_max + current_par[2])
+          grid_search = expand.grid(-delta_max[1]:delta_max[1] + current_par[1], -delta_max[1]:delta_max[1] + current_par[2])
 
           cost_mat = foreach(i = 1:dim(grid_search)[1], .combine='c')%dopar%{
             cost = .mat_diff_sum(image_ref, image_pre_fix, scale, grid_search[i,1], grid_search[i,2])
@@ -154,7 +154,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
   }
 
   if(shift_int){
-    return(invisible(list(optim_out = optim_out, image_post_fix = image_post_fix, time = proc.time()[3] - timestart, cost_mat=list(x= -delta_max:delta_max + current_par[1], y= -delta_max:delta_max + current_par[2], z=matrix(cost_mat,Ndelta,Ndelta)), at_lim=at_lim)))
+    return(invisible(list(optim_out = optim_out, image_post_fix = image_post_fix, time = proc.time()[3] - timestart, cost_mat=list(x= -delta_max[1]:delta_max[1] + current_par[1], y= -delta_max[1]:delta_max[1] + current_par[2], z=matrix(cost_mat,Ndelta,Ndelta)), at_lim=at_lim)))
   }else{
     return(invisible(list(optim_out = optim_out, image_post_fix = image_post_fix, time = proc.time()[3] - timestart)))
   }

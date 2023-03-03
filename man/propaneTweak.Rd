@@ -50,6 +50,8 @@ Logical; should verbose outputs be printed as it runs?
 }
 \details{
 Image tweaking is useful before stacking with e.g. \code{\link{propaneStackWarpInVar}} if images are slightly misaligned in translation, but not rotated or distorted otherwise. This is quite common with HST and JWST images when guide starts are switched between observing blocks.
+
+If using the output of this to fix the header CRPIX then the fixed/new CRPIX belonging to \option{image_pre_fix} becomes \option{image_pre_fix}$keyvalues$CRPIX[1-2] (fixed) = \option{image_pre_fix}$keyvalues$CRPIX[1-2] (old) - tweak$optim_out$par[1-2] (i.e. we subtract the tweaked solution). In this case you might need to replace the raw list item with either the output of Rfits_keyvalues_to_header(Rfits_header_to_raw(keyvalues_fixed)) or set to NULL (this is because, if present, raw header items take precedence).
 }
 \value{
 When \option{shift_int} is TRUE:
