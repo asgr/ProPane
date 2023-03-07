@@ -4,6 +4,7 @@ export(propaneRebin)
 export(propaneTran)
 export(propaneWarpProPane)
 export(propaneTweak)
+export(propaneWCSmod)
 
 #Image stacking routines:
 export(propaneStackWarpInVar)

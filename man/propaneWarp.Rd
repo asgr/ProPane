@@ -3,6 +3,7 @@
 \alias{propaneRebin}
 \alias{propaneTran}
 \alias{propaneWarpProPane}
+\alias{propaneWCSmod}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Remap and Rebin Image WCS via Warping
@@ -27,6 +28,8 @@ propaneRebin(image, scale = 1, interpolation = 6)
 
 propaneTran(image, delta_x = 0, delta_y = 0, delta_rot = 0, xcen_rot = dim(image)[1]/2,
   ycen_rot = dim(image)[1]/2, direction = 'backward', padNA = TRUE, shift_int = TRUE)
+
+propaneWCSmod(input, delta_x = 0, delta_y = 0, delta_rot = 0)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -38,6 +41,9 @@ List; object of class 'ProPane', e.g. the output of \code{\link{propaneStackWarp
 }
   \item{image}{
 Numeric matrix; required, the image we want to rebin. If \option{image} is a list as created by \code{Rfits_read_image} then the imDat part of the list is parsed to \option{image} and the correct header part is parsed to \option{keyvalues}.
+}
+  \item{input}{
+List; required, the WCS to fix. Can be one of Rfits_keylist, Rfits_image, Rfits_pointer, Rfits_header. The returns objects will be the same class, but with all WCS terms correctly updated as specified with \option{delta_x}, \option{delta_y}, \option{delta_rot}.
 }
   \item{keyvalues_out}{
 List; output header values to be used for the WCS. This is the target WCS projection that \option{image_in} will be mapped onto.
@@ -97,7 +103,7 @@ Numeric scalar; the shift in apply in the x-axis of the input \option{image}. Po
 Numeric scalar; the shift in apply in the y-axis of the input \option{image}. Positive means a visual shift up (with padding applied to the bottom).
 }
   \item{delta_rot}{
-Numeric scalar; rotation in degrees to apply to the image around \option{xcen_rot}, \option{ycen_rot}. Positive means a visual rotation anti-clockwise around the pivot point.
+Numeric scalar; rotation in degrees to apply to the image around \option{xcen_rot}, \option{ycen_rot}. Positive means a visual rotation clockwise around the pivot point.
 }
   \item{xcen_rot}{
 Numeric scalar; the x pivot point for the rotation specified by \option{delta_rot}. The default is around the x centre of the image.
@@ -159,7 +165,9 @@ For \code{propaneRebin}, if the input is a matrix then the output is also a matr
 
 For \code{propaneWarp} if \option{dotightcrop} and \option{keepcrop} are both TRUE then the output will be tightly cropped and the limits of the image subset this represents in the target output image exist in an additional \option{crop} list output (a vector of [xlo,xhi,ylo,yhi]). This can be used to insert the projected image in the correct place in a larger target image (potentially on disk). Regardless, the WCS relative to the cropped pixels will still be correct.
 
-\code{propaneTran} simply returns the shifted numeric matrix.
+\code{propaneTran} simply returns the shifted numeric matrix (i.e. the image pixels themselves are directly fixed and the WCS terms left alone).
+
+\code{propaneWCSmod} adjusts the WCS of the \option{input} itself (i.e. the image pixels themselves are left alone). This output will be of the same class as \option{input}. When stacking data this is the better way to tweak the WCS since you will be doing minimal re-projections of the pixels (which is something you always want to minimise).
 
 \code{propaneWarpProPane}
 
@@ -188,7 +196,7 @@ For working with segmentation maps, the following options should usually be used
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-\code{\link{Rwcs}}, \code{\link{propaneStackWarp}}
+\code{\link{Rwcs}}, \code{\link{propaneStackWarp}}, \code{\link{propaneTweak}}
 }
 \examples{
 library(Rfits)

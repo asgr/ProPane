@@ -1,5 +1,5 @@
 propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.99, Nmeta=3,
-                      cores=4, shift_int=TRUE, return_image=FALSE, direction='backward',
+                      cores=4, shift_int=TRUE, return_image=TRUE, direction='backward',
                       final_centre=TRUE, verbose=TRUE){
 
   if(!requireNamespace("imager", quietly = TRUE)){
@@ -7,6 +7,16 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
   }
 
   timestart = proc.time()[3]
+
+  if(inherits(image_ref, 'Rfits_image')){
+    image_ref_orig = image_ref
+    image_ref = image_ref$imDat
+  }
+
+  if(inherits(image_pre_fix, 'Rfits_image')){
+    image_pre_fix_orig = image_pre_fix
+    image_pre_fix = image_pre_fix$imDat
+  }
 
   dim_orig = dim(image_ref)
 
@@ -25,8 +35,8 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
   image_ref = image_ref / quantile(image_ref, quan_cut, na.rm=TRUE)
   image_ref[image_ref < 1] =NA
 
-  image_pre_fix_orig = image_pre_fix[x_lo:x_hi, y_lo:y_hi]
-  image_pre_fix = image_pre_fix_orig - median(image_pre_fix_orig, na.rm=TRUE)
+  image_pre_fix_temp = image_pre_fix[x_lo:x_hi, y_lo:y_hi]
+  image_pre_fix = image_pre_fix_temp - median(image_pre_fix_temp, na.rm=TRUE)
   image_pre_fix = image_pre_fix / quantile(image_pre_fix, quan_cut, na.rm=TRUE)
   image_pre_fix[image_pre_fix < 1] = NA
 
@@ -139,16 +149,24 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
       message('Creating output image_post_fix')
     }
 
-    image_post_fix_temp = .cost_fn(par = optim_out$par,
-                                   image_ref = image_ref,
-                                   image_pre_fix = image_pre_fix_orig,
-                                   scale = scale,
-                                   direction = direction,
-                                   return = 'image_post_fix',
-                                   shift_int = FALSE)
+    if(inherits(image_pre_fix_orig, 'Rfits_image')){
+      if(length(optim_out$par) == 2){
+        image_post_fix = propaneWCSmod(image_pre_fix_orig, optim_out$par[1], optim_out$par[2])
+      }else{
+        image_post_fix = propaneWCSmod(image_pre_fix_orig, optim_out$par[1], optim_out$par[2], optim_out$par[3])
+      }
+    }else{
+      image_post_fix_temp = .cost_fn(par = optim_out$par,
+                                     image_ref = image_ref,
+                                     image_pre_fix = image_pre_fix_orig,
+                                     scale = scale,
+                                     direction = direction,
+                                     return = 'image_post_fix',
+                                     shift_int = FALSE)
 
-    image_post_fix = matrix(NA, dim_orig[1], dim_orig[2])
-    image_post_fix[x_lo:x_hi, y_lo:y_hi] = image_post_fix_temp
+      image_post_fix = matrix(NA, dim_orig[1], dim_orig[2])
+      image_post_fix[x_lo:x_hi, y_lo:y_hi] = image_post_fix_temp
+    }
   }else{
     image_post_fix = NULL
   }
@@ -165,6 +183,7 @@ propaneTran = function(image, delta_x = 0, delta_y = 0, delta_rot = 0, xcen_rot 
   #delta refers to the direction we shift the image, not the view point.
   #postive delta_x moves image on our viewer to the right
   #positive delta_y moves image on our viewer up
+  #positive delta_rot rotates image clockwise on our viewer
 
   if(!requireNamespace("imager", quietly = TRUE)){
     stop('The imager package is needed for smoothing to work. Please install from CRAN.', call. = FALSE)
@@ -261,5 +280,74 @@ propaneTran = function(image, delta_x = 0, delta_y = 0, delta_rot = 0, xcen_rot 
     if(return=='all'){
       return(list(cost=cost, image_post_fix=image_post_fix))
     }
+  }
+}
+
+propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
+
+  if(inherits(input, 'Rfits_keylist')){
+    keyvalues = input
+    keylist = TRUE
+  }else if(inherits(input, c('Rfits_image', 'Rfits_pointer', 'Rfits_header'))){
+    keyvalues = input$keyvalues
+    keylist = FALSE
+  }else{
+    stop('input must be one of Rfits_keylist, Rfits_image, Rfits_pointer, Rfits_header')
+  }
+
+  if(delta_x != 0){
+    keyvalues$CRPIX1 = keyvalues$CRPIX1 - delta_x
+  }
+
+  if(delta_y != 0){
+    keyvalues$CRPIX2 = keyvalues$CRPIX2 - delta_y
+  }
+
+  if(delta_rot != 0){
+    rotmat_keyvalues = matrix(c(keyvalues$CD1_1,
+                                keyvalues$CD1_2,
+                                keyvalues$CD2_1,
+                                keyvalues$CD2_2
+                                ),
+                              nrow = 2,
+                              byrow = TRUE
+                              )
+
+    delta_rot_rad = -delta_rot*pi/180
+
+    rotmat_delta = matrix(c(cos(delta_rot_rad),
+                            -sin(delta_rot_rad),
+                            sin(delta_rot_rad),
+                            cos(delta_rot_rad)
+                            ),
+                          nrow = 2,
+                          byrow = TRUE
+                          )
+
+    rotmat =  rotmat_keyvalues %*% rotmat_delta
+
+    keyvalues$CD1_1 = rotmat[1,1]
+    keyvalues$CD1_2 = rotmat[1,2]
+    keyvalues$CD2_1 = rotmat[2,1]
+    keyvalues$CD2_2 = rotmat[2,2]
+  }
+
+  header = Rfits_keyvalues_to_header(keyvalues)
+  hdr = Rfits_keyvalues_to_hdr(keyvalues)
+  raw = Rfits_header_to_raw(header)
+
+  if(keylist){
+  return(list(keyvalues = keyvalues,
+              header = header,
+              hdr = hdr,
+              raw = raw)
+         )
+  }else{
+    input$keyvalues = keyvalues
+    input$header = header
+    input$hdr = hdr
+    input$raw = raw
+
+    return(input)
   }
 }
