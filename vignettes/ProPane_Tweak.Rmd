@@ -130,4 +130,4 @@ plot(tweak2$image_post_fix)
 
 Most of the time users will want to use the *WCS_match* = FALSE form of tweaking when trying to improve the registration of slightly offset frames for stacking. In this situation they will need to choose a reference frame to tweak all subsequent frames to, or be careful to tweak frames in the correct order so that a larger mosaic is all correctly registered.
 
-Given the computational cost, it is often a good idea to determine tweaking based on a nice subset region of the image (ideally only a few hundred to a thousand pixels in dimension). Tweaking a very large image (8k x 8k) will take quite a long time (probably tens of minutes)!
+Given the computational cost, it is often a good idea to determine tweaking based on a nice subset region of the image (ideally only a few hundred to a thousand pixels in dimension). Tweaking a very large image (8k x 8k) will take quite a long time (probably hours), but 1k x 1k should be around 10-15 minutes.
