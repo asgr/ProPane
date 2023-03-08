@@ -1,0 +1,133 @@
+---
+title: "ProPane Tweak: That Was the Tweak That Was"
+author: "Aaron Robotham"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{ProPane Tweak: That Was the Tweak That Was}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+First we load the packages we will need for this vignette:
+
+```{r}
+library(ProPane)
+library(Rfits)
+library(magicaxis)
+```
+
+
+## Directly Tweaking Image Pixels
+
+We will start with out usual demo image:
+
+```{r}
+image = Rfits_read_image(system.file('extdata/VIKING/mystery_VIKING_Z.fits',
+  package="ProFound"))
+```
+
+```{r, fig.width=8, fig.height=8, dpi=40}
+plot(image)
+```
+
+Below we shift the image by x +2, y +2 and rotate it by 5 degrees (clockwise):
+
+```{r}
+image_tran = image
+image_tran$imDat = propaneTran(image_tran$imDat, 2, 2, 5)
+```
+
+And we can check this:
+
+```{r, fig.width=8, fig.height=8, dpi=40}
+plot(image_tran)
+```
+
+Now we tweak the solution (this will take about 20 seconds):
+
+```{r}
+tweak = propaneTweak(image, image_tran, delta_max=c(5,10), shift_int=FALSE)
+```
+
+Our tweaked image is pretty close to correcting for our original transform:
+
+```{r}
+best = tweak$optim_out$par
+print(best)
+```
+
+We can use the output to manipulate the pixels:
+
+```{r}
+image_fix = image
+image_fix$imDat = propaneTran(image_tran$imDat, best[1], best[2], best[3])
+```
+
+```{r, fig.width=8, fig.height=8, dpi=40}
+plot(image_fix)
+```
+
+We can also modify the WCS rather than the image pixels:
+
+```{r}
+image_fix2 = propaneWCSmod(image_tran, best[1], best[2], best[3]) #correct WCS
+```
+
+```{r, fig.width=8, fig.height=8, dpi=40}
+plot(image_fix2)
+```
+
+In the last example note how the WCS grid follows the original sources correctly.
+
+To make all of the above easier we can request **propaneTweak** to directly modify our WCS passed in (which is the default):
+
+```{r, fig.width=8, fig.height=8, dpi=40}
+plot(tweak$image_post_fix)
+```
+
+## Directly Tweaking Image WCS
+
+Now we will look at a case where the pixels are matched but the WCS is not:
+
+```{r}
+image_tran2 = propaneWCSmod(image, 2, 2, 5)
+```
+
+```{r, fig.width=8, fig.height=8, dpi=40}
+plot(image_tran2)
+```
+
+Note we set WCS_match to FALSE since it is the WCS itself that is wrong.
+
+The tweak of the WCS directly will takes longer than before (about 100 seconds):
+
+```{r}
+tweak2 = propaneTweak(image, image_tran2, delta_max=c(5,10), shift_int=FALSE,
+  WCS_match=FALSE)
+```
+
+The answer almost perfectly corrects are adjustment to the WCS:
+
+```{r}
+print(tweak2$optim_out$par)
+```
+
+And the image and WCS looks very nice now:
+
+```{r, fig.width=8, fig.height=8, dpi=40}
+plot(tweak2$image_post_fix)
+```
+
+## What Sort of Tweak
+
+Most of the time users will want to use the *WCS_match* = FALSE form of tweaking when trying to improve the registration of slightly offset frames for stacking. In this situation they will need to choose a reference frame to tweak all subsequent frames to, or be careful to tweak frames in the correct order so that a larger mosaic is all correctly registered.
+
+Given the computational cost, it is often a good idea to determine tweaking based on a nice subset region of the image (ideally only a few hundred to a thousand pixels in dimension). Tweaking a very large image (8k x 8k) will take quite a long time (probably tens of minutes)!

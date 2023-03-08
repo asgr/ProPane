@@ -1,5 +1,5 @@
 ---
-title: "ProPane: Let's do the Space Warp Again!"
+title: "ProPane Stacking: Let's do the Space Warp Again!"
 author: "Aaron Robotham"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette

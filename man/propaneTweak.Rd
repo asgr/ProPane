@@ -9,16 +9,16 @@ Function to rapidly find translation tweaks directly in the image domain (i.e. i
 }
 \usage{
 propaneTweak(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99, Nmeta = 3,
-  cores = 4, shift_int = TRUE, return_image = TRUE, direction = "backward",
-  final_centre = TRUE, verbose = TRUE)
+  WCS_match = TRUE, cores = 4, shift_int = TRUE, return_image = TRUE,
+  direction = "backward", final_centre = TRUE, verbose = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{image_ref}{
-Rfits_image / Numeric matrix; static reference image (must have exactly the same dimensions as \option{image_pre_fix})
+Rfits_image / Numeric matrix; static reference image (must have exactly the same dimensions as \option{image_pre_fix} if \option{shift_int} or \option{WCS_match} is TRUE). If \option{WCS_match} is FALSE then \option{image_ref} must be a Rfits_image.
 }
   \item{image_pre_fix}{
-Rfits_image / Numeric matrix; image to be tweaked (must have exactly the same dimensions as \option{image_ref})
+Rfits_image / Numeric matrix; image to be tweaked (must have exactly the same dimensions as \option{image_ref} if \option{shift_int} or \option{WCS_match} is TRUE). If \option{WCS_match} is FALSE then \option{image_pre_fix} must be a Rfits_image.
 }
   \item{delta_max}{
 Numeric vector; the first element is maximum number of pixels to explore in +/-x and +/- y; the second element is the maximum rotation to apply in degrees. If \option{delta_max}[2] = 0 then only translation optimisation is computed (no rotation).
@@ -28,6 +28,9 @@ Numeric scalar; bright pixel thesholding to apply to \option{image_ref} and \opt
 }
   \item{Nmeta}{
 Integer scalar; how many shifts of the search box can be applied. This is only relevant when \option{shift_int} is TRUE.
+}
+  \item{WCS_match}{
+Logical; specifies whether we are expecting the input WCS to be matched between \option{image_ref} and \option{image_pre_fix} or not. If \option{WCS_match} is TRUE then the image itself is directly manipulated and the WCS is left alone. If \option{WCS_match} is FALSE then the WCS header is modified and \option{image_pre_fix} is projected onto the WCS of \option{image_ref} for each iteration (therefore \option{image_ref} and \option{image_pre_fix} must both be Rfits_image objects in this case). \option{WCS_match} = FALSE is often the more useful way to tweak images (since often images are known not to have exactly matching WCS because they are dithered etc), but it is quite a bit slower (about x5 longer to run) since the projection has to go through \code{\link{propaneWarp}} and therefore \code{wcs_lib}.
 }
   \item{cores}{
 Integer scalar; the number of cores to run on.
@@ -89,8 +92,12 @@ image_tran$imDat = propaneTran(image_tran$imDat, 2, 2, 5)
 plot(image_tran)
 
 \dontrun{
+# Now we tweak the solution (this will take about 20 seconds):
+
 tweak = propaneTweak(image, image_tran, delta_max=c(5,10), shift_int=FALSE)
-# our tweaked image is pretty close to this:
+
+# Our tweaked image is pretty close to this:
+
 best = tweak$optim_out$par
 print(best)
 
@@ -107,10 +114,30 @@ plot(image_fix2)
 
 # In the last example note how the WCS grid follows the original sources correctly
 
-# To make all of the above easier we can request propaneTweak to directly modify out
+# To make all of the above easier we can request propaneTweak to directly modify our
 # WCS passed in (which is the default):
 
 plot(tweak$image_post_fix)
+
+# Now we will look at a case where the pixels are matched but the WCS is not:
+
+image_tran2 = propaneWCSmod(image, 2, 2, 5)
+plot(image_tran2)
+
+# Note we set WCS_match to FALSE since it is the WCS itself that is wrong.
+# The tweak of the WCS directly will takes longer than before (about 100 seconds):
+
+tweak2 = propaneTweak(image, image_tran2, delta_max=c(5,10), shift_int=FALSE,
+  WCS_match=FALSE)
+
+# The answer almost perfectly corrects are adjustment to the WCS:
+
+print(tweak2$optim_out$par)
+
+# And the image and WCS looks very nice now:
+
+plot(tweak2$image_post_fix)
+
 }
 }
 
