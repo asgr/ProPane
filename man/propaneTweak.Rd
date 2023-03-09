@@ -10,7 +10,7 @@ Function to rapidly find translation tweaks directly in the image domain (i.e. i
 \usage{
 propaneTweak(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99, Nmeta = 3,
   WCS_match = TRUE, cores = 4, shift_int = TRUE, return_image = TRUE,
-  direction = "backward", final_centre = TRUE, verbose = TRUE)
+  direction = "backward", final_centre = TRUE, cutcheck = FALSE, verbose = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -24,7 +24,7 @@ Rfits_image / Numeric matrix; image to be tweaked (must have exactly the same di
 Numeric vector; the first element is maximum number of pixels to explore in +/-x and +/- y; the second element is the maximum rotation to apply in degrees. If \option{delta_max}[2] = 0 then only translation optimisation is computed (no rotation).
 }
   \item{quan_cut}{
-Numeric scalar; bright pixel thesholding to apply to \option{image_ref} and \option{image_pre_fix}. Generally you want this quite high so that only cores of bright objects are compared.
+Numeric scalar; bright pixel thesholding to apply to \option{image_ref} and \option{image_pre_fix}. Generally you want this quite high so that only cores of bright objects are compared. Suggested range to try (depending on image crowding) is 0.9-0.999 (see also \option{cutcheck} to aid this process).
 }
   \item{Nmeta}{
 Integer scalar; how many shifts of the search box can be applied. This is only relevant when \option{shift_int} is TRUE.
@@ -46,6 +46,9 @@ Character scalar; "forward" or "backward", see \code{imwarp}.
 }
   \item{final_centre}{
 Logical; should a final round of costs be computed once the best tweak is found. This is only relevant if \option{shift_int} = TRUE, and can be useful if you want to explore the output \option{cost_mat}.
+}
+  \item{cutcheck}{
+Logical; if TRUE then quick plots showing the results of \option{quancut} are displayed. If the good quality sources to WCS match against are not present then consider lowering \option{quancut} (suggestion of 0.95 of 0.9). If a lot of noise and artefacts are present then consider increasing it. Note if this is TRUE then the function will exit after displaying the plots returning NULL (i.e. no tweaking is actually done).
 }
   \item{verbose}{
 Logical; should verbose outputs be printed as it runs?

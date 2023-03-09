@@ -34,7 +34,7 @@ propaneWCSmod(input, delta_x = 0, delta_y = 0, delta_rot = 0)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{image_in}{
-List; required, the image we want to warp. \option{image_in} must be either object class Rfits_image or Rfits_pointer, i.e. as read in by \code{\link{Rfits_read_image}}.
+List; required, the image we want to warp. \option{image_in} must be either object class Rfits_image or Rfits_pointer, i.e. as read in by \code{\link{Rfits_read_image}} or \code{\link{Rfits_point}}.
 }
   \item{propane_in}{
 List; object of class 'ProPane', e.g. the output of \code{\link{propaneStackWarpInVar}}. All present list elements will be warp as appropriate (so conserving flux, inverse-Variance, or value as required): image (flux), weight (value), inVar (rebinned inVar), exp (value), cold (flux), hot (flux), clip (value).
@@ -70,7 +70,7 @@ Logical; if TRUE (default) then the image is scaled by the relative change the c
 Logical; should a \code{\link{Rwcs_image}} plot of the output be generated?
 }
   \item{header_out}{
-Optional output header. To aid backwards compatibility, you can also pass in a 1D character vector of header values, e.g. the \option{hdr} component of \option{readFITS} from the \code{FITSio} package. \option{keyvalues_out} must be left as NULL in this case. If you want to use all distortion terms you can also pass in the raw header output of \code{Rfits_read_header_raw}.
+Optional output header. To aid backwards compatibility, you can also pass in a 1D character vector of header values, e.g. the \option{hdr} component of \option{readFITS} from the \code{FITSio} package. \option{keyvalues_out} must be left as NULL in this case. If you want to use all distortion terms you can also pass in the raw header output of \code{Rfits_read_header_raw} (which is also the raw list component of an Rfits_image or Rfits_pointer object).
 }
   \item{dotightcrop}{
 Logical; should an internal tight crop be made. If the images are approximately the same angular size this should be left as FALSE (it will run faster), but when there is a big difference between the input and output WCS (the latter being much larger) then setting this to TRUE might speed the warping up a lot.
