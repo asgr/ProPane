@@ -231,6 +231,9 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       }
 
       if(!is.null(mask_list)){
+        if(!all(dim(mask_list[[i]]) == dim(image_list[[i]]))){
+          stop('mask_list[[', i, ']] has different dimensions to image_list[[',i,']]!')
+        }
         if(inherits(mask_list[[i]], 'Rfits_pointer')){
           mask_list[[i]]$header = FALSE
           temp_image$imDat[mask_list[[i]][,] != 0] = NA
@@ -251,6 +254,9 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
           temp_inVar = inVar_list[[i]]
         }
         if(is.matrix(temp_inVar)){
+          if(!all(dim(inVar_list[[i]]) == dim(image_list[[i]]))){
+            stop('inVar_list[[', i, ']] has different dimensions to image_list[[',i,']]!')
+          }
           temp_image$imDat[temp_inVar == 0] = NA
         }
         rm(temp_inVar)

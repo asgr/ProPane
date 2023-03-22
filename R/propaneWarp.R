@@ -359,10 +359,7 @@ propaneWarp = function(image_in, keyvalues_out=NULL, dim_out = NULL,
     image_out$keycomments$YCUTLO = 'Low image y range'
     image_out$keycomments$YCUTHI = 'High image y range'
 
-    image_out$keynames['XCUTLO'] = 'XCUTLO'
-    image_out$keynames['XCUTHI'] = 'XCUTHI'
-    image_out$keynames['YCUTLO'] = 'YCUTLO'
-    image_out$keynames['YCUTHI'] = 'YCUTHI'
+    image_out$keynames = names(image_out$keyvalues)
   }else{
 
     if(max_x_in > dim_out[1]){
