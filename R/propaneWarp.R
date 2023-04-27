@@ -364,13 +364,21 @@ propaneWarp = function(image_in, keyvalues_out=NULL, dim_out = NULL,
 
     if(max_x_in > dim_out[1]){
       trim_x = max_x_in - dim_out[1]
-      image_out = image_out[1:(dim(image_out)[1] - trim_x), , box=1] #box=1 just in case we have a single pixel left
+      if(dim(image_out)[1] > trim_x){
+        image_out = image_out[1:(dim(image_out)[1] - trim_x), , box=1] #box=1 just in case we have a single pixel left
+      }else{
+        image_out = image_out[1, , box=1] #box=1 just in case we have a single pixel left
+      }
       max_x_in = dim_out[1]
     }
 
     if(max_y_in > dim_out[2]){
       trim_y = max_y_in - dim_out[2]
-      image_out = image_out[, 1:(dim(image_out)[2] - trim_y), box=1] #box=1 just in case we have a single pixel left
+      if(dim(image_out)[2] > trim_y){
+        image_out = image_out[, 1:(dim(image_out)[2] - trim_y), box=1] #box=1 just in case we have a single pixel left
+      }else{
+        image_out = image_out[, 1, box=1] #box=1 just in case we have a single pixel left
+      }
       max_y_in = dim_out[2]
     }
 

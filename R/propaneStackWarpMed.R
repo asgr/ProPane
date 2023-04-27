@@ -46,7 +46,7 @@ propaneStackWarpMed = function(
 
   if(!is.null(keyvalues_out)){
     which_overlap = which(foreach(i = 1:length(image_list), .combine='c')%dopar%{
-      Rwcs_overlap(image_list[[i]]$keyvalues, keyvalues_ref = keyvalues_out)
+      Rwcs_overlap(image_list[[i]]$keyvalues, keyvalues_ref = keyvalues_out, buffer=0)
     })
     image_list = image_list[which_overlap]
   }else{
@@ -84,7 +84,7 @@ propaneStackWarpMed = function(
       keyvalues_sub = Rwcs_keyvalues_sub(keyvalues_out, xsub=xsub, ysub=ysub)
 
       temp_overlap = which(foreach(j = 1:length(image_list), .combine = 'c')%dopar%{
-        Rwcs_overlap(image_list[[j]]$keyvalues, keyvalues_sub)
+        Rwcs_overlap(image_list[[j]]$keyvalues, keyvalues_sub, buffer=0)
       })
     }
 

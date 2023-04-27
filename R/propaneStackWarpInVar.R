@@ -114,7 +114,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
   # Check all supplied frames are in WCS:
 
   which_overlap = which(foreach(i = 1:length(image_list), .combine='c')%dopar%{
-    Rwcs_overlap(image_list[[i]]$keyvalues, keyvalues_ref = keyvalues_out)
+    Rwcs_overlap(image_list[[i]]$keyvalues, keyvalues_ref = keyvalues_out, buffer=0)
   })
 
   Ncheck = length(which_overlap)
