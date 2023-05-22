@@ -29,12 +29,6 @@ propaneStackWarpMed = function(
 
   registerDoParallel(cores=cores)
 
-  #image_files = list.files(dump_dir, full.names=TRUE, pattern = pattern)
-
-  # dump_list = foreach(i = 1:length(image_files))%dopar%{
-  #   Rfits_point(filename = image_files[i], ext=1, header=TRUE)
-  # }
-
   image_list = Rfits_make_list(filelist = filelist,
                                dirlist = dirlist,
                                extlist = extlist,

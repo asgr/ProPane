@@ -9,7 +9,7 @@ For a given region of sky and a number of on-disk FITS files, this function will
 }
 \usage{
 propaneFrameFinder(filelist = NULL, dirlist = NULL, extlist = 1, RAcen = 180, Deccen = 0,
-  rad = 1, radunit = "deg", plot = TRUE, proj = TRUE, border = "red",
+  rad = 1, radunit = "deg", cores = 1, plot = TRUE, proj = TRUE, border = "red",
   col = hsv(alpha = 0.2), ...)
 }
 \arguments{
@@ -33,6 +33,9 @@ Numeric scalar; the radius from \option{RAcen}, \option{Deccen} to search in uni
 }
   \item{radunit}{
 Numeric scalar; the unit type for the \option{rad} specified. Allowed options are 'deg' for degress (default), 'amin' for arc minutes, 'asec' for arc seconds and 'rad' for radians.
+}
+  \item{cores}{
+Integer scalar; the number of cores to run on.
 }
   \item{plot}{
 Logical; should a coverage plot be generated?
