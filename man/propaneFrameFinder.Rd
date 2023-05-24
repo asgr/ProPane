@@ -29,7 +29,7 @@ Numeric scalar; the Right Ascension of the centre of the field in degrees.
 Numeric scalar; the Declination of the centre of the field in degrees.
 }
   \item{rad}{
-Numeric scalar; the radius from \option{RAcen}, \option{Deccen} to search in units of \option{radunit}.
+Numeric scalar; the radius from \option{RAcen}, \option{Deccen} to search in units of degrees.
 }
   \item{cores}{
 Integer scalar; the number of cores to run on.
