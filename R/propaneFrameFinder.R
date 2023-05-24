@@ -25,7 +25,7 @@ propaneFrameFinder = function(filelist = NULL,
 
   MatchInfo_Cen = coordmatchsing(RAcen,
                            Deccen,
-                           FrameInfo[,c('centre_RA','centre_Dec')], rad=rad + 3600*FrameInfo$pixscale*sqrt(FrameInfo$dim_1^2 + FrameInfo$dim_2^2)/2, radunit=radunit)
+                           FrameInfo[,c('centre_RA','centre_Dec')], rad=rad + FrameInfo$pixscale*sqrt(FrameInfo$dim_1^2 + FrameInfo$dim_2^2)/2/3600, radunit=radunit)
 
   # MatchInfo_Cor_BL = coordmatchsing(RAcen,
   #                                Deccen,
