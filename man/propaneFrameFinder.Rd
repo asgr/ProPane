@@ -67,7 +67,12 @@ It is not necessary to trim down inputs before running \code{\link{propaneStackW
 }
 \examples{
 ex_frames = propaneFrameFinder(dirlist = system.file('extdata/stack/', package="ProPane"),
-  extlist = 2, RAcen=36.9, Deccen=-5.2, rad=0.1)
+  extlist = 2, RAcen=36.9, Deccen=-5.2, rad=0.1, plot=TRUE)
+
+#Note we will also find frames if our search region sits entirely inside them:
+
+ex_frames = propaneFrameFinder(dirlist = system.file('extdata/stack/', package="ProPane"),
+  extlist = 2, RAcen=36.85, Deccen=-5.2, rad=0.01, plot=TRUE)
 
 print(ex_frames)
 }
