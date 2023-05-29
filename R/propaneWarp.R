@@ -180,6 +180,8 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out=NULL, dim_out = 
     corners_in = rbind(BL_in, TL_in, TR_in, BR_in)
     tightcrop_in = ceiling(Rwcs_s2p(corners_in, header=header_out, pixcen='R', WCSref=WCSref_out))
 
+    print(tightcrop_in)
+
     min_x_in = max(1L, min(tightcrop_in[,1]))
     max_x_in = max(min_x_in + dim(image_in)[1] - 1L, range(tightcrop_in[,1])[2])
     min_y_in = max(1L, min(tightcrop_in[,2]))
