@@ -1,6 +1,7 @@
 \name{propaneStackWarp}
 \alias{propaneStackWarp}
 \alias{propaneStackWarpInVar}
+\alias{propaneWarpDump}
 \alias{propaneStackWarpMed}
 \alias{propaneStackWarpFunc}
 %- Also NEED an '\alias' for EACH other topic documented here.
@@ -16,6 +17,10 @@ propaneStackWarpInVar(image_list = NULL, inVar_list = NULL, exp_list = NULL,
   keyvalues_out = NULL, dim_out = NULL, cores = 4, cores_warp = 1, Nbatch = cores,
   keepcrop = TRUE, keep_extreme_pix = FALSE, doclip = FALSE, clip_tol = 100,
   clip_dilate = 0, clip_sigma = 5, return_all = FALSE, dump_frames = FALSE,
+  dump_dir = tempdir(), ...)
+
+propaneWarpDump(image_list = NULL, magzero_in = 0, magzero_out = 23.9,
+  keyvalues_out = NULL, dim_out = NULL, cores = 4, cores_warp = 1, keepcrop = TRUE,
   dump_dir = tempdir(), ...)
 
 propaneStackWarpMed(filelist = NULL, dirlist = NULL, extlist = 1,
@@ -53,7 +58,7 @@ Numeric scalar; the output mag-zero point desired. A nice \option{magzero_out} i
 List; output header values to be used for the WCS. This is the target WCS projection that each image in \option{image_list} will be mapped onto.
 }
   \item{imager_func}{
-Function (or character scalar for special case); the \code{imager} combine function to apply. This can be any of the ones in ?imager.combine. The default of NULL means it will use the \code{average} function. As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{pro}). Also, \option{imager_func} = 'InVar' (with speech marks) will return the inverse variance image (which is what we use for general stacking).
+Function (or character scalar for special case); the \code{imager} combine function to apply. This can be any of the ones in ?imager.combine. The default of NULL means it will use the \code{average} function. As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{pro}). Also, \option{imager_func} = 'InVar' (with speech marks) will return the inverse variance image scaled correctly by exposures (which is what we use for general stacking).
 }
   \item{probs}{
 Numeric vector; quantile probabilites between 0-1. This is only used in the specific case of \option{imager_func} = 'quantile' / 'quan' (with the speech marks).
@@ -129,6 +134,8 @@ Other arguments to pass into \code{\link{propaneWarp}}.
 }
 }
 \details{
+\code{propaneStackWarpInVar} is an inverse variance weighted image stacking function, which has a lot of flexibility in terms of clipping and weighting.
+
 The warping code used here is \code{\link{propaneWarp}}, and the stacking part is very similar to that used in \code{\link{propaneStackFlatInVar}}. It uses inverse-variance weighted stacking when \option{inVar_list} is provided, and a simple average stack otherwise.
 
 \option{image_list} can be provided as a list of \code{Rfits_image} or \code{Rfits_pointer}. The advantage of the former is raw speed (no disk IO required) but the advantage of the latter is memory footprint (only the required pixels are loaded at any given stage of stacking).
@@ -141,11 +148,13 @@ Which route is better to use depends on the memory available- passing in in-memo
 
 Care needs to be taken to choose appropriate values for \option{cores} and \option{Nbatch}. Ultimately at least a few copies of the full target image will need to be kept in memory at some point in this stacking process, since the stacking happens in RAM not on disk. For that reason there is an upper limit on how big the target image can be without hitting some pretty brutal performance issues (when you start using disk swap, things become very very slow). As an idea, a 10k x 10k pixel image with bitpix = -32 (sinlge precision) will take up 400 MB on disk and loaded in \code{R} 800 MB (since \code{R} only supports double precision floats internally). This means a 40k x 40k will require 12.8 GB of RAM. Given that number at least doubles during any \code{\link{propaneWarp}} process, and we possibly have a weight map and exposure to compute, you want to be pretty certain that x4 this value fits well within half of available RAM even if we are using \code{Nbatch} = 1. Even on a machine with 128 GB of RAM (my local machine) that is about as big an image as we could possibly target for stacking.
 
+\code{propaneWarpDump} just caries out the frame warping and dumping part of \code{propaneStackWarpInVar}.
+
 \code{propaneStackWarpMed} is a dedicated median combine stacking function. The difference in operation is that it only works on pre-dumped frames that will have been projected with \code{propaneStackWarpInVar} with the \option{dump_frames} option set to TRUE. The reason for this is that the median combine can generally only be run on quite small chunked subsets (usually in the range 1000 - 2000 and set with the \option{chunk} argument). Warping on the fly to such subsets is expensive (for reasonable sized inputs most pixels get thrown away each time), so it is faster to compute frame overlap on the dumped frames and combine them together as needed. The actual median combine is done using the \code{parmed} function of the \code{imager} package. If this has been compiled with OpenMP flags then you will also see massive speed up during the combining phase. The keen user will probably need to do some Googling to get this right, but for large stacking it could be worth the effort (for MacOS check out https://mac.r-project.org/openmp/).
 
 \code{propaneStackWarpMed} can also be 'tricked' into stacking non-WCS aligned images. This might be useful when you are e.g. stacking stars that are on inherently different WCS, but you have already cutout and centred then. For this to work no \option{keyvalues_out} should be provided, and \option{useCUTLO} should be set to FALSE (just incase you have XCUTLO and YCUTLO keyvalues produced by \code{Rfits} in your header). The images to be stacked also need to be the same exact dimensions (as well as being centred sensibly on your source of interest, of course).
 
-\code{propaneStackWarpFunc} is like a generic version of \code{propaneStackWarpMed}, where any of the ?imager.combine functions that collapse stacks of images down can be used rather than just \code{parmed} (which is the median function used in \code{propaneStackWarpMed}). For that reason, setting \option{imager_func} = imager::parmed will replicated exactly the behaviour of \code{propaneStackWarpMed}. Useful options to consider using are imager::parvar (variance) and imager::parsd (standard deviation). As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{pro}). Also, \option{imager_func} = 'InVar' (with speech marks) will return the inverse variance image (which is what we use for general stacking).
+\code{propaneStackWarpFunc} is like a generic version of \code{propaneStackWarpMed}, where any of the ?imager.combine functions that collapse stacks of images down can be used rather than just \code{parmed} (which is the median function used in \code{propaneStackWarpMed}). For that reason, setting \option{imager_func} = imager::parmed will replicated exactly the behaviour of \code{propaneStackWarpMed}. Useful options to consider using are imager::parvar (variance) and imager::parsd (standard deviation). As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{pro}). Also, \option{imager_func} = 'InVar' (with speech marks) will return the inverse variance image scaled correctly by exposures (which is what we use for general stacking).
 }
 \value{
 The output of \code{propaneStackWarpInVar} is an object of class 'ProPane' containing:
@@ -274,7 +283,7 @@ sd(stack2$image$imDat[stack2$image$imDat < 0.3], na.rm=TRUE) #stack 2
 #Pretty similar! Note when changing pixel scales a lot this can be wrong due to pixel
 #covariance, which we do not correct for.
 
-#For median stacking we need to dum out the frames:
+#For median stacking we need to dump out the frames:
 
 stack3 = propaneStackWarpInVar(image_list = image_list,
                               inVar_list = 0.000468, #assume all have the same inVar
@@ -290,6 +299,25 @@ stack_med = propaneStackWarpMed(dirlist=stack3$dump_dir,
   keyvalues_out=stack3$image$keyvalues, pattern=glob2rx('*image_warp*'))
 
 plot(stack_med$image, qdiff=T)
+
+#And we can measure the quantiles too:
+
+stack_invar = propaneStackWarpFunc(dirlist=stack3$dump_dir,
+  keyvalues_out=stack3$image$keyvalues, imager_func = 'InVar',
+  pattern=glob2rx('*image_warp*'))
+
+#With a bit of thought, we can use this stack_invar in ProFound:
+library(ProFound)
+
+InVar = stack_invar$image$imDat
+InVar = profoundImBlur(InVar) #Smooth out the InVar measurements a bit
+
+#Run ProFound masking out regions where only 0/1 image contributes:
+
+test_pro = profoundProFound(stack_mask, skyRMS = 1/sqrt(InVar),
+  mask = stack3$weight$imDat < 2, redosky = F)
+
+plot(test_pro)
 }
 }
 \concept{ ~warp }

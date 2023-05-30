@@ -316,12 +316,17 @@ propaneStackWarpFunc = function(
       }
     }
 
-    if(doweight){
+    if(doweight | tolower(imager_func) == 'invar'){
       weight_list = foreach(j = 1:length(image_list_cut))%do%{
         return(imager::as.cimg(!is.na(image_list_cut[[j]])))
       }
 
       weight = as.matrix(imager::add(weight_list))
+
+      if(tolower(imager_func) == 'invar'){
+        image = image*(weight - 1)
+        image[weight < 2] = NA
+      }
     }else{
       weight = NULL
     }

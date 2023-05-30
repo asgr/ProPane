@@ -9,12 +9,12 @@
   return(xy_out)
 }
 
-propaneWarp = function(image_in, keyvalues_out=NULL, header_out=NULL, dim_out = NULL,
-                      direction = "auto", boundary = "dirichlet", interpolation = "cubic",
-                      doscale = TRUE, dofinenorm = TRUE, plot = FALSE, dotightcrop = TRUE,
-                      keepcrop = FALSE, extratight = FALSE, WCSref_out = NULL, WCSref_in = NULL,
-                      magzero_out = NULL, magzero_in = NULL, blank=NA, warpfield=NULL,
-                      warpfield_return=FALSE, cores=1, checkWCSequal=FALSE, ...)
+propaneWarp = function(image_in, keyvalues_out=NULL, header_out = NULL, dim_out = NULL,
+                       direction = "auto", boundary = "dirichlet", interpolation = "cubic",
+                       doscale = TRUE, dofinenorm = TRUE, plot = FALSE, dotightcrop = TRUE,
+                       keepcrop = FALSE, extratight = FALSE, WCSref_out = NULL, WCSref_in = NULL,
+                       magzero_out = NULL, magzero_in = NULL, blank=NA, warpfield=NULL,
+                       warpfield_return=FALSE, cores=1, checkWCSequal=FALSE, ...)
 {
   if(!requireNamespace("Rwcs", quietly = TRUE)){
     stop("The Rwcs package is needed for this function to work. Please install it from GitHub asgr/Rwcs", call. = FALSE)
@@ -35,7 +35,6 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out=NULL, dim_out = 
   keyvalues_in = image_in$keyvalues
   keyvalues_in = keyvalues_in[!is.na(keyvalues_in)]
   header_in = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_in))
-
   # if(is.null(image_in$raw)){
   #   header_in = image_in$hdr
   # }else{
@@ -67,6 +66,7 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out=NULL, dim_out = 
   }
 
   keyvalues_out = keyvalues_out[!is.na(keyvalues_out)]
+  header_out = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_out))
 
   if(checkWCSequal){
     if(Rfits_key_match(keyvalues_out, keyvalues_in,
@@ -84,9 +84,9 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out=NULL, dim_out = 
                                  'CD1_2',
                                  'CD2_1',
                                  'CD2_2'
-                                 )
-                       )
-       ){
+                        )
+                      )
+    ){
       message('WCS appears to be the same, directly returning input!')
       image_in$keyvalues$XCUTLO = 1L
       image_in$keyvalues$XCUTHI = dim(image_in)[1]
@@ -132,7 +132,13 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out=NULL, dim_out = 
     stop('Missing NAXIS1 / NAXIS2 in header keyvalues! Specify dim_out.')
   }
 
-  header_out = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_out))
+  #raw_out = header_out
+
+  # if(is.null(raw_out)){
+  #   header_out = Rfits_keyvalues_to_header(keyvalues_out)
+  # }else{
+  #   header_out = Rfits_raw_to_header(raw_out)
+  # }
 
   if(dotightcrop){
     suppressMessages({
@@ -171,7 +177,7 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out=NULL, dim_out = 
     }
 
     suppressMessages({
-      BL_in = Rwcs_p2s(0, 0, header=header_in, pixcen='R', WCSref=WCSref_in)
+      BL_in = Rwcs_p2s(0, 0,header=header_in, pixcen='R', WCSref=WCSref_in)
       TL_in = Rwcs_p2s(0, dim(image_in)[2], header=header_in, pixcen='R', WCSref=WCSref_in)
       TR_in = Rwcs_p2s(dim(image_in)[1], dim(image_in)[2], header=header_in, pixcen='R', WCSref=WCSref_in)
       BR_in = Rwcs_p2s(dim(image_in)[1], 0, header=header_in, pixcen='R', WCSref=WCSref_in)
@@ -179,8 +185,6 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out=NULL, dim_out = 
 
     corners_in = rbind(BL_in, TL_in, TR_in, BR_in)
     tightcrop_in = ceiling(Rwcs_s2p(corners_in, header=header_out, pixcen='R', WCSref=WCSref_out))
-
-    print(tightcrop_in)
 
     min_x_in = max(1L, min(tightcrop_in[,1]))
     max_x_in = max(min_x_in + dim(image_in)[1] - 1L, range(tightcrop_in[,1])[2])
@@ -200,6 +204,8 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out=NULL, dim_out = 
     keyvalues_out$CRPIX1 = keyvalues_out$CRPIX1 - min_x_in + 1L
     keyvalues_out$CRPIX2 = keyvalues_out$CRPIX2 - min_y_in + 1L
 
+    header_out = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_out))
+
     image_out = list(
       imDat = matrix(c(blank,image_in$imDat[0]), max_x_in - min_x_in + 1L, max_y_in - min_y_in + 1L),
       keyvalues = keyvalues_out,
@@ -212,7 +218,6 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out=NULL, dim_out = 
     names(image_out$keycomments) = image_out$keynames
     class(image_out) = c('Rfits_image', class(image_out))
 
-    # keyvalues_out = image_out$keyvalues
     # if(!is.null(raw_out)){
     #   raw_out = image_out$raw
     # }
@@ -290,7 +295,7 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out=NULL, dim_out = 
     }
 
     if(anyInfinite(warp_out)){
-      stop('Bad warp field!')
+      warning('Infinite value in warp field, this can cause segfaults on some compilations!')
     }
 
     warpfield = imager::imappend(list(imager::as.cimg(matrix(
