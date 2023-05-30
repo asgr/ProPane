@@ -8,7 +8,9 @@ export(propaneWCSmod)
 
 #Image stacking routines:
 export(propaneStackWarpInVar)
+export(propaneWarpDump)
 export(propaneStackWarpMed)
+export(propaneStackWarpFunc)
 export(propaneStackFlatInVar)
 export(propaneStackFlatFunc)
 export(propanePatch)

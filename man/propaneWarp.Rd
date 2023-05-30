@@ -14,9 +14,9 @@ Remaps an input projection system to a different target WCS.
 \code{propaneWarp} does precise remapping of one WCS to another, \code{propaneRebin} does quick coarse down-sampling (via re-binning), which can be useful for faster visualisations (since fewer pixels to worry about). Both conserve flux correctly. \code{propaneTran} just applies a translational shift and rotation. \code{propaneWarpProPane} warps all elements of a ProPane class object (as returned by e.g. \code{\link{propaneStackWarpInVar}}).
 }
 \usage{
-propaneWarp(image_in, keyvalues_out = NULL, dim_out = NULL, direction = "auto",
-  boundary = "dirichlet", interpolation = "cubic", doscale = TRUE, dofinenorm = TRUE,
-  plot = FALSE, header_out = NULL, dotightcrop = TRUE, keepcrop = FALSE,
+propaneWarp(image_in, keyvalues_out = NULL, header_out = NULL, dim_out = NULL,
+  direction = "auto", boundary = "dirichlet", interpolation = "cubic", doscale = TRUE,
+  dofinenorm = TRUE, plot = FALSE, dotightcrop = TRUE, keepcrop = FALSE,
   extratight = FALSE, WCSref_out = NULL, WCSref_in = NULL, magzero_out = NULL,
   magzero_in = NULL, blank = NA, warpfield = NULL, warpfield_return = FALSE, cores = 1,
   checkWCSequal = FALSE, ...)
@@ -48,6 +48,9 @@ List; required, the WCS to fix. Can be one of Rfits_keylist, Rfits_image, Rfits_
   \item{keyvalues_out}{
 List; output header values to be used for the WCS. This is the target WCS projection that \option{image_in} will be mapped onto.
 }
+  \item{header_out}{
+Optional output header. To aid backwards compatibility, you can also pass in a 1D character vector of header values, e.g. the \option{hdr} component of \option{Rfits_read_image} from the \code{Rfits} package. If you want to use all distortion terms you can also pass in the raw header output of \code{Rfits_read_header_raw} (which is also the raw list component of an Rfits_image or Rfits_pointer object). If this is present then \option{keyvalues_out} will be ignored!
+}
   \item{dim_out}{
 Integer vector; this defines the desired dimensions of the output image. If this is not provided then the output image is made to be the same size as the NAXIS1 and NAXIS2 arguments taken from \option{header_out} (which is usually what you will want TBH).
 }
@@ -68,9 +71,6 @@ Logical; if TRUE (default) then the image is scaled by the relative change the c
 }
   \item{plot}{
 Logical; should a \code{\link{Rwcs_image}} plot of the output be generated?
-}
-  \item{header_out}{
-Optional output header. To aid backwards compatibility, you can also pass in a 1D character vector of header values, e.g. the \option{hdr} component of \option{readFITS} from the \code{FITSio} package. \option{keyvalues_out} must be left as NULL in this case. If you want to use all distortion terms you can also pass in the raw header output of \code{Rfits_read_header_raw} (which is also the raw list component of an Rfits_image or Rfits_pointer object).
 }
   \item{dotightcrop}{
 Logical; should an internal tight crop be made. If the images are approximately the same angular size this should be left as FALSE (it will run faster), but when there is a big difference between the input and output WCS (the latter being much larger) then setting this to TRUE might speed the warping up a lot.
