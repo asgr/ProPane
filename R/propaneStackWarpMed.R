@@ -185,6 +185,7 @@ propaneStackWarpFunc = function(
     zap = NULL,
     keyvalues_out = NULL,
     imager_func = NULL,
+    weights = NULL,
     probs = c(0.159, 0.5, 0.841),
     cores = 4,
     chunk = 1e3,
@@ -275,6 +276,13 @@ propaneStackWarpFunc = function(
       )
     }
 
+    if(!is.null(weights)){
+      weights_temp = weights[temp_overlap]
+      if(tolower(imager_func) == 'waverage'){
+        weights_temp = weights_temp/sum(weights_temp)
+      }
+    }
+
     image_list_cut = foreach(j = temp_overlap)%do%{ #not sure why this won't work in dopar... Rfits race conditions?
       if(!is.null(image_list[[j]]$keyvalues$XCUTLO) & useCUTLO){
         XCUTLO = image_list[[j]]$keyvalues$XCUTLO
@@ -294,17 +302,22 @@ propaneStackWarpFunc = function(
     }
 
     if(is.function(imager_func)){
-      if('na.rm' %in% names(formals(imager_func))){
-        image = as.matrix(imager_func(image_list_cut, na.rm=TRUE))
+      if('w' %in% names(formals(imager_func))){
+        if(is.null(weights)){
+          stop('weights must be specified for imager wsum')
+        }
+        image = as.matrix(imager_func(image_list_cut, w=weights_temp, na.rm=TRUE)) #only relevant for wsum
       }else{
-        image = as.matrix(imager_func(image_list_cut))
+        if('na.rm' %in% names(formals(imager_func))){
+          image = as.matrix(imager_func(image_list_cut, na.rm=TRUE))
+        }else{
+          image = as.matrix(imager_func(image_list_cut))
+        }
       }
     }else{
       if(tolower(imager_func) == 'invar'){
         image = 1/as.matrix(imager::parvar(image_list_cut, na.rm=TRUE))
-      }
-
-      if(tolower(imager_func) == 'quantile' | tolower(imager_func) == 'quan' ){
+      }else if(tolower(imager_func) == 'quantile' | tolower(imager_func) == 'quan' ){
         im_dim = dim(image_list_cut[[1]])
         temp_mat = matrix(as.numeric(unlist(image_list_cut)), nrow=length(image_list_cut), byrow = TRUE)
 
@@ -313,6 +326,8 @@ propaneStackWarpFunc = function(
           temp_out = apply(temp_mat, MARGIN=2, FUN=quantile, probs=probs[k], na.rm=TRUE)
           image = c(image, list(matrix(temp_out, im_dim[1], im_dim[2])))
         }
+      }else if(tolower(imager_func) == 'waverage'){
+        image = as.matrix(imager::wsum(image_list_cut, w=weights_temp, na.rm=TRUE))
       }
     }
 

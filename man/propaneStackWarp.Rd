@@ -29,7 +29,8 @@ propaneStackWarpMed(filelist = NULL, dirlist = NULL, extlist = 1,
 
 propaneStackWarpFunc(filelist = NULL, dirlist = NULL, extlist = 1,
   pattern = NULL, recursive = TRUE, zap = NULL, keyvalues_out = NULL, imager_func = NULL,
-  probs = c(0.159, 0.5, 0.841), cores = 4, chunk = 1e3, doweight = TRUE, useCUTLO = TRUE)
+  weights = NULL, probs = c(0.159, 0.5, 0.841), cores = 4, chunk = 1e3, doweight = TRUE,
+  useCUTLO = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -37,7 +38,7 @@ propaneStackWarpFunc(filelist = NULL, dirlist = NULL, extlist = 1,
 List; required. List of the input \code{Rfits_image} or \code{Rfits_pointer} objects to be warped and stacked. Masked pixels can be flagged with NA in the imDat component. See Details below. Note that the header information attached to the \option{image_list} is used for \option{inVar_list}, \option{exp_list}, \option{weight_list} and \option{mask_list} as appropriate.
 }
   \item{inVar_list}{
-Numeric vector or list of numeric matrices / \code{Rfits_image} / \code{Rfits_pointer}; optional. The inverse variances. Either one value per \option{image_list} entry, or one pixel matched matrix per \option{image_list} entry. This is used to achieve S/N weighted stacking. If not provided then images are stacked with equal weight. See Details below.
+Numeric vector or list of numeric matrices / \code{Rfits_image} / \code{Rfits_pointer}; optional. The inverse-variances. Either one value per \option{image_list} entry, or one pixel matched matrix per \option{image_list} entry. This is used to achieve S/N weighted stacking. If not provided then images are stacked with equal weight. See Details below.
 }
   \item{exp_list}{
 Numeric vector or list of numeric matrices / \code{Rfits_image} / \code{Rfits_pointer}; optional. The exposure time (in whatever units you like, but they should be consistent between input images). Either one value per \option{image_list} entry, or one pixel matched matrix per \option{image_list} entry. This is used to track maximal pixel exposure (so nothing is masked). This is mostly provided to persist knowledge from a previous stack that you are now adding to with more data. See Details below.
@@ -58,7 +59,10 @@ Numeric scalar; the output mag-zero point desired. A nice \option{magzero_out} i
 List; output header values to be used for the WCS. This is the target WCS projection that each image in \option{image_list} will be mapped onto.
 }
   \item{imager_func}{
-Function (or character scalar for special case); the \code{imager} combine function to apply. This can be any of the ones in ?imager.combine. The default of NULL means it will use the \code{average} function. As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{pro}). Also, \option{imager_func} = 'InVar' (with speech marks) will return the inverse variance image scaled correctly by exposures (which is what we use for general stacking).
+Function (or character scalar for special case); the \code{imager} combine function to apply. This can be any of the ones in ?imager.combine. The default of NULL means it will use the \code{average} function. As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{pro}). \option{imager_func} = 'InVar' (with speech marks) will return the inverse-variance scaled correctly by exposures (which is what we use for general stacking). \option{imager_func} = 'waverage' will return a weighted average using the \option{weights} values for the per frame weights, but note this only works in regions where all frames contribute. In most practical applications you should use \code{propaneStackWarpInVar} for proper inverse-variance weighted stacking, but this method might be useful as a quick check.
+}
+  \item{weights}{
+Numeric vector; weights to use for image combining. Only relevant for \option{imager_func} = imager::wsum or \option{imager_func} = 'waverage'. The latter becomes a weighted average, where the input weights should in effect be the per image inverse-variance.
 }
   \item{probs}{
 Numeric vector; quantile probabilites between 0-1. This is only used in the specific case of \option{imager_func} = 'quantile' / 'quan' (with the speech marks).
@@ -94,7 +98,7 @@ Integer scalar; how much to dilate around cold/hot pixels you wish to mask out. 
 Numeric scalar; clipping significance threshold for hot pixels. Only pixels where the \option{cold} pixel is below \option{clip_sigma} of the sky RMS will be flagged for hot pixel clipping. Generally you want this to be a value between 5-10, and it stops the cores of bright stars/galaxies being erroneously flagged as containing hot pixels. The trade off from setting this to higher values is you might start to lose the cores of bright objects, and the trade off setting this lower is you might not remove genuine hot pixels. In general this parameter should not need much fine-tuning.
 }
   \item{return_all}{
-Logical; should the pre stack projected images and inverse variances be returns also? Note if this is TRUE then the stacking can no longer be computed in batch mode, so be sure that you have enough memory to hold all pre stack projected images and inverse variances in memory (where note these will each have the dimensions of the desired output stacked image, which can be very large).
+Logical; should the pre stack projected images and inverse-variances be returns also? Note if this is TRUE then the stacking can no longer be computed in batch mode, so be sure that you have enough memory to hold all pre stack projected images and inverse-variances in memory (where note these will each have the dimensions of the desired output stacked image, which can be very large).
 }
   \item{dump_frames}{
 Logical; if TRUE then warped frames will be dumped out to the specified \option{dump_dir} as the stacking continues. This can be useful to inspect the pre-stack inputs (if too large for the \option{return_all} = TRUE option), or if the stack is failing unexpectedly. Frames will inherit the names image_warp_i, inVar_warp_i, weight_warp_i and exp_warp_i as appropriate (i.e. only if warping is occurring for these data). If \option{doclip} = TRUE then the boolean frame masks will also be dumped to mask_warp_i.
@@ -134,7 +138,7 @@ Other arguments to pass into \code{\link{propaneWarp}}.
 }
 }
 \details{
-\code{propaneStackWarpInVar} is an inverse variance weighted image stacking function, which has a lot of flexibility in terms of clipping and weighting.
+\code{propaneStackWarpInVar} is an inverse-variance weighted image stacking function, which has a lot of flexibility in terms of clipping and weighting.
 
 The warping code used here is \code{\link{propaneWarp}}, and the stacking part is very similar to that used in \code{\link{propaneStackFlatInVar}}. It uses inverse-variance weighted stacking when \option{inVar_list} is provided, and a simple average stack otherwise.
 
@@ -154,14 +158,14 @@ Care needs to be taken to choose appropriate values for \option{cores} and \opti
 
 \code{propaneStackWarpMed} can also be 'tricked' into stacking non-WCS aligned images. This might be useful when you are e.g. stacking stars that are on inherently different WCS, but you have already cutout and centred then. For this to work no \option{keyvalues_out} should be provided, and \option{useCUTLO} should be set to FALSE (just incase you have XCUTLO and YCUTLO keyvalues produced by \code{Rfits} in your header). The images to be stacked also need to be the same exact dimensions (as well as being centred sensibly on your source of interest, of course).
 
-\code{propaneStackWarpFunc} is like a generic version of \code{propaneStackWarpMed}, where any of the ?imager.combine functions that collapse stacks of images down can be used rather than just \code{parmed} (which is the median function used in \code{propaneStackWarpMed}). For that reason, setting \option{imager_func} = imager::parmed will replicated exactly the behaviour of \code{propaneStackWarpMed}. Useful options to consider using are imager::parvar (variance) and imager::parsd (standard deviation). As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{pro}). Also, \option{imager_func} = 'InVar' (with speech marks) will return the inverse variance image scaled correctly by exposures (which is what we use for general stacking).
+\code{propaneStackWarpFunc} is like a generic version of \code{propaneStackWarpMed}, where any of the ?imager.combine functions that collapse stacks of images down can be used rather than just \code{parmed} (which is the median function used in \code{propaneStackWarpMed}). For that reason, setting \option{imager_func} = imager::parmed will replicated exactly the behaviour of \code{propaneStackWarpMed}. Useful options to consider using are imager::parvar (variance) and imager::parsd (standard deviation). As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{pro}). Also, \option{imager_func} = 'InVar' (with speech marks) will return the inverse-variance scaled correctly by exposures (which is what we use for general stacking). \option{imager_func} = 'waverage' will return a weighted average using the \option{weights} values for the per frame weights, but note this only works in regions where all frames contribute.
 }
 \value{
 The output of \code{propaneStackWarpInVar} is an object of class 'ProPane' containing:
 
 \item{image}{The stacked image, of class Rfits_image.}
 \item{weight}{The number of available un-masked pixels in every output pixel of \option{image}. Class Rfits_image.}
-\item{inVar}{If \option{inVar_list} is not NULL, the stacked inverse variance of the output \option{image}. Class Rfits_image when present.}
+\item{inVar}{If \option{inVar_list} is not NULL, the stacked inverse-variance of the output \option{image}. Class Rfits_image when present.}
 \item{exp}{If \option{exp_list} is not NULL, the total exposure time of the output \option{image}. Class Rfits_image when present. Note this will be unmasked, so values of 0 means no photon ever hit the output \option{image}, i.e. masked pixels can have postive exposures if they sit within the detector domain.}
 \item{cold}{If \option{keep_extreme_pix} = TRUE, the extreme hot pixel value for the input \option{image_list} that formed the final stacked \option{image}. If \option{keep_extreme_pix} = FALSE this will be NULL. Note when using \option{doclip} = TRUE then the \option{cold} will be the coldest pixels remaining after the clipping is applied (so the originally most extreme pixels will no longer be present). Class Rfits_image when present.}
 \item{hot}{If \option{keep_extreme_pix} = TRUE, the extreme hot pixel value for the input \option{image_list} that formed the final stacked \option{image}. If \option{keep_extreme_pix} = FALSE this will be NULL. Note when using \option{doclip} = TRUE then the \option{hot} will be the hottest pixels remaining after the clipping is applied (so the originally most extreme pixels will no longer be present). Class Rfits_image when present.}
@@ -174,7 +178,7 @@ The output of \code{propaneStackWarpInVar} is an object of class 'ProPane' conta
 And optionally (if \option{returnall} = TRUE) these outputs are appended to the list:
 
 \item{image_pre_stack}{The projected pre stack images.}
-\item{inVar_pre_stack}{The projected pre stack inverse variance.}
+\item{inVar_pre_stack}{The projected pre stack inverse-variance.}
 \item{exp_pre_stack}{The projected pre stack exposure times.}
 
 The output of \code{propaneStackWarpMed} is an object of class 'ProPane' containing:
@@ -275,7 +279,7 @@ plot(stack2$image)
 sd(stack$image$imDat[stack$image$imDat < 0.3], na.rm=TRUE) #stack 1
 sd(stack2$image$imDat[stack2$image$imDat < 0.3], na.rm=TRUE) #stack 2
 
-#Compare this to the stacked inverse variance prediction:
+#Compare this to the stacked inverse-variance prediction:
 
 1/sqrt(median(stack$inVar$imDat, na.rm=TRUE)) #stack 1
 1/sqrt(median(stack2$inVar$imDat, na.rm=TRUE)) #stack 2
@@ -285,26 +289,22 @@ sd(stack2$image$imDat[stack2$image$imDat < 0.3], na.rm=TRUE) #stack 2
 
 #For median stacking we need to dump out the frames:
 
-stack3 = propaneStackWarpInVar(image_list = image_list,
-                              inVar_list = 0.000468, #assume all have the same inVar
-                              exp_list = 10, #all have the same exposure time of 10s
-                              cores = 8,
-                              keyvalues_out = keyvalues_out,
-                              magzero_in = 30,
-                              magzero_out = 23.9, #micro-jansky output
-                              dump_frames = TRUE #for median stacking test
+dump = propaneWarpDump(image_list = image_list,
+                         cores = 8,
+                         keyvalues_out = keyvalues_out,
+                         magzero_in = 30,
+                         magzero_out = 23.9 #micro-jansky output
 )
 
-stack_med = propaneStackWarpMed(dirlist=stack3$dump_dir,
-  keyvalues_out=stack3$image$keyvalues, pattern=glob2rx('*image_warp*'))
+stack_med = propaneStackWarpMed(dirlist=dump, keyvalues_out=keyvalues,
+  pattern=glob2rx('*image_warp*'))
 
 plot(stack_med$image, qdiff=T)
 
 #And we can measure the quantiles too:
 
-stack_invar = propaneStackWarpFunc(dirlist=stack3$dump_dir,
-  keyvalues_out=stack3$image$keyvalues, imager_func = 'InVar',
-  pattern=glob2rx('*image_warp*'))
+stack_invar = propaneStackWarpFunc(dirlist=dump,
+  keyvalues_out=keyvalues_out, imager_func='InVar', pattern=glob2rx('*image_warp*'))
 
 #With a bit of thought, we can use this stack_invar in ProFound:
 library(ProFound)
