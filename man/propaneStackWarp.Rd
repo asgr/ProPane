@@ -299,7 +299,25 @@ dump = propaneWarpDump(image_list = image_list,
 stack_med = propaneStackWarpMed(dirlist=dump, keyvalues_out=keyvalues,
   pattern=glob2rx('*image_warp*'))
 
-plot(stack_med$image, qdiff=T)
+plot(stack_med$image, qdiff=TRUE)
+
+#ProPane includes an example Swarp median stack with the same WCS projection:
+
+swarp = Rfits_read_image(system.file('extdata/swarp_med.fits', package="ProPane"), ext=2)
+
+plot(swarp, qdiff=TRUE)
+
+# we can check the pixels are pretty similar!
+
+magplot(stack_med$image$imDat[stack_med$image$imDat > 1],
+  swarp$imDat[stack_med$image$imDat > 1], pch='.', log='xy', xlim=c(1,1e3),
+  ylim=c(1,1e3), asp=1)
+abline(0, 1, col='red')
+
+maghist(stack_med$image$imDat[stack_med$image$imDat > 1] /
+  swarp$imDat[stack_med$image$imDat > 1], xlim=5)
+
+#Note Swarp tends to find slightly more flux (a couple percent) for the same pixels!
 
 #And we can measure the quantiles too:
 
@@ -314,8 +332,8 @@ InVar = profoundImBlur(InVar) #Smooth out the InVar measurements a bit
 
 #Run ProFound masking out regions where only 0/1 image contributes:
 
-test_pro = profoundProFound(stack_mask, skyRMS = 1/sqrt(InVar),
-  mask = stack3$weight$imDat < 2, redosky = F)
+test_pro = profoundProFound(stack_mask, skyRMS=1/sqrt(InVar),
+  mask=stack3$weight$imDat < 2, redosky=FALSE, magzero=23.9)
 
 plot(test_pro)
 }
