@@ -317,7 +317,10 @@ abline(0, 1, col='red')
 maghist(stack_med$image$imDat[stack_med$image$imDat > 1] /
   swarp$imDat[stack_med$image$imDat > 1], xlim=5)
 
-#Note Swarp tends to find slightly more flux (a couple percent) for the same pixels!
+#Note Swarp tends to find slightly more flux (a couple percent) for the same pixels.
+#This is because Swarp uses Lanczos interpolation by default, and imager bicubic.
+#If this critically matters, consider upscaling your images with propaneRebin first!
+#This works because simple upscaling uses a higher accuracy Lanczos interpolation.
 
 #And we can measure the quantiles too:
 

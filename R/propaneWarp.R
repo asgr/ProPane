@@ -458,8 +458,8 @@ propaneRebin = function(image, scale = 1,interpolation = 6){
     keyvalues_out = image$keyvalues
     keyvalues_out$NAXIS1 = dim(image_resize)[1]
     keyvalues_out$NAXIS2 = dim(image_resize)[2]
-    keyvalues_out$CRPIX1 = keyvalues_out$CRPIX1 * scale
-    keyvalues_out$CRPIX2 = keyvalues_out$CRPIX2 * scale
+    keyvalues_out$CRPIX1 = (keyvalues_out$CRPIX1 - 0.5) * scale + 0.5
+    keyvalues_out$CRPIX2 = (keyvalues_out$CRPIX2 - 0.5) * scale + 0.5
     keyvalues_out$CD1_1 = keyvalues_out$CD1_1 / scale
     keyvalues_out$CD1_2 = keyvalues_out$CD1_2 / scale
     keyvalues_out$CD2_1 = keyvalues_out$CD2_1 / scale

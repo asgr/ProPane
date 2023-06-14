@@ -61,7 +61,7 @@ Character scalar; "auto" (default), "forward" or "backward", see \code{imwarp}. 
 boundary conditions: "dirichlet", "neumann", "periodic" (default "dirichlet"), see \code{imwarp}
 }
   \item{interpolation}{
-Character/integer scalar; For \code{propaneWarp}: "nearest", "linear", "cubic" (default "linear"), see \code{imwarp}. For \code{imresize}: Linear is 3, Cubic is 5, Lanczos (higher quality), default) is 6.
+Character/integer scalar; For \code{propaneWarp}: "nearest", "linear", "cubic" (default "cubic"), see \code{imwarp}. For \code{imresize}: Linear is 3, Cubic is 5, Lanczos is (higher quality; default).
 }
   \item{doscale}{
 Logical; if TRUE (default) then the image is scaled by the change in pixel scale, i.e. it properly conserves angular flux density. This is usually what you minimally want when warping a flux image between different WCS. If FALSE then nothing is done to rescale the image. This is useful when the input \option{image_in} is something like a segmentation or exposure map, where the actual values matter.
@@ -222,16 +222,24 @@ plot(GALEX_NUV)
 propaneWarp(GALEX_NUV, GALEX_NUV$keyvalues, plot=TRUE)
 propaneWarp(propaneWarp(GALEX_NUV, VST_r$keyvalues, interpolation='nearest'),
         GALEX_NUV$keyvalues, interpolation='nearest', plot=TRUE)
-}
+
+image = Rfits_read_image(system.file('extdata/VIKING/mystery_VIKING_Z.fits',
+  package="ProFound"))
+plot(image[1:200,1:200])
+
+#And we can upsample this with propaneRebin (not, this will look much the same):
+
+plot(propaneRebin(image, 2)[1:400,1:400])
+
+#And we can downsample
+
+plot(propaneRebin(image, 0.5)[1:100,1:100])
 
 # We can also do a simple translation and rotation:
 
-image = Rfits_read_image(system.file('extdata/VIKING/mystery_VIKING_Z.fits',
-  package="ProFound"), header=FALSE)
-magimage(image)
-
-image_tran = propaneTran(image, 2, 2, 5)
+image_tran = propaneTran(image$imDat, 2, 2, 5)
 magimage(image_tran)
+}
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
