@@ -191,6 +191,8 @@ Aaron Robotham
 This function uses a bi-cubic interpolation scheme by default. It should approximately conserve the flux in \option{image_in}, but this is not guaranteed. The 'linear' interpolation scheme may be closer to conserving flux in images with sharp features. The conservation is usually good to about 0.1\% (i.e. 0.01 mag). If you require better conservation than this then alternative schemes (e.g. SWarp) will be required.
 
 For working with segmentation maps, the following options should usually be used: \option{doscale} = FALSE, \option{interpolation} = 'nearest', \option{direction} = 'backward'.
+
+With \code{propaneRebin}, the outer pixels slightly change. This is because the interpolation is from the mid-point of the pixels, and if the upscaling is (e.g.) a factor x2 then only half the outer pixels are present (so 1, in this case).
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~

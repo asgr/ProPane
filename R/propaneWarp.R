@@ -449,17 +449,33 @@ propaneRebin = function(image, scale = 1,interpolation = 6){
          call. = FALSE)
   }
 
+  imdim = dim(image)
+  if(scale > 1){
+    scale = floor(scale)
+    size_x = imdim[1]*scale - (scale - 1L)
+    size_y = imdim[2]*scale - (scale - 1L)
+  }else{
+    scale = 1/ceiling(1/scale)
+    size_x = floor(imdim[1]*scale)
+    size_y = floor(imdim[2]*scale)
+  }
+
   if(inherits(image,'Rfits_image')){
-    image_resize = as.matrix(imager::resize(imager::as.cimg(image$imDat), -100*scale, -100*scale))
+    image_resize = as.matrix(imager::resize(im=imager::as.cimg(image$imDat), size_x=size_x, size_y=size_y, interpolation_type=interpolation))
     norm = matrix(1, dim(image$imDat)[1], dim(image$imDat)[2])
-    norm_resize = as.matrix(imager::resize(imager::as.cimg(norm), -100*scale, -100*scale))
+    norm_resize = as.matrix(imager::resize(im=imager::as.cimg(norm), size_x=size_x, size_y=size_y, interpolation_type=interpolation))
     image_resize = (image_resize / norm_resize) / scale^2
 
     keyvalues_out = image$keyvalues
     keyvalues_out$NAXIS1 = dim(image_resize)[1]
     keyvalues_out$NAXIS2 = dim(image_resize)[2]
-    keyvalues_out$CRPIX1 = (keyvalues_out$CRPIX1 - 0.5) * scale + 0.5
-    keyvalues_out$CRPIX2 = (keyvalues_out$CRPIX2 - 0.5) * scale + 0.5
+    if(scale > 1){
+      keyvalues_out$CRPIX1 = (keyvalues_out$CRPIX1 - 0.5) * scale
+      keyvalues_out$CRPIX2 = (keyvalues_out$CRPIX2 - 0.5) * scale
+    }else{
+      keyvalues_out$CRPIX1 = (keyvalues_out$CRPIX1 + 0.5) * scale
+      keyvalues_out$CRPIX2 = (keyvalues_out$CRPIX2 + 0.5) * scale
+    }
     keyvalues_out$CD1_1 = keyvalues_out$CD1_1 / scale
     keyvalues_out$CD1_2 = keyvalues_out$CD1_2 / scale
     keyvalues_out$CD2_1 = keyvalues_out$CD2_1 / scale
@@ -479,9 +495,9 @@ propaneRebin = function(image, scale = 1,interpolation = 6){
 
     return(image_out)
   }else{
-    image_resize = as.matrix(imager::resize(imager::as.cimg(image), -100*scale, -100*scale))
+    image_resize = as.matrix(imager::resize(im=imager::as.cimg(image), size_x=size_x, size_y=size_y, interpolation_type=interpolation))
     norm = matrix(1, dim(image)[1], dim(image)[2])
-    norm_resize = as.matrix(imager::resize(imager::as.cimg(norm), -100*scale, -100*scale))
+    norm_resize = as.matrix(imager::resize(im=imager::as.cimg(norm), size_x=size_x, size_y=size_y, interpolation_type=interpolation))
     image_resize = (image_resize / norm_resize) / scale^2
 
     return(image_resize)
