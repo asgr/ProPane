@@ -35,7 +35,7 @@ propaneStackWarpFunc(filelist = NULL, dirlist = NULL, extlist = 1,
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{image_list}{
-List; required. List of the input \code{Rfits_image} or \code{Rfits_pointer} objects to be warped and stacked. Masked pixels can be flagged with NA in the imDat component. See Details below. Note that the header information attached to the \option{image_list} is used for \option{inVar_list}, \option{exp_list}, \option{weight_list} and \option{mask_list} as appropriate.
+List; required. List of the input \code{Rfits_image} or \code{Rfits_pointer} objects to be warped and stacked. Masked pixels can be flagged with NA in the imDat component. The data must already be background subtracted to the level desired by the user (this is not done internally). Note that the header information attached to the \option{image_list} is used for \option{inVar_list}, \option{exp_list}, \option{weight_list} and \option{mask_list} as appropriate. See Details below.
 }
   \item{inVar_list}{
 Numeric vector or list of numeric matrices / \code{Rfits_image} / \code{Rfits_pointer}; optional. The inverse-variances. Either one value per \option{image_list} entry, or one pixel matched matrix per \option{image_list} entry. This is used to achieve S/N weighted stacking. If not provided then images are stacked with equal weight. See Details below.
