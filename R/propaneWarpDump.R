@@ -1,5 +1,5 @@
 propaneWarpDump = function(image_list=NULL, magzero_in=0, magzero_out=23.9, keyvalues_out=NULL,
-                           dim_out=NULL, cores=4, cores_warp=1, keepcrop=TRUE,
+                           dim_out=NULL, cores=floor(detectCores()/2), cores_warp=1, keepcrop=TRUE,
                            dump_dir=tempdir(), ...){
 
   if(!requireNamespace("Rfits", quietly = TRUE)){

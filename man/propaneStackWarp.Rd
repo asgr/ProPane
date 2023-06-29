@@ -14,23 +14,23 @@ Stacks multiple un-aligned images. This required warping to a common WCS before 
 \usage{
 propaneStackWarpInVar(image_list = NULL, inVar_list = NULL, exp_list = NULL,
   weight_list = NULL, mask_list = NULL, magzero_in = 0, magzero_out = 23.9,
-  keyvalues_out = NULL, dim_out = NULL, cores = 4, cores_warp = 1, Nbatch = cores,
-  keepcrop = TRUE, keep_extreme_pix = FALSE, doclip = FALSE, clip_tol = 100,
-  clip_dilate = 0, clip_sigma = 5, return_all = FALSE, dump_frames = FALSE,
-  dump_dir = tempdir(), ...)
+  keyvalues_out = NULL, dim_out = NULL, cores = floor(detectCores()/2), cores_warp = 1,
+  multitype = 'fork', Nbatch = cores, keepcrop = TRUE, keep_extreme_pix = FALSE,
+  doclip = FALSE, clip_tol = 100, clip_dilate = 0, clip_sigma = 5, return_all = FALSE,
+  dump_frames = FALSE, dump_dir = tempdir(), ...)
 
 propaneWarpDump(image_list = NULL, magzero_in = 0, magzero_out = 23.9,
-  keyvalues_out = NULL, dim_out = NULL, cores = 4, cores_warp = 1, keepcrop = TRUE,
-  dump_dir = tempdir(), ...)
+  keyvalues_out = NULL, dim_out = NULL, cores = floor(detectCores()/2), cores_warp = 1,
+  keepcrop = TRUE, dump_dir = tempdir(), ...)
 
 propaneStackWarpMed(filelist = NULL, dirlist = NULL, extlist = 1,
   pattern = NULL, recursive = TRUE, zap = NULL, keyvalues_out = NULL,
-  cores = 4, chunk = 1e3, doweight = TRUE, useCUTLO = TRUE)
+  cores = floor(detectCores()/2), chunk = 1e3, doweight = TRUE, useCUTLO = TRUE)
 
 propaneStackWarpFunc(filelist = NULL, dirlist = NULL, extlist = 1,
   pattern = NULL, recursive = TRUE, zap = NULL, keyvalues_out = NULL, imager_func = NULL,
-  weights = NULL, probs = c(0.159, 0.5, 0.841), cores = 4, chunk = 1e3, doweight = TRUE,
-  useCUTLO = TRUE)
+  weights = NULL, probs = c(0.159, 0.5, 0.841), cores = floor(detectCores()/2),
+  chunk = 1e3, doweight = TRUE, useCUTLO = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -71,10 +71,13 @@ Numeric vector; quantile probabilites between 0-1. This is only used in the spec
 Integer vector; this defines the desired dimensions of the output image. If this is not provided then the output image is made to be the same size as the NAXIS1 and NAXIS2 arguments taken from \option{header_out} (which is usually what you will want TBH).
 }
   \item{cores}{
-Integer scalar; the number of cores to run top level stacking on. In general larger will be faster, assuming you have enough memory to hold that many images in memory. Once you are using around half of the available RAM you will see bigger performance loss due to memory pressure than gains due to more CPU power. Make sure not to set \option{cores} to more than the available cores, see \code{detectCores} in the \code{parallel} package (and probably no more than available cores minus 2). This needs to be used carefully in combination with the \option{cores_warp} argument since in total you do not want to set \option{cores} x \option{cores_warp} than you have have machine cores/threads available (probably machine cores/threads - 2).
+Integer scalar; the number of cores to run top level stacking on. In general larger will be faster, assuming you have enough memory to hold that many images in memory. Once you are using around half of the available RAM you will see bigger performance loss due to memory pressure than gains due to more CPU power. Make sure not to set \option{cores} to more than the available cores, see \code{detectCores} in the \code{parallel} package (and probably no more than available cores minus 2). This needs to be used carefully in combination with the \option{cores_warp} argument since in total you do not want to set \option{cores} x \option{cores_warp} than you have have machine cores/threads available (probably machine cores/threads - 2). Default is half the available cores.
 }
   \item{cores_warp}{
 Integer scalar; the number of cores used for warping. This needs to be used carefully in combination with the \option{cores} argument since in total you do not want to set \option{cores} x \option{cores_warp} than you have have machine cores/threads available (probably machine cores/threads - 2).
+}
+  \item{multitype}{
+Character scalar; options are 'fork' (often best for Unix like and non-Gui sessions) and 'cluster' (Windows, and when using a Gui like R-Studio or threaded task). 'cluster' is also meant to be a bit more stable (if you have issues) but there is more memory copying overhead, so will generally be slower.
 }
   \item{Nbatch}{
 Integer scalar; the size of processing batches to be used internally. This can be larger than \option{cores}, but usually it makes more sense to set \option{Nbatch} = \option{cores} since that will minimise memory and maximise CPU usage. If \option{return_all} = TRUE or \option{doclip} = TRUE then \option{Nbatch} will be set to the number of images (since all pre-stack projected images will either be returned or need to be processed for clipped stacking). The fastest possible speed (but maximal memory impact) will be \option{Nbatch} = \option{cores} = length(\option{image_list}). The slowest speed (but minimal memory impact) will be \option{Nbatch} = 1. A good compromise is to work out how many images will fit within half of the available RAM (Nsafe), and set \option{Nbatch} = \option{cores} = Nsafe (making sure not to set \option{cores} to more than the available cores, see \code{detectCores} in the \code{parallel} package).
@@ -202,7 +205,6 @@ Aaron Robotham
 #Recommended to use Rfits (will be supported longer term):
 library(Rfits)
 library(Rwcs)
-library(foreach)
 
 file_image = system.file('extdata', 'image.fits', package = "Rfits")
 image = Rfits_read_image(file_image)

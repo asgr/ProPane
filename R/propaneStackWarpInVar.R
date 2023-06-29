@@ -1,6 +1,6 @@
 propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL, weight_list=NULL,
                       mask_list=NULL, magzero_in=0, magzero_out=23.9, keyvalues_out=NULL,
-                      dim_out=NULL, cores=4, cores_warp=1, Nbatch=cores, keepcrop=TRUE,
+                      dim_out=NULL, cores=floor(detectCores()/2), cores_warp=1, multitype='fork', Nbatch=cores, keepcrop=TRUE,
                       keep_extreme_pix=FALSE, doclip=FALSE, clip_tol=100, clip_dilate=0, clip_sigma=5,
                       return_all=FALSE, dump_frames=FALSE, dump_dir=tempdir(), ...){
 
@@ -24,7 +24,21 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
     message('Frames being dumped to ', dump_dir)
   }
 
-  registerDoParallel(cores=cores)
+  # if(supportsMulticore()){
+  #   plan('multicore', workers=cores)
+  # }else{
+  #   plan('multisession', workers=cores)
+  # }
+  #registerDoFuture()
+
+  if(multitype=='fork'){
+    registerDoParallel(cores=cores)
+  }else if(multitype=='cluster'){
+    registerDoParallel(cl=cores)
+  }
+
+  # cl = makeCluster(cores, type=multitype)
+  # registerDoParallel(cl)
 
   Nim = length(image_list)
 
@@ -1101,6 +1115,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
                   dump_dir = dump_dir)
   }
   class(output) = "ProPane"
+  stopImplicitCluster()
   return(invisible(output))
 }
 
