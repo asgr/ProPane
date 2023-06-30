@@ -424,10 +424,7 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out = NULL, dim_out 
     image_out$keycomments$YCUTLO = 'Low image y range'
     image_out$keycomments$YCUTHI = 'High image y range'
 
-    image_out$keynames['XCUTLO'] = 'XCUTLO'
-    image_out$keynames['XCUTHI'] = 'XCUTHI'
-    image_out$keynames['YCUTLO'] = 'YCUTLO'
-    image_out$keynames['YCUTHI'] = 'YCUTHI'
+    image_out$keynames = names(image_out$keyvalues)
 
     image_out$crop = c(xlo=min_x_in, xhi=max_x_in, ylo=min_y_in, yhi=max_y_in) #we want to keep the subset location for potential later writing
   }
