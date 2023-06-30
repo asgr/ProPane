@@ -97,10 +97,7 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out = NULL, dim_out 
       image_in$header = Rfits_keyvalues_to_header(image_in$keyvalues)
       image_in$raw = Rfits_header_to_raw(Rfits_keyvalues_to_header(image_in$keyvalues))
 
-      image_in$keynames['XCUTLO'] = 'XCUTLO'
-      image_in$keynames['XCUTHI'] = 'XCUTHI'
-      image_in$keynames['YCUTLO'] = 'YCUTLO'
-      image_in$keynames['YCUTHI'] = 'YCUTHI'
+      image_in$keynames = names(image_in$keyvalues)
 
       image_in$keycomments$XCUTLO = 'Low image x range'
       image_in$keycomments$XCUTHI = 'High image x range'
