@@ -21,16 +21,17 @@ propaneStackWarpInVar(image_list = NULL, inVar_list = NULL, exp_list = NULL,
 
 propaneWarpDump(image_list = NULL, magzero_in = 0, magzero_out = 23.9,
   keyvalues_out = NULL, dim_out = NULL, cores = floor(detectCores()/2), cores_warp = 1,
-  keepcrop = TRUE, dump_dir = tempdir(), ...)
+  multitype = 'fork', keepcrop = TRUE, dump_dir = tempdir(), ...)
 
 propaneStackWarpMed(filelist = NULL, dirlist = NULL, extlist = 1,
   pattern = NULL, recursive = TRUE, zap = NULL, keyvalues_out = NULL,
-  cores = floor(detectCores()/2), chunk = 1e3, doweight = TRUE, useCUTLO = TRUE)
+  cores = floor(detectCores()/2), multitype = 'fork', chunk = 1e3, doweight = TRUE,
+  useCUTLO = TRUE)
 
 propaneStackWarpFunc(filelist = NULL, dirlist = NULL, extlist = 1,
   pattern = NULL, recursive = TRUE, zap = NULL, keyvalues_out = NULL, imager_func = NULL,
   weights = NULL, probs = c(0.159, 0.5, 0.841), cores = floor(detectCores()/2),
-  chunk = 1e3, doweight = TRUE, useCUTLO = TRUE)
+  multitype = 'fork', chunk = 1e3, doweight = TRUE, useCUTLO = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -59,7 +60,7 @@ Numeric scalar; the output mag-zero point desired. A nice \option{magzero_out} i
 List; output header values to be used for the WCS. This is the target WCS projection that each image in \option{image_list} will be mapped onto.
 }
   \item{imager_func}{
-Function (or character scalar for special case); the \code{imager} combine function to apply. This can be any of the ones in ?imager.combine. The default of NULL means it will use the \code{average} function. As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{pro}). \option{imager_func} = 'InVar' (with speech marks) will return the inverse-variance scaled correctly by exposures (which is what we use for general stacking). \option{imager_func} = 'waverage' will return a weighted average using the \option{weights} values for the per frame weights, but note this only works in regions where all frames contribute. In most practical applications you should use \code{propaneStackWarpInVar} for proper inverse-variance weighted stacking, but this method might be useful as a quick check.
+Function (or character scalar for special case); the \code{imager} combine function to apply. This can be any of the ones in ?imager.combine. The default of NULL means it will use the \code{average} function. As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{probs}). \option{imager_func} = 'InVar' (with speech marks) will return the inverse-variance scaled correctly by exposures (which is what we use for general stacking). \option{imager_func} = 'waverage' will return a weighted average using the \option{weights} values for the per frame weights, but note this only works in regions where all frames contribute. In most practical applications you should use \code{propaneStackWarpInVar} for proper inverse-variance weighted stacking, but this method might be useful as a quick check.
 }
   \item{weights}{
 Numeric vector; weights to use for image combining. Only relevant for \option{imager_func} = imager::wsum or \option{imager_func} = 'waverage'. The latter becomes a weighted average, where the input weights should in effect be the per image inverse-variance.
@@ -298,7 +299,7 @@ dump = propaneWarpDump(image_list = image_list,
                          magzero_out = 23.9 #micro-jansky output
 )
 
-stack_med = propaneStackWarpMed(dirlist=dump, keyvalues_out=keyvalues,
+stack_med = propaneStackWarpMed(dirlist=dump, keyvalues_out=keyvalues_out,
   pattern=glob2rx('*image_warp*'))
 
 plot(stack_med$image, qdiff=TRUE)
@@ -341,6 +342,51 @@ test_pro = profoundProFound(stack_mask, skyRMS=1/sqrt(InVar),
   mask=stack3$weight$imDat < 2, redosky=FALSE, magzero=23.9)
 
 plot(test_pro)
+
+#Now we are going to inject hot and cold pixels and try clipping:
+
+image_list = Rfits_make_list(dirlist = system.file('extdata/stack/', package="ProPane"),
+                              extlist = 2, pointer = FALSE) #load full images
+
+set.seed(666) #set a random seed
+selhot = sample(prod(dim(image_list[[1]])), 1e4)
+image_list[[1]]$imDat[selhot] = 1e3 #inject hot pixels
+
+selcold = sample(prod(dim(image_list[[2]])), 1e4)
+image_list[[2]]$imDat[selcold] = -1e3 #inject cold pixels
+
+plot(image_list[[1]][1e3,1e3,box=201], qdiff=TRUE)
+plot(image_list[[2]][1e3,1e3,box=201], qdiff=TRUE)
+
+#First we can see this will not look great without clipping:
+stack3_noclip = propaneStackWarpInVar(image_list = image_list,
+                   inVar_list = 0.000468, #assume all have the same inVar
+                   exp_list = 10, #all have the same exposure time of 10s
+                   cores = 8,
+                   keyvalues_out = keyvalues_out,
+                   magzero_in = 30,
+                   magzero_out = 23.9, #micro-jansky output
+                   keepcrop = FALSE, #so we can see the frames lined up
+                   return_all = TRUE #so we keep the warped frames
+                   )
+plot(stack3_noclip$image[1e3,1e3,box=201], qdiff=TRUE)
+plot(stack3_noclip$image_pre_stack[[1]][1e3,1e3,box=201], qdiff=TRUE) #hot frame
+plot(stack3_noclip$image_pre_stack[[2]][1e3,1e3,box=201], qdiff=TRUE) #cold frame
+
+#And much better with clipping:
+stack3_clip = propaneStackWarpInVar(image_list = image_list,
+                   inVar_list = 0.000468, #assume all have the same inVar
+                   exp_list = 10, #all have the same exposure time of 10s
+                   cores = 8,
+                   keyvalues_out = keyvalues_out,
+                   magzero_in = 30,
+                   magzero_out = 23.9, #micro-jansky output
+                   doclip = TRUE,
+                   clip_tol=10
+                   )
+
+plot(stack3_clip$image[1e3,1e3,box=201], qdiff=TRUE)
+plot(stack3_clip$clip[1e3,1e3,box=201])
 }
 }
 \concept{ ~warp }

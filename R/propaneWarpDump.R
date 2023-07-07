@@ -1,6 +1,6 @@
 propaneWarpDump = function(image_list=NULL, magzero_in=0, magzero_out=23.9, keyvalues_out=NULL,
-                           dim_out=NULL, cores=floor(detectCores()/2), cores_warp=1, keepcrop=TRUE,
-                           dump_dir=tempdir(), ...){
+                           dim_out=NULL, cores=floor(detectCores()/2), cores_warp=1,  multitype='fork',
+                           keepcrop=TRUE, dump_dir=tempdir(), ...){
 
   if(!requireNamespace("Rfits", quietly = TRUE)){
     stop('The Rfits package is needed for stacking to work. Please install from GitHub asgr/Rfits.', call. = FALSE)
@@ -16,7 +16,11 @@ propaneWarpDump = function(image_list=NULL, magzero_in=0, magzero_out=23.9, keyv
   }
   message('Frames being dumped to ', dump_dir)
 
-  registerDoParallel(cores=cores)
+  if(multitype=='fork'){
+    registerDoParallel(cores=cores)
+  }else if(multitype=='cluster'){
+    registerDoParallel(cl=cores)
+  }
 
   Nim = length(image_list)
 

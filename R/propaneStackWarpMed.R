@@ -7,6 +7,7 @@ propaneStackWarpMed = function(
     zap = NULL,
     keyvalues_out = NULL,
     cores = floor(detectCores()/2),
+    multitype = 'fork',
     chunk = 1e3,
     doweight = TRUE,
     useCUTLO = TRUE){
@@ -27,7 +28,11 @@ propaneStackWarpMed = function(
     stop('The imager package is needed for stacking to work. Please install from GitHub asgr/Rfits.', call. = FALSE)
   }
 
-  registerDoParallel(cores=cores)
+  if(multitype=='fork'){
+    registerDoParallel(cores=cores)
+  }else if(multitype=='cluster'){
+    registerDoParallel(cl=cores)
+  }
 
   image_list = Rfits_make_list(filelist = filelist,
                                dirlist = dirlist,
@@ -188,6 +193,7 @@ propaneStackWarpFunc = function(
     weights = NULL,
     probs = c(0.159, 0.5, 0.841),
     cores = floor(detectCores()/2),
+    multitype = 'fork',
     chunk = 1e3,
     doweight = TRUE,
     useCUTLO = TRUE){
@@ -212,7 +218,11 @@ propaneStackWarpFunc = function(
     imager_func = imager::average
   }
 
-  registerDoParallel(cores=cores)
+  if(multitype=='fork'){
+    registerDoParallel(cores=cores)
+  }else if(multitype=='cluster'){
+    registerDoParallel(cl=cores)
+  }
 
   image_list = Rfits_make_list(filelist = filelist,
                                dirlist = dirlist,
@@ -278,7 +288,7 @@ propaneStackWarpFunc = function(
 
     if(!is.null(weights)){
       weights_temp = weights[temp_overlap]
-      if(tolower(imager_func) == 'waverage'){
+      if(ifelse(is.character(imager_func), tolower(imager_func) == 'waverage', FALSE)){
         weights_temp = weights_temp/sum(weights_temp)
       }
     }
@@ -331,14 +341,14 @@ propaneStackWarpFunc = function(
       }
     }
 
-    if(doweight | tolower(imager_func) == 'invar'){
+    if(doweight | ifelse(is.character(imager_func), tolower(imager_func) == 'invar', FALSE)){
       weight_list = foreach(j = 1:length(image_list_cut))%do%{
         return(imager::as.cimg(!is.na(image_list_cut[[j]])))
       }
 
       weight = as.matrix(imager::add(weight_list))
 
-      if(tolower(imager_func) == 'invar'){
+      if(ifelse(is.character(imager_func), tolower(imager_func) == 'invar', FALSE)){
         image = image*(weight - 1)
         image[weight < 2] = NA
       }
