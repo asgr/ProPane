@@ -17,6 +17,7 @@ export(propanePatch)
 
 #Utility
 export(propaneFrameFinder)
+export(propaneMaskPix)
 
 useDynLib(ProPane, .registration=TRUE)
 
