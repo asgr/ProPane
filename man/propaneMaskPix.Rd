@@ -8,13 +8,16 @@ Automatically Identify and Mask bad Pixels
 Given an image, can identify bad (cold or hot) pixels with a few parameters controlling how aggressively this is done. Either the binary mask can be returned, or the image itself with bad pixels masked, or finally the masked pixels can be replaced by good local values (patched) to fill the gaps.
 }
 \usage{
-propaneMaskPix(image, smooth = 1, sigma = 10, pixcut = 1, cold = FALSE, hot = TRUE,
-  return = "image", patch = FALSE, allow_write = FALSE, plot = FALSE, ...)
+propaneMaskPix(image, mask = NULL, smooth = 1, sigma = 10, pixcut = 1, cold = FALSE,
+  hot = TRUE, return = "image", patch = FALSE, allow_write = FALSE, plot = FALSE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{image}{
 An image to mask. Must be either object class Rfits_image or Rfits_pointer, i.e. as read in by \code{\link{Rfits_read_image}} or \code{\link{Rfits_point}}, or just a simple matrix.
+}
+  \item{mask}{
+Boolean matrix or integer scalar (1,0); optional, parts of the image to mask out (i.e. ignore). This matrix mus* be the same dimensions as \option{image} where 1 means mask out and 0 means use for analysis.
 }
   \item{smooth}{
 Numeric scalar; standard deviation of the blur. This controls how sensitive we are to bad pixels and image noise. Generally should be in the range of 1-3, and for most types of bad pixel 1 is fine.
@@ -68,7 +71,7 @@ image = Rfits_read_image(system.file('extdata/stack/image_1.fits', package="ProP
   ext=2, xlo=301, xhi=500, ylo=1601, yhi=1800) #load image
 
 set.seed(666) #set a random seed
-selhot = sample(prod(dim(image)), 1e2)
+selhot = sample(prod(dim(image)), 100)
 bad = matrix(0L, dim(image)[1], dim(image)[2])
 bad[selhot] = 1e3
 image$imDat = image$imDat + bad
@@ -77,14 +80,21 @@ magimage(bad)
 plot(image, qdiff=TRUE)
 
 #Just make a mask:
-mask = propaneMaskPix(image, return='mask')
-magimage(mask)
+mask_out = propaneMaskPix(image, return='mask')
+magimage(mask_out)
 
 #We find all bad pixels and accidentally flag two extra ones:
-magimage(bad - mask*1e3, qdiff=TRUE)
+magimage(bad - mask_out*1e3, qdiff=TRUE)
 
 #And now return the original image with local patching (looks nice!):
 image_fix = propaneMaskPix(image, patch=TRUE, plot=TRUE, qdiff=TRUE)
+
+#If we want our analysis to ignore some of the image we can use the mask:
+mask_in = matrix(0L, 200, 200)
+mask_in[1:100, 1:100] = 1L
+
+#The bad pixels we still be present in the masked region:
+propaneMaskPix(image, mask_in, patch=TRUE, plot=TRUE, qdiff=TRUE)
 }
 
 \concept{ ~mask }
