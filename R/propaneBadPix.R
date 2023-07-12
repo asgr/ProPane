@@ -132,9 +132,11 @@ propanePatchPix = function(image, mask=NULL, smooth=1, allow_write=FALSE, plot=F
 
   if(!is.null(mask)){
     image_data[mask_in_sel] = image_orig[mask_in_sel]
+    sel_patch = which(is.na(image_data) & !mask_in_sel, arr.ind=TRUE)
+  }else{
+    sel_patch = which(is.na(image_data), arr.ind=TRUE)
   }
 
-  sel_patch = which(is.na(image_data) & !mask_in_sel, arr.ind=TRUE)
   image_data[sel_patch] = blur[sel_patch]
 
   if(inherits(image, 'Rfits_image')){

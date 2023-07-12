@@ -101,6 +101,11 @@ mask_in[1:100, 1:100] = 1L
 
 #The bad pixels we still be present in the masked region:
 propaneBadPix(image, mask_in, patch=TRUE, plot=TRUE, qdiff=TRUE)
+
+#And just to test the direct patching:
+image$imDat[selhot] = NA
+plot(image, qdiff=TRUE)
+propanePatchPix(image, plot=TRUE,, qdiff=TRUE)
 }
 
 \concept{ ~mask }
