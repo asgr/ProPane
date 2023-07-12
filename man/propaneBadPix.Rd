@@ -1,15 +1,19 @@
-\name{propaneMaskPix}
-\alias{propaneMaskPix}
+\name{propaneBadPix}
+\alias{propaneBadPix}
+\alias{propanePatchPix}
+\alias{propanePix}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Automatically Identify and Mask bad Pixels
+Automatically Identify Mask and Patch Bad Pixels
 }
 \description{
 Given an image, can identify bad (cold or hot) pixels with a few parameters controlling how aggressively this is done. Either the binary mask can be returned, or the image itself with bad pixels masked, or finally the masked pixels can be replaced by good local values (patched) to fill the gaps.
 }
 \usage{
-propaneMaskPix(image, mask = NULL, smooth = 1, sigma = 10, pixcut = 1, cold = FALSE,
+propaneBadPix(image, mask = NULL, smooth = 1, sigma = 10, pixcut = 1, cold = FALSE,
   hot = TRUE, return = "image", patch = FALSE, allow_write = FALSE, plot = FALSE, ...)
+
+propanePatchPix(image, mask = NULL, smooth = 1, allow_write = FALSE, plot = FALSE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -51,7 +55,9 @@ Further arguments to be passed to \code{\link{Rwcs_image}} and \code{\link{magim
 }
 }
 \details{
-In general the outputs of \code{propaneMaskPix} can be used as inputs for the various stacking routines in \code{ProPane}.
+\code{propaneBadPix} will both identify bad pixels (cold or hot) and optionally patch them, whilst \code{propanePatchPix} will just patch in flagged (NA) pixels with local values.
+
+In general the outputs of \code{propaneBadPix} can be used as inputs for the various stacking routines in \code{ProPane}.
 }
 \value{
 Either a Rfits_image, Rfits_pointer or matrix depending on the combination of \option{return} and \option{allow_write}.
@@ -80,21 +86,21 @@ magimage(bad)
 plot(image, qdiff=TRUE)
 
 #Just make a mask:
-mask_out = propaneMaskPix(image, return='mask')
+mask_out = propaneBadPix(image, return='mask')
 magimage(mask_out)
 
 #We find all bad pixels and accidentally flag two extra ones:
 magimage(bad - mask_out*1e3, qdiff=TRUE)
 
 #And now return the original image with local patching (looks nice!):
-image_fix = propaneMaskPix(image, patch=TRUE, plot=TRUE, qdiff=TRUE)
+image_fix = propaneBadPix(image, patch=TRUE, plot=TRUE, qdiff=TRUE)
 
 #If we want our analysis to ignore some of the image we can use the mask:
 mask_in = matrix(0L, 200, 200)
 mask_in[1:100, 1:100] = 1L
 
 #The bad pixels we still be present in the masked region:
-propaneMaskPix(image, mask_in, patch=TRUE, plot=TRUE, qdiff=TRUE)
+propaneBadPix(image, mask_in, patch=TRUE, plot=TRUE, qdiff=TRUE)
 }
 
 \concept{ ~mask }

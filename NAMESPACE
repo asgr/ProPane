@@ -15,9 +15,10 @@ export(propaneStackFlatInVar)
 export(propaneStackFlatFunc)
 export(propanePatch)
 
-#Utility
+#Utility:
 export(propaneFrameFinder)
-export(propaneMaskPix)
+export(propaneBadPix)
+export(propanePatchPix)
 
 useDynLib(ProPane, .registration=TRUE)
 
