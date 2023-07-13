@@ -58,10 +58,15 @@ propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FA
     image_data[mask_in_sel] = image_orig[mask_in_sel]
   }
 
-  mask_rough = (image_diff < thresh_cold) | (image_diff > thresh_hot)
-  mask_label = as.matrix(imager::label(imager::as.cimg(mask_rough)))
-  sel = which(tabulate(mask_label) <= pixcut)
-  mask_loc = which(matrix(mask_label %in% sel, dim(image)[1], dim(image)[2]), arr.ind=TRUE)
+  mask_rough_cold = (image_diff < thresh_cold)
+  mask_label_cold = as.matrix(imager::label(imager::as.cimg(mask_rough_cold)))
+  sel_cold = which(tabulate(mask_label_cold) <= pixcut)
+
+  mask_rough_hot = (image_diff > thresh_hot)
+  mask_label_hot = as.matrix(imager::label(imager::as.cimg(mask_rough_hot)))
+  sel_hot = which(tabulate(mask_label_hot) <= pixcut)
+
+  mask_loc = which(matrix(mask_label_cold %in% sel_cold | mask_label_hot %in% sel_hot, dim(image)[1], dim(image)[2]), arr.ind=TRUE)
 
   if(return == 'image'){
     image_data[mask_loc] = NA
