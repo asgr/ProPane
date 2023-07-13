@@ -113,7 +113,10 @@ propaneBadPix(image, mask_in, patch=TRUE, plot=TRUE, qdiff=TRUE)
 #And just to test the direct patching:
 image$imDat[selhot] = NA
 plot(image, qdiff=TRUE)
-propanePatchPix(image, plot=TRUE,, qdiff=TRUE)
+propanePatchPix(image, plot=TRUE, qdiff=TRUE)
+
+#We can further filate the bad pixels:
+propanePatchPix(image, dilate=TRUE, size=5, plot=TRUE, qdiff=TRUE)
 }
 
 \concept{ ~mask }
