@@ -1,5 +1,5 @@
-propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FALSE, hot=TRUE, return='image',
-                         patch=FALSE, allow_write=FALSE, plot=FALSE, ...){
+propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FALSE, hot=TRUE,
+                         dilate=FALSE, size=3, return='image', patch=FALSE, allow_write=FALSE, plot=FALSE, ...){
   if(!requireNamespace("imager", quietly = TRUE)){
     stop('The imager package is needed for stacking to work. Please install from GitHub asgr/Rfits.', call. = FALSE)
   }
@@ -10,6 +10,8 @@ propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FA
   assertIntegerish(pixcut, len=1)
   assertFlag(cold)
   assertFlag(hot)
+  assertFlag(dilate)
+  assertIntegerish(size)
   assertChoice(return, c('image', 'mask', 'loc'))
   assertFlag(patch)
   assertFlag(allow_write)
@@ -61,12 +63,23 @@ propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FA
   mask_rough_cold = (image_diff < thresh_cold)
   mask_label_cold = as.matrix(imager::label(imager::as.cimg(mask_rough_cold)))
   sel_cold = which(tabulate(mask_label_cold) <= pixcut)
+  mask_rough_cold[!mask_label_cold %in% sel_cold] = 0L
 
   mask_rough_hot = (image_diff > thresh_hot)
   mask_label_hot = as.matrix(imager::label(imager::as.cimg(mask_rough_hot)))
   sel_hot = which(tabulate(mask_label_hot) <= pixcut)
+  mask_rough_hot[!mask_label_hot %in% sel_hot] = 0L
 
-  mask_loc = which(matrix(mask_label_cold %in% sel_cold | mask_label_hot %in% sel_hot, dim(image)[1], dim(image)[2]), arr.ind=TRUE)
+  if(dilate){
+    if(size %% 2 == 0){
+      size = size + 1
+    }
+    kernel = imager::px.circle(size/2,size,size)
+    mask_rough_cold = as.matrix(imager::dilate(imager::as.cimg(mask_rough_cold), mask=kernel))
+    mask_rough_hot = as.matrix(imager::dilate(imager::as.cimg(mask_rough_hot), mask=kernel))
+  }
+
+  mask_loc = which(mask_rough_cold + mask_rough_hot > 0L, arr.ind=TRUE)
 
   if(return == 'image'){
     image_data[mask_loc] = NA
@@ -105,7 +118,8 @@ propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FA
   }
 }
 
-propanePatchPix = function(image, mask=NULL, smooth=1, allow_write=FALSE, plot=FALSE, ...){
+propanePatchPix = function(image, mask=NULL, smooth=1, dilate=FALSE, size=3, allow_write=FALSE,
+                           plot=FALSE, ...){
   if(!requireNamespace("imager", quietly = TRUE)){
     stop('The imager package is needed for stacking to work. Please install from GitHub asgr/Rfits.', call. = FALSE)
   }
@@ -131,6 +145,15 @@ propanePatchPix = function(image, mask=NULL, smooth=1, allow_write=FALSE, plot=F
     mask_in_sel = mask > 0L
     image_orig = image_data
     image_data[mask_in_sel] = NA
+  }
+
+  if(dilate){
+    if(size %% 2 == 0){
+      size = size + 1
+    }
+    kernel = imager::px.circle(size/2,size,size)
+    mask_rough = as.matrix(imager::dilate(imager::as.cimg(is.na(image_data)), mask=kernel))
+    image_data[mask_rough > 0L] = NA
   }
 
   blur = as.matrix(imager::isoblur(imager::as.cimg(image_data),smooth,na.rm=TRUE))

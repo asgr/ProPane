@@ -11,9 +11,11 @@ Given an image, can identify bad (cold or hot) pixels with a few parameters cont
 }
 \usage{
 propaneBadPix(image, mask = NULL, smooth = 1, sigma = 10, pixcut = 1, cold = FALSE,
-  hot = TRUE, return = "image", patch = FALSE, allow_write = FALSE, plot = FALSE, ...)
+  hot = TRUE, dilate = FALSE, size = 3, return = "image", patch = FALSE,
+  allow_write = FALSE, plot = FALSE, ...)
 
-propanePatchPix(image, mask = NULL, smooth = 1, allow_write = FALSE, plot = FALSE, ...)
+propanePatchPix(image, mask = NULL, smooth = 1, dilate = FALSE, size = 3,
+  allow_write = FALSE, plot = FALSE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -37,6 +39,12 @@ Logical; should cold pixels be flagged? Some types of detector are prone to both
 }
   \item{hot}{
 Logical; should cold pixels be flagged? Some types of detector are prone to both cold and hot pixels (infrared) but some only experience hot pixels (hence the default is TRUE).
+}
+  \item{dilate}{
+Logical; should the bad pixel mask be further dilated by a circular kernel of diameter \option{size}?
+}
+  \item{size}{
+Numeric scalar; the circular diamater of the bad pixel mask dilation (when \option{dilate} = TRUE). \option{size} must be odd, and if even then 1 will be added automatically.
 }
   \item{return}{
 Character scalar; what to return. Options are 'image' where the input \option{image} is modified (bad pixels set to NA or patched) and returned; 'mask' where a binary mask matrix is returned, and 'loc' where the row and column locations of bad pixels are returned in a [Nbad x 2] matrix.
