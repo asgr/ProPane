@@ -10,7 +10,7 @@ propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FA
   assertIntegerish(pixcut, max.len=2)
   assertFlag(cold)
   assertFlag(hot)
-  assertFlag(dilate, max.len=2)
+  assertLogical(dilate, max.len=2)
   assertIntegerish(size, max.len=2)
   assertChoice(return, c('image', 'mask', 'loc'))
   assertFlag(patch)
