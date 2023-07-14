@@ -54,8 +54,8 @@ propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FA
     image_data[mask_in_sel] = NA
   }
 
-  blur = as.matrix(imager::isoblur(imager::as.cimg(image_data),smooth,na.rm=TRUE))
-  image_diff = image_data - blur
+  image_blur = as.matrix(imager::isoblur(imager::as.cimg(image_data),smooth,na.rm=TRUE))
+  image_diff = image_data - image_blur
 
   quancuts = quantile(image_diff, c(0.1586553, 0.5), na.rm=TRUE)
 
@@ -76,12 +76,12 @@ propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FA
     image_data[mask_in_sel] = image_orig[mask_in_sel]
   }
 
-  mask_rough_cold = (image_diff < thresh_cold)
+  mask_rough_cold = (image_diff < thresh_cold) & (image_data <= 0)
   mask_label_cold = as.matrix(imager::label(imager::as.cimg(mask_rough_cold)))
   sel_cold = which(tabulate(mask_label_cold) <= pixcut[1])
   mask_rough_cold[!mask_label_cold %in% sel_cold] = 0L
 
-  mask_rough_hot = (image_diff > thresh_hot)
+  mask_rough_hot = (image_diff > thresh_hot) & (image_data >= 0)
   mask_label_hot = as.matrix(imager::label(imager::as.cimg(mask_rough_hot)))
   sel_hot = which(tabulate(mask_label_hot) <= pixcut[2])
   mask_rough_hot[!mask_label_hot %in% sel_hot] = 0L
@@ -108,8 +108,8 @@ propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FA
     image_data[mask_loc] = NA
 
     if(patch){
-      blur = as.matrix(imager::isoblur(imager::as.cimg(image_data),smooth,na.rm=TRUE))
-      image_data[mask_loc] = blur[mask_loc]
+      image_blur = as.matrix(imager::isoblur(imager::as.cimg(image_data),smooth,na.rm=TRUE))
+      image_data[mask_loc] = image_blur[mask_loc]
     }
 
     if(inherits(image, 'Rfits_image')){
@@ -179,7 +179,7 @@ propanePatchPix = function(image, mask=NULL, smooth=1, dilate=FALSE, size=3, all
     image_data[mask_rough > 0L] = NA
   }
 
-  blur = as.matrix(imager::isoblur(imager::as.cimg(image_data),smooth,na.rm=TRUE))
+  image_blur = as.matrix(imager::isoblur(imager::as.cimg(image_data),smooth,na.rm=TRUE))
 
   if(!is.null(mask)){
     image_data[mask_in_sel] = image_orig[mask_in_sel]
@@ -188,7 +188,7 @@ propanePatchPix = function(image, mask=NULL, smooth=1, dilate=FALSE, size=3, all
     sel_patch = which(is.na(image_data), arr.ind=TRUE)
   }
 
-  image_data[sel_patch] = blur[sel_patch]
+  image_data[sel_patch] = image_blur[sel_patch]
 
   if(inherits(image, 'Rfits_image')){
     image$imDat = image_data
