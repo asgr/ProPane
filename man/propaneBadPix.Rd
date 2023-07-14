@@ -26,10 +26,10 @@ An image to mask. Must be either object class Rfits_image or Rfits_pointer, i.e.
 Boolean matrix or integer scalar (1,0); optional, parts of the image to mask out (i.e. ignore). This matrix mus* be the same dimensions as \option{image} where 1 means mask out and 0 means use for analysis.
 }
   \item{smooth}{
-Numeric scalar; standard deviation of the blur. This controls how sensitive we are to bad pixels and image noise. Generally should be in the range of 1-3, and for most types of bad pixel 1 is fine.
+Numeric scalar/vector; standard deviation of the blur. This controls how sensitive we are to bad pixels and image noise. Generally should be in the range of 1-3, and for most types of bad pixel 1 is fine. If length 1, then the value will be used for both cold/hot, otherwise provide a vector corresponding to cold (smooth[1] / hot (smooth[2]) options.
 }
   \item{sigma}{
-Numeric scalar; the significance threshold. Higher means fewer (more extreme) pixels will be flagged. You probably want this in the range 5-20.
+Numeric scalar/vector; the significance threshold. Higher means fewer (more extreme) pixels will be flagged. You probably want this in the range 5-20. If length 1, then the value will be used for both cold/hot, otherwise provide a vector corresponding to cold (sigma[1] / hot (sigma[2]) options.
 }
   \item{pixcut}{
 Numeric scalar; the maximum number of pixels that need to be grouped to be flagged as bad. Generally this should be quite low (1-5) since larger values will start to identify the cores of bright stars etc as being bad pixels.
@@ -41,10 +41,10 @@ Logical; should cold pixels be flagged? Some types of detector are prone to both
 Logical; should cold pixels be flagged? Some types of detector are prone to both cold and hot pixels (infrared) but some only experience hot pixels (hence the default is TRUE).
 }
   \item{dilate}{
-Logical; should the bad pixel mask be further dilated by a circular kernel of diameter \option{size}?
+Logical scalar/vector; should the bad pixel mask be further dilated by a circular kernel of diameter \option{size}? If length 1, then the logic will be used for both cold/hot, otherwise provide a vector corresponding to cold (dilate[1] / hot (dilate[2]) options.
 }
   \item{size}{
-Numeric scalar; the circular diamater of the bad pixel mask dilation (when \option{dilate} = TRUE). \option{size} must be odd, and if even then 1 will be added automatically.
+Numeric scalar/vector; the circular diamater of the bad pixel mask dilation (when \option{dilate} = TRUE). \option{size} must be odd, and if even then 1 will be added automatically. If length 1, then the value will be used for both cold/hot, otherwise provide a vector corresponding to cold (size[1] / hot (size[2]) options.
 }
   \item{return}{
 Character scalar; what to return. Options are 'image' where the input \option{image} is modified (bad pixels set to NA or patched) and returned; 'mask' where a binary mask matrix is returned, and 'loc' where the row and column locations of bad pixels are returned in a [Nbad x 2] matrix.

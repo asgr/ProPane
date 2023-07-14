@@ -6,16 +6,32 @@ propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FA
 
   assert(checkClass(image,'Rfits_image'), checkClass(image,'Rfits_pointer'), checkClass(image,'matrix'))
   assertNumeric(smooth, len=1)
-  assertNumeric(sigma, len=1)
-  assertIntegerish(pixcut, len=1)
+  assertNumeric(sigma, max.len=2)
+  assertIntegerish(pixcut, max.len=2)
   assertFlag(cold)
   assertFlag(hot)
-  assertFlag(dilate)
-  assertIntegerish(size)
+  assertFlag(dilate, max.len=2)
+  assertIntegerish(size, max.len=2)
   assertChoice(return, c('image', 'mask', 'loc'))
   assertFlag(patch)
   assertFlag(allow_write)
   assertFlag(plot)
+
+  if(length(sigma) == 1){
+    sigma = rep(sigma, 2)
+  }
+
+  if(length(pixcut) == 1){
+    pixcut = rep(pixcut, 2)
+  }
+
+  if(length(dilate) == 1){
+    dilate = rep(dilate, 2)
+  }
+
+  if(length(size) == 1){
+    size = rep(size, 2)
+  }
 
   if(inherits(image, 'Rfits_image')){
     image_data = image$imDat
@@ -44,13 +60,13 @@ propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FA
   quancuts = quantile(image_diff, c(0.1586553, 0.5), na.rm=TRUE)
 
   if(cold){
-    thresh_cold = quancuts[2] - (quancuts[2] - quancuts[1])*sigma
+    thresh_cold = quancuts[2] - (quancuts[2] - quancuts[1])*sigma[1]
   }else{
     thresh_cold = -Inf
   }
 
   if(hot){
-    thresh_hot = quancuts[2] + (quancuts[2] - quancuts[1])*sigma
+    thresh_hot = quancuts[2] + (quancuts[2] - quancuts[1])*sigma[2]
   }else{
     thresh_hot = Inf
   }
@@ -62,20 +78,27 @@ propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FA
 
   mask_rough_cold = (image_diff < thresh_cold)
   mask_label_cold = as.matrix(imager::label(imager::as.cimg(mask_rough_cold)))
-  sel_cold = which(tabulate(mask_label_cold) <= pixcut)
+  sel_cold = which(tabulate(mask_label_cold) <= pixcut[1])
   mask_rough_cold[!mask_label_cold %in% sel_cold] = 0L
 
   mask_rough_hot = (image_diff > thresh_hot)
   mask_label_hot = as.matrix(imager::label(imager::as.cimg(mask_rough_hot)))
-  sel_hot = which(tabulate(mask_label_hot) <= pixcut)
+  sel_hot = which(tabulate(mask_label_hot) <= pixcut[2])
   mask_rough_hot[!mask_label_hot %in% sel_hot] = 0L
 
-  if(dilate){
-    if(size %% 2 == 0){
-      size = size + 1
+  if(dilate[1]){
+    if(size[1] %% 2 == 0){
+      size[1] = size[1] + 1
     }
-    kernel = imager::px.circle(size/2,size,size)
+    kernel = imager::px.circle(size[1]/2, size[1], size[1])
     mask_rough_cold = as.matrix(imager::dilate(imager::as.cimg(mask_rough_cold), mask=kernel))
+  }
+
+  if(dilate[2]){
+    if(size[2] %% 2 == 0){
+      size[2] = size[2] + 1
+    }
+    kernel = imager::px.circle(size[2]/2, size[2], size[2])
     mask_rough_hot = as.matrix(imager::dilate(imager::as.cimg(mask_rough_hot), mask=kernel))
   }
 
