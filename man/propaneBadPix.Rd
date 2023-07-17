@@ -10,8 +10,8 @@ Automatically Identify Mask and Patch Bad Pixels
 Given an image, can identify bad (cold or hot) pixels with a few parameters controlling how aggressively this is done. Either the binary mask can be returned, or the image itself with bad pixels masked, or finally the masked pixels can be replaced by good local values (patched) to fill the gaps.
 }
 \usage{
-propaneBadPix(image, mask = NULL, smooth = 1, sigma = 10, pixcut = 1, cold = FALSE,
-  hot = TRUE, dilate = FALSE, size = 3, return = "image", patch = FALSE,
+propaneBadPix(image, mask = NULL, inVar = NULL, smooth = 1, sigma = 10, pixcut = 1,
+  cold = FALSE, hot = TRUE, dilate = FALSE, size = 3, return = "image", patch = FALSE,
   allow_write = FALSE, plot = FALSE, ...)
 
 propanePatchPix(image, mask = NULL, smooth = 1, dilate = FALSE, size = 3,
@@ -24,6 +24,9 @@ An image to mask. Must be either object class Rfits_image or Rfits_pointer, i.e.
 }
   \item{mask}{
 Boolean matrix or integer scalar (1,0); optional, parts of the image to mask out (i.e. ignore). This matrix mus* be the same dimensions as \option{image} where 1 means mask out and 0 means use for analysis.
+}
+  \item{inVar}{
+Numeric matrix; the inverse-variance matrix corresponding to \option{image}. If provided this will be used to compute the sigma tension (if missing this is estimated internally). If your \option{image} has a large variance in depth then you might need to provide this (e.g. the inVar output of a \code{propaneStackWarpInVar} stack).
 }
   \item{smooth}{
 Numeric scalar/vector; standard deviation of the blur. This controls how sensitive we are to bad pixels and image noise. Generally should be in the range of 1-3, and for most types of bad pixel 1 is fine.
@@ -78,6 +81,7 @@ Aaron Robotham
 \code{\link{propaneStackWarp}}
 }
 \examples{
+\dontrun{
 library(Rfits)
 library(magicaxis)
 
@@ -117,6 +121,7 @@ propanePatchPix(image, plot=TRUE, qdiff=TRUE)
 
 #We can further filate the bad pixels:
 propanePatchPix(image, dilate=TRUE, size=5, plot=TRUE, qdiff=TRUE)
+}
 }
 
 \concept{ ~mask }

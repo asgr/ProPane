@@ -1,10 +1,12 @@
-propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FALSE, hot=TRUE,
+propaneBadPix = function(image, mask=NULL, inVar=NULL, smooth=1, sigma=10, pixcut=1, cold=FALSE, hot=TRUE,
                          dilate=FALSE, size=3, return='image', patch=FALSE, allow_write=FALSE, plot=FALSE, ...){
   if(!requireNamespace("imager", quietly = TRUE)){
     stop('The imager package is needed for stacking to work. Please install from GitHub asgr/Rfits.', call. = FALSE)
   }
 
   assert(checkClass(image,'Rfits_image'), checkClass(image,'Rfits_pointer'), checkClass(image,'matrix'))
+  assertMatrix(mask, null.ok=TRUE)
+  assertMatrix(inVar, null.ok=TRUE)
   assertNumeric(smooth, len=1)
   assertNumeric(sigma, max.len=2)
   assertIntegerish(pixcut, max.len=2)
@@ -57,7 +59,14 @@ propaneBadPix = function(image, mask=NULL, smooth=1, sigma=10, pixcut=1, cold=FA
   image_blur = as.matrix(imager::isoblur(imager::as.cimg(image_data),smooth,na.rm=TRUE))
   image_diff = image_data - image_blur
 
-  quancuts = quantile(image_diff, c(0.1586553, 0.5), na.rm=TRUE)
+  if(is.null(inVar)){
+    quancuts = quantile(image_diff, c(0.1586553, 0.5), na.rm=TRUE)
+  }else{
+    quancuts = c(0,1)
+    image_diff = image_diff*sqrt(inVar)
+  }
+
+  image_diff[!is.finite(image_diff)] = NA
 
   if(cold){
     thresh_cold = quancuts[2] - (quancuts[2] - quancuts[1])*sigma[1]
