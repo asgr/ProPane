@@ -214,4 +214,6 @@ propanePatchPix = function(image, mask=NULL, smooth=1, dilate=FALSE, size=3, all
       plot(image, ...)
     }
   }
+
+  return(image)
 }
