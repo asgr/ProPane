@@ -35,11 +35,6 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out = NULL, dim_out 
   keyvalues_in = image_in$keyvalues
   keyvalues_in = keyvalues_in[!is.na(keyvalues_in)]
   header_in = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_in))
-  # if(is.null(image_in$raw)){
-  #   header_in = image_in$hdr
-  # }else{
-  #   header_in = image_in$raw
-  # }
 
   if(is.character(header_out)){
     if(!is.null(keyvalues_out)){
@@ -51,14 +46,6 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out = NULL, dim_out 
       keyvalues_out = Rfits_hdr_to_keyvalues(header_out)
     }
   }
-
-  # if(is.character(header_in)){
-  #   if(length(header_in) == 1){
-  #     keyvalues_in = Rfits_header_to_keyvalues(Rfits_raw_to_header(header_in))
-  #   }else if(length(header_in) > 1){
-  #     keyvalues_in = Rfits_hdr_to_keyvalues(header_in)
-  #   }
-  # }
 
   if(is.null(keyvalues_out) & is.null(header_out)){
     keyvalues_out = options()$current_keyvalues
@@ -129,14 +116,6 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out = NULL, dim_out 
     stop('Missing NAXIS1 / NAXIS2 in header keyvalues! Specify dim_out.')
   }
 
-  #raw_out = header_out
-
-  # if(is.null(raw_out)){
-  #   header_out = Rfits_keyvalues_to_header(keyvalues_out)
-  # }else{
-  #   header_out = Rfits_raw_to_header(raw_out)
-  # }
-
   if(dotightcrop){
     suppressMessages({
       BL_out = Rwcs_p2s(0, 0, header=header_out, pixcen='R', WCSref=WCSref_out)
@@ -162,11 +141,6 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out = NULL, dim_out 
 
       keyvalues_in = image_in$keyvalues
       header_in = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_in))
-      # if(is.null(image_in$raw)){
-      #   header_in = image_in$hdr
-      # }else{
-      #   header_in = image_in$raw
-      # }
     }else{
       if(inherits(image_in, 'Rfits_pointer')){
         image_in = image_in[,]
@@ -214,10 +188,6 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out = NULL, dim_out 
     )
     names(image_out$keycomments) = image_out$keynames
     class(image_out) = c('Rfits_image', class(image_out))
-
-    # if(!is.null(raw_out)){
-    #   raw_out = image_out$raw
-    # }
   }else{
     if(inherits(image_in, 'Rfits_pointer')){
       image_in = image_in[,]
