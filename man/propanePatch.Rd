@@ -11,7 +11,7 @@ However, it can be hard to fully clip pixels when stacking many frames because t
 }
 \usage{
 propanePatch(image_inVar, image_med, diff_type = "scale", threshold = 5,
-  scale_type = "quan", scale_val = 0.3, hot = TRUE, cold = TRUE)
+  scale_type = "quan", scale_val = 0.3, cold = TRUE, hot = TRUE, dilate = FALSE, size = 3)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -33,11 +33,17 @@ Character scalar; the method of rescaling the image differences (the denominator
   \item{scale_val}{
 Numeric scalar; argument to use in combination with \option{scale_type}.
 }
+  \item{cold}{
+Should cold pixels be clipped?
+}
   \item{hot}{
 Should hot pixels be clipped?
 }
-  \item{cold}{
-Should cold pixels be clipped?
+  \item{dilate}{
+Logical scalar; should the bad pixel mask be further dilated by a circular kernel of diameter \option{size}?
+}
+  \item{size}{
+Numeric scalar; the circular diamater of the bad pixel mask dilation (when \option{dilate} = TRUE). \option{size} must be odd, and if even then 1 will be added automatically.
 }
 }
 \details{

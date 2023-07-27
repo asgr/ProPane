@@ -11,7 +11,8 @@
 }
 
 propanePatch = function(image_inVar, image_med, diff_type='scale', threshold=5,
-                        scale_type='quan', scale_val=0.3, hot=TRUE, cold=TRUE){
+                        scale_type='quan', scale_val=0.3, cold=TRUE, hot=TRUE,
+                        dilate=FALSE, size=3){
   if(!is.null(image_inVar$keyvalues)){
     keyvalues = image_inVar$keyvalues
   }else{
@@ -55,6 +56,11 @@ propanePatch = function(image_inVar, image_med, diff_type='scale', threshold=5,
   }
 
   sel_threshold = (im_diff > threshold)
+
+  if(dilate){
+    sel_threshold = propaneDilate(mask=sel_threshold, size=size)
+  }
+
   sel_NA = is.na(image_inVar)
   sel_both = which(sel_threshold | sel_NA)
   output = image_inVar

@@ -19,6 +19,7 @@ export(propanePatch)
 export(propaneFrameFinder)
 export(propaneBadPix)
 export(propanePatchPix)
+export(propaneDilate)
 
 useDynLib(ProPane, .registration=TRUE)
 

@@ -2,6 +2,7 @@
 \alias{propaneBadPix}
 \alias{propanePatchPix}
 \alias{propanePix}
+\alias{propaneDilate}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Automatically Identify Mask and Patch Bad Pixels
@@ -16,6 +17,8 @@ propaneBadPix(image, mask = NULL, inVar = NULL, smooth = 1, sigma = 10, pixcut =
 
 propanePatchPix(image, mask = NULL, smooth = 1, dilate = FALSE, size = 3,
   allow_write = FALSE, plot = FALSE, ...)
+
+propaneDilate(mask, size = 3)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -71,7 +74,13 @@ Further arguments to be passed to \code{\link{Rwcs_image}} and \code{\link{magim
 In general the outputs of \code{propaneBadPix} can be used as inputs for the various stacking routines in \code{ProPane}.
 }
 \value{
+For \code{propaneBadPix} and \code{propanePatchPix}:
+
 Either a Rfits_image, Rfits_pointer or matrix depending on the combination of \option{return} and \option{allow_write}.
+
+For \code{propaneDilate}:
+
+Integer/logical matrix; the dilated mask. Note when dilation clashes/overlaps, the larger valued mask value is used (i.e. it is not summed, it is the max). The logical or integer nature of the mask is maintained in the output.
 }
 \author{
 Aaron Robotham
@@ -121,6 +130,11 @@ propanePatchPix(image, plot=TRUE, qdiff=TRUE)
 
 #We can further filate the bad pixels:
 propanePatchPix(image, dilate=TRUE, size=5, plot=TRUE, qdiff=TRUE)
+
+#Just the mask dilation:
+tempmat = matrix(0L,101,101)
+tempmat[51,51] = 1L
+magimage(propaneDilate(tempmat, 21))
 }
 }
 

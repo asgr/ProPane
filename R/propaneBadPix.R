@@ -217,3 +217,16 @@ propanePatchPix = function(image, mask=NULL, smooth=1, dilate=FALSE, size=3, all
 
   return(image)
 }
+
+propaneDilate = function(mask, size=3){
+  if(size %% 2 == 0){
+    size = size + 1
+  }
+  kernel = imager::px.circle(size/2,size,size)
+  output = as.matrix(imager::dilate(imager::as.cimg(mask), mask=kernel))
+  if(is.logical(mask)){
+    mode(output) = 'logical'
+  }
+
+  return(output)
+}
