@@ -157,6 +157,12 @@ propanePatchPix = function(image, mask=NULL, smooth=1, dilate=FALSE, size=3, all
   }
 
   assert(checkClass(image,'Rfits_image'), checkClass(image,'Rfits_pointer'), checkClass(image,'matrix'))
+  assertMatrix(mask, null.ok=TRUE)
+  assertNumeric(smooth, len=1)
+  assertFlag(dilate)
+  assertIntegerish(size, len=1)
+  assertFlag(allow_write)
+  assertFlag(plot)
 
   if(inherits(image, 'Rfits_image')){
     image_data = image$imDat
