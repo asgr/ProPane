@@ -123,12 +123,22 @@ mask_in[1:100, 1:100] = 1L
 #The bad pixels we still be present in the masked region:
 propaneBadPix(image, mask_in, patch=TRUE, plot=TRUE, qdiff=TRUE)
 
+#propanePatchPix can infill values directly:
+testmat = matrix(1:100,10,10)
+testmat[5,5] = NA
+
+magimage(testmat, qdiff=TRUE)
+print(testmat) # Pixel [5,5] should be 45 ideally, we are within 0.03\% of that
+
+testmat = propanePatchPix(testmat, plot=TRUE, qdiff=TRUE)
+print(testmat)
+
 #And just to test the direct patching:
 image$imDat[selhot] = NA
 plot(image, qdiff=TRUE)
 propanePatchPix(image, plot=TRUE, qdiff=TRUE)
 
-#We can further filate the bad pixels:
+#We can further dilate the bad pixels:
 propanePatchPix(image, dilate=TRUE, size=5, plot=TRUE, qdiff=TRUE)
 
 #Just the mask dilation:
