@@ -261,19 +261,31 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out = NULL, dim_out 
       )
     }
 
-    if(anyInfinite(warp_out)){
-      warning('Infinite value in warp field, this can cause segfaults on some compilations!')
+    warpmat1 = matrix(warp_out[, 1], dim(image_out$imDat)[1], dim(image_out$imDat)[2])
+
+    if(anyInfinite(warpmat1)){
+      message('Infinity found in warpfield- patching!')
+      warpmat1[is.infinite(warpmat1)] = NA
+      warpmat1 = propanePatchPix(warpmat1)
     }
 
-    warpfield = imager::imappend(list(imager::as.cimg(matrix(
-      warp_out[, 1], dim(image_out$imDat)[1], dim(image_out$imDat)[2]
-    )),
-    imager::as.cimg(matrix(
-      warp_out[, 2], dim(image_out$imDat)[1], dim(image_out$imDat)[2]
-    ))), 'c')
+    warpmat2 = matrix(warp_out[, 2], dim(image_out$imDat)[1], dim(image_out$imDat)[2])
+
+    if(anyInfinite(warpmat2)){
+      message('Infinity found in warpfield- patching!')
+      warpmat2[is.infinite(warpmat2)] = NA
+      warpmat2 = propanePatchPix(warpmat2)
+    }
+
+    warpfield = imager::imappend(list(
+      imager::as.cimg(warpmat1),
+      imager::as.cimg(warpmat2)
+    ), 'c')
 
     rm(pix_grid)
     rm(warp_out)
+    rm(warpmat1)
+    rm(warpmat2)
   }
 
   image_out$imDat = imager::warp(
