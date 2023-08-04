@@ -68,65 +68,73 @@ propaneBadPix = function(image, mask=NULL, inVar=NULL, smooth=1, sigma=10, pixcu
 
   image_diff[!is.finite(image_diff)] = NA
 
-  if(cold){
-    thresh_cold = quancuts[2] - (quancuts[2] - quancuts[1])*sigma[1]
-  }else{
-    thresh_cold = -Inf
-  }
-
-  if(hot){
-    thresh_hot = quancuts[2] + (quancuts[2] - quancuts[1])*sigma[2]
-  }else{
-    thresh_hot = Inf
-  }
-
   if(!is.null(mask)){
     image_diff[mask_in_sel] = 0L
     image_data[mask_in_sel] = image_orig[mask_in_sel]
   }
 
-  mask_rough_cold = (image_diff < thresh_cold) & (image_data <= 0)
-  mask_label_cold = as.matrix(imager::label(imager::as.cimg(mask_rough_cold)))
-  sel_cold = which(tabulate(mask_label_cold) <= pixcut[1])
-  mask_rough_cold[!mask_label_cold %in% sel_cold] = 0L
+  if(cold){
+    thresh_cold = quancuts[2] - (quancuts[2] - quancuts[1])*sigma[1]
 
-  mask_rough_hot = (image_diff > thresh_hot) & (image_data >= 0)
-  mask_label_hot = as.matrix(imager::label(imager::as.cimg(mask_rough_hot)))
-  sel_hot = which(tabulate(mask_label_hot) <= pixcut[2])
-  mask_rough_hot[!mask_label_hot %in% sel_hot] = 0L
+    mask_rough_cold = (image_diff < thresh_cold) & (image_data <= 0)
+    mask_label_cold = as.matrix(imager::label(imager::as.cimg(mask_rough_cold)))
+    sel_cold = which(tabulate(mask_label_cold) <= pixcut[1])
+    mask_rough_cold[!mask_label_cold %in% sel_cold] = 0L
 
-  if(dilate[1]){
-    if(size[1] %% 2 == 0){
-      size[1] = size[1] + 1
+    if(dilate[1]){
+      if(size[1] %% 2 == 0){
+        size[1] = size[1] + 1
+      }
+      kernel = imager::px.circle(size[1]/2, size[1], size[1])
+      mask_rough_cold = as.matrix(imager::dilate(imager::as.cimg(mask_rough_cold), mask=kernel))
     }
-    kernel = imager::px.circle(size[1]/2, size[1], size[1])
-    mask_rough_cold = as.matrix(imager::dilate(imager::as.cimg(mask_rough_cold), mask=kernel))
+  }else{
+    mask_rough_cold = 0L
   }
 
-  if(dilate[2]){
-    if(size[2] %% 2 == 0){
-      size[2] = size[2] + 1
+  if(hot){
+    thresh_hot = quancuts[2] + (quancuts[2] - quancuts[1])*sigma[2]
+
+    mask_rough_hot = (image_diff > thresh_hot) & (image_data >= 0)
+    mask_label_hot = as.matrix(imager::label(imager::as.cimg(mask_rough_hot)))
+    sel_hot = which(tabulate(mask_label_hot) <= pixcut[2])
+    mask_rough_hot[!mask_label_hot %in% sel_hot] = 0L
+
+    if(dilate[2]){
+      if(size[2] %% 2 == 0){
+        size[2] = size[2] + 1
+      }
+      kernel = imager::px.circle(size[2]/2, size[2], size[2])
+      mask_rough_hot = as.matrix(imager::dilate(imager::as.cimg(mask_rough_hot), mask=kernel))
     }
-    kernel = imager::px.circle(size[2]/2, size[2], size[2])
-    mask_rough_hot = as.matrix(imager::dilate(imager::as.cimg(mask_rough_hot), mask=kernel))
+  }else{
+    mask_rough_hot = 0L
   }
 
-  mask_loc = which(mask_rough_cold + mask_rough_hot > 0L, arr.ind=TRUE)
+  if(cold | hot){
+    mask_loc = which(mask_rough_cold + mask_rough_hot > 0L, arr.ind=TRUE)
+  }else{
+    mask_loc = NULL
+  }
 
   if(return == 'image'){
-    image_data[mask_loc] = NA
+    if(length(mask_loc) > 0){
+      image_data[mask_loc] = NA
 
-    if(patch){
-      image_blur = as.matrix(imager::isoblur(imager::as.cimg(image_data),smooth,na.rm=TRUE))
-      image_data[mask_loc] = image_blur[mask_loc]
-    }
+      if(patch){
+        image_blur = as.matrix(imager::isoblur(imager::as.cimg(image_data),smooth,na.rm=TRUE))
+        image_data[mask_loc] = image_blur[mask_loc]
+      }
 
-    if(inherits(image, 'Rfits_image')){
-      image$imDat = image_data
-    }else if(inherits(image, 'Rfits_pointer')){
-      image[mask_loc, allow_write=allow_write] = image_data[mask_loc]
-    }else if(is.matrix(image)){
-      image = image_data
+      if(inherits(image, 'Rfits_image')){
+        image$imDat = image_data
+      }else if(inherits(image, 'Rfits_pointer')){
+        image[mask_loc, allow_write=allow_write] = image_data[mask_loc]
+      }else if(is.matrix(image)){
+        image = image_data
+      }
+    }else{
+      message('No bad pixels found!')
     }
 
     if(plot){
