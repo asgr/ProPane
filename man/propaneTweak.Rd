@@ -5,7 +5,7 @@
 Tweak the Translation Astrometry of an Image
 }
 \description{
-Function to rapidly find translation tweaks directly in the image domain (i.e. it does not require a catalogue to be generated first). This is generally pretty fast, especially when running in integer shift mode.
+Function to rapidly find translation and rotation tweaks directly in the image domain (i.e. it does not require a catalogue to be generated first). This is generally pretty fast, especially when running in integer shift mode.
 }
 \usage{
 propaneTweak(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99, Nmeta = 3,
@@ -30,7 +30,7 @@ Numeric scalar; bright pixel thesholding to apply to \option{image_ref} and \opt
 Integer scalar; how many shifts of the search box can be applied. This is only relevant when \option{shift_int} is TRUE.
 }
   \item{WCS_match}{
-Logical; specifies whether we are expecting the input WCS to be matched between \option{image_ref} and \option{image_pre_fix} or not. If \option{WCS_match} is TRUE then the image itself is directly manipulated and the WCS is left alone. If \option{WCS_match} is FALSE then the WCS header is modified and \option{image_pre_fix} is projected onto the WCS of \option{image_ref} for each iteration (therefore \option{image_ref} and \option{image_pre_fix} must both be Rfits_image objects in this case). \option{WCS_match} = FALSE is often the more useful way to tweak images (since often images are known not to have exactly matching WCS because they are dithered etc), but it is quite a bit slower (about x5 longer to run) since the projection has to go through \code{\link{propaneWarp}} and therefore \code{wcs_lib}.
+Logical; specifies whether we are expecting the input WCS to be matched between \option{image_ref} and \option{image_pre_fix} or not. If \option{WCS_match} is TRUE then the image itself is directly manipulated and the WCS is left alone. If \option{WCS_match} is FALSE then the WCS header is modified and \option{image_pre_fix} is projected onto the WCS of \option{image_ref} for each iteration (therefore \option{image_ref} and \option{image_pre_fix} must both be Rfits_image objects in this case). \option{WCS_match} = FALSE is often the more useful way to tweak images (since often images are known not to have exactly matching WCS because they are dithered etc), but it is quite a bit slower (about x5 longer to run) since the projection has to go through \code{\link{propaneWarp}} and therefore \code{wcslib}.
 }
   \item{cores}{
 Integer scalar; the number of cores to run on.

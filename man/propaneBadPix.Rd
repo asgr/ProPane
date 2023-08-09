@@ -3,6 +3,7 @@
 \alias{propanePatchPix}
 \alias{propanePix}
 \alias{propaneDilate}
+\alias{propaneImBlur}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Automatically Identify Mask and Patch Bad Pixels
@@ -19,6 +20,8 @@ propanePatchPix(image, mask = NULL, smooth = 1, dilate = FALSE, size = 3,
   allow_write = FALSE, plot = FALSE, ...)
 
 propaneDilate(mask, size = 3)
+
+propaneImBlur(image, mask = NULL, smooth = 1, keepNA = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -64,6 +67,9 @@ Logical; should we allow for direct writing back out to the Rfits_pointer provid
   \item{plot}{
 Logical; should a plot be generated of the output?
 }
+  \item{keepNA}{
+Logical; should the original \option{image} NA masked pixels be set to NA in the output smoothed image?
+}
   \item{\dots}{
 Further arguments to be passed to \code{\link{Rwcs_image}} and \code{\link{magimage}}. Only relevant is \option{plot} = TRUE.
 }
@@ -81,6 +87,10 @@ Either a Rfits_image, Rfits_pointer or matrix depending on the combination of \o
 For \code{propaneDilate}:
 
 Integer/logical matrix; the dilated mask. Note when dilation clashes/overlaps, the larger valued mask value is used (i.e. it is not summed, it is the max). The logical or integer nature of the mask is maintained in the output.
+
+For \code{propaneImBlur}:
+
+A blurred version of the input \option{image}. The input \option{image} type will be maintained, so either a Rfits_image or matrix.
 }
 \author{
 Aaron Robotham

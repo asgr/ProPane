@@ -202,7 +202,7 @@ propanePatchPix = function(image, mask=NULL, smooth=1, dilate=FALSE, size=3, all
     image_data[mask_rough > 0L] = NA
   }
 
-  image_blur = as.matrix(imager::isoblur(imager::as.cimg(image_data),smooth,na.rm=TRUE))
+  image_blur = propaneImBlur(image_data, smooth=smooth)
 
   if(!is.null(mask)){
     image_data[mask_in_sel] = image_orig[mask_in_sel]
@@ -243,4 +243,36 @@ propaneDilate = function(mask, size=3){
   }
 
   return(output)
+}
+
+propaneImBlur = function(image, mask=NULL, smooth=1, keepNA=FALSE){
+
+  if(inherits(image, 'Rfits_image')){
+    image_data = image$imDat
+  }else if(inherits(image, 'Rfits_pointer')){
+    image = image[,]
+    image_data = image$imDat
+  }else if(is.matrix(image)){
+    image_data = image
+  }else{
+    stop('image input must be Rfits_image, Rfits_pointer of matrix!')
+  }
+
+  if(!is.null(mask)){
+    image_data[mask > 0L] = NA
+  }
+
+  output = as.matrix(imager::isoblur(imager::as.cimg(image_data),smooth, na.rm=TRUE))
+
+  if(keepNA){
+    output[is.na(image_data)] = NA
+  }
+
+  if(inherits(image, 'Rfits_image')){
+    image$imDat = output
+  }else if(is.matrix(image)){
+    image = output
+  }
+
+  return(image)
 }
