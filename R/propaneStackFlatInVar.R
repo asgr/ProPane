@@ -17,10 +17,20 @@ propaneStackFlatInVar=function(image_list=NULL, sky_list=NULL, skyRMS_list=NULL,
     if(!masking %in% c('and', 'or', '&', '&&', '|', '||')){
       stop('masking needs to be one of and/or.')
     }
-    stack=matrix(0,dim(image_list[[1]])[1],dim(image_list[[1]])[2])
-    inv_var=0
-    masked_and_master={}
-    masked_and_initial=TRUE
+
+    for(i in 1:length(image_list)){
+      if(inherits(image_list[[i]], 'Rfits_image')){
+        image_list[[i]] = image_list[[i]]$imDat
+      }
+      if(inherits(image_list[[i]], 'Rfits_pointer')){
+        image_list[[i]] = image_list[[i]][header=FALSE]
+      }
+    }
+
+    stack = matrix(0,dim(image_list[[1]])[1],dim(image_list[[1]])[2])
+    inv_var = 0
+    masked_and_master = {}
+    masked_and_initial = TRUE
     for(i in 1:length(image_list)){
       if(!is.null(mask_list)){
         if(!is.null(mask_list[[i]])){
@@ -32,17 +42,17 @@ propaneStackFlatInVar=function(image_list=NULL, sky_list=NULL, skyRMS_list=NULL,
         if(is.null(image_list[[i]])==FALSE & is.null(sky_list[[i]])==FALSE & is.null(skyRMS_list[[i]])==FALSE){
           if(masking=='and' | masking=='&' | masking=='&&'){
             if(anyNA(image_list[[i]])){
-              masked=which(is.na(image_list[[i]]))
-              image_list[[i]][masked]=0
-              sky_list[[i]][masked]=0
-              skyRMS_list[[i]][masked]=Inf
+              masked = which(is.na(image_list[[i]]))
+              image_list[[i]][masked] = 0
+              sky_list[[i]][masked] = 0
+              skyRMS_list[[i]][masked] = Inf
             }
           }
-          image_list[[i]]=image_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
-          sky_list[[i]]=sky_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
-          skyRMS_list[[i]]=skyRMS_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
-          stack=stack+(image_list[[i]]-sky_list[[i]])/(skyRMS_list[[i]]^2)
-          inv_var=inv_var+(1/skyRMS_list[[i]]^2)
+          image_list[[i]] = image_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
+          sky_list[[i]] = sky_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
+          skyRMS_list[[i]] = skyRMS_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
+          stack = stack + (image_list[[i]]-sky_list[[i]])/(skyRMS_list[[i]]^2)
+          inv_var = inv_var + (1/skyRMS_list[[i]]^2)
         }else{
           message(paste('Missing data in image_list element',i,'so will skip for stacking!'))
         }
@@ -51,15 +61,20 @@ propaneStackFlatInVar=function(image_list=NULL, sky_list=NULL, skyRMS_list=NULL,
         if(is.null(image_list[[i]])==FALSE & is.null(sky_list[[i]])==FALSE){
           if(masking=='and' | masking=='&' | masking=='&&'){
             if(anyNA(image_list[[i]])){
-              masked=which(is.na(image_list[[i]]))
-              image_list[[i]][masked]=0
-              sky_list[[i]][masked]=0
+              masked = is.na(image_list[[i]])
+              image_list[[i]][masked] = 0
+              sky_list[[i]][masked] = 0
+              inv_var = inv_var + !masked
+              masked = which(masked)
+            }else{
+              inv_var = inv_var + 1L
             }
+          }else{
+            inv_var = inv_var + 1L
           }
-          image_list[[i]]=image_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
-          sky_list[[i]]=sky_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
-          stack=stack+(image_list[[i]]-sky_list[[i]])
-          inv_var=1
+          image_list[[i]] = image_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
+          sky_list[[i]] = sky_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
+          stack = stack + (image_list[[i]]-sky_list[[i]])
         }else{
           message(paste('Missing data in image_list element',i,'so will skip for stacking!'))
         }
@@ -68,15 +83,15 @@ propaneStackFlatInVar=function(image_list=NULL, sky_list=NULL, skyRMS_list=NULL,
         if(is.null(image_list[[i]])==FALSE & is.null(skyRMS_list[[i]])==FALSE){
           if(masking=='and' | masking=='&' | masking=='&&'){
             if(anyNA(image_list[[i]])){
-              masked=which(is.na(image_list[[i]]))
-              image_list[[i]][masked]=0
-              skyRMS_list[[i]][masked]=Inf
+              masked = which(is.na(image_list[[i]]))
+              image_list[[i]][masked] = 0
+              skyRMS_list[[i]][masked] = Inf
             }
           }
-          image_list[[i]]=image_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
-          skyRMS_list[[i]]=skyRMS_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
-          stack=stack+image_list[[i]]/(skyRMS_list[[i]]^2)
-          inv_var=inv_var+(1/skyRMS_list[[i]]^2)
+          image_list[[i]] = image_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
+          skyRMS_list[[i]] = skyRMS_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
+          stack = stack+image_list[[i]]/(skyRMS_list[[i]]^2)
+          inv_var = inv_var + (1/skyRMS_list[[i]]^2)
         }else{
           message(paste('Missing data in image_list element',i,'so will skip for stacking!'))
         }
@@ -85,12 +100,17 @@ propaneStackFlatInVar=function(image_list=NULL, sky_list=NULL, skyRMS_list=NULL,
         if(is.null(image_list[[i]])==FALSE){
           if(masking=='and' | masking=='&' | masking=='&&'){
             if(anyNA(image_list[[i]])){
-              masked=which(is.na(image_list[[i]]))
-              image_list[[i]][masked]=0
+              masked = is.na(image_list[[i]])
+              image_list[[i]][masked] = 0
+              inv_var = inv_var + !masked
+              masked = which(masked)
+            }else{
+              inv_var = inv_var + 1L
             }
+          }else{
+            inv_var = inv_var + 1L
           }
-          stack=stack+image_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
-          inv_var=inv_var+1
+          stack = stack + image_list[[i]]*.Mag2Flux(magzero_in[i],magzero_out)
         }else{
           message(paste('Missing data in image_list element',i,'so will skip for stacking!'))
         }
@@ -105,8 +125,9 @@ propaneStackFlatInVar=function(image_list=NULL, sky_list=NULL, skyRMS_list=NULL,
         }
       }
     }
-    stack=stack/inv_var
-    skyRMS=sqrt(1/inv_var)
+
+    stack = stack/inv_var
+    skyRMS = sqrt(1/inv_var)
 
     if((masking=='and' | masking=='&' | masking=='&&') & length(masked_and_master)>0){
       stack[masked_and_master] = NA

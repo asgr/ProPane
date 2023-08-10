@@ -1,21 +1,29 @@
 propaneStackFlatFunc = function(image_list=NULL, imager_func=NULL, na.rm=TRUE, weights=NULL,
                                 increasing=TRUE, probs=c(0.159, 0.5, 0.841), parallel=TRUE){
 
+  if(!requireNamespace("imager", quietly = TRUE)){
+    stop('The imager package is needed for this function to work. Please install it from CRAN', call. = FALSE)
+  }
+
+  for(i in 1:length(image_list)){
+    if(inherits(image_list[[i]], 'Rfits_image')){
+      image_list[[i]] = imager::as.cimg(image_list[[i]]$imDat)
+    }
+    if(inherits(image_list[[i]], 'Rfits_pointer')){
+      image_list[[i]] = imager::as.cimg(image_list[[i]][header=FALSE])
+    }
+    if(!imager::is.cimg(image_list[[i]])){
+      image_list[[i]] = imager::as.cimg(image_list[[i]])
+    }
+  }
+
   if(na.rm == TRUE){
     weight_list = list()
     for(i in 1:length(image_list)){
       if(is.null(weights)){
-        if(inherits(image_list[[i]], 'Rfits_image')){
-          weight_list = c(weight_list, list(imager::as.cimg(!is.na(image_list[[i]]$imDat))))
-        }else{
-          weight_list = c(weight_list, list(imager::as.cimg(!is.na(image_list[[i]]))))
-        }
+        weight_list = c(weight_list, list(imager::as.cimg(!is.na(image_list[[i]]))))
       }else{
-        if(inherits(image_list[[i]], 'Rfits_image')){
-          weight_list = c(weight_list, list(imager::as.cimg(!is.na(image_list[[i]]$imDat))*weights[i]))
-        }else{
-          weight_list = c(weight_list, list(imager::as.cimg(!is.na(image_list[[i]]))*weights[i]))
-        }
+        weight_list = c(weight_list, list(imager::as.cimg(!is.na(image_list[[i]])*weights[i])))
       }
     }
 
@@ -26,31 +34,10 @@ propaneStackFlatFunc = function(image_list=NULL, imager_func=NULL, na.rm=TRUE, w
   }
 
   if(is.null(imager_func)){
-    if(!requireNamespace("imager", quietly = TRUE)){
-      stop('The imager package is needed for this function to work. Please install it from CRAN', call. = FALSE)
-    }
-
     imager_func = imager::average
   }
 
   if(is.function(imager_func)){
-
-    if(!requireNamespace("imager", quietly = TRUE)){
-      stop('The imager package is needed for this function to work. Please install it from CRAN', call. = FALSE)
-    }
-
-    check = unlist(lapply(image_list, FUN=imager::is.cimg))
-
-    if(!all(check)){
-      for(i in 1:length(image_list)){
-        if(inherits(image_list[[i]], 'Rfits_image')){
-          image_list[[i]] = imager::as.cimg(image_list[[i]]$imDat)
-        }else{
-          image_list[[i]] = imager::as.cimg(image_list[[i]])
-        }
-      }
-    }
-
     if('na.rm' %in% names(formals(imager_func))){
       if('w' %in% names(formals(imager_func))){
         image_stack = as.matrix(imager_func(image_list, w=weights, na.rm=na.rm))

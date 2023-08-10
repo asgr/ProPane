@@ -19,7 +19,7 @@ propaneStackFlatFunc(image_list = NULL, imager_func = NULL, na.rm = TRUE, weight
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{image_list}{
-List; required. Each list element is a numeric matrix representing the image to be stacked. Note, image NAs are treated as masked pixels.
+List; required. Each list element is a numeric matrix, Rfits_image or Rfits_pointer representing the images to be stacked. Note, image NAs are treated as masked pixels.
 }
   \item{sky_list}{
 List; optional. Each list element is a numeric matrix representing the sky to be subtracted.
@@ -113,6 +113,11 @@ magimage(propaneStackFlatInVar(list(im1, im2, im3), masking='or')$image)
 # masking='and' will optimistically only mask pixels masked in all stacked images:
 
 magimage(propaneStackFlatInVar(list(im1, im2, im3), masking='and')$image)
+
+# this is the default manner for stacking in the more general propaneStackFlatFunc:
+
+magimage(propaneStackFlatFunc(list(im1, im2, im3))$image)
+magimage(propaneStackFlatFunc(list(im1, im2, im3))$weight, magmap=FALSE)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
