@@ -128,7 +128,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
     for(Nshift in 1:Nmeta){
 
       if(verbose){
-        message('  Meta shift ', Nshift, ' of ', length(Nmeta))
+        message('  Meta shift ', Nshift, ' of ', Nmeta)
       }
 
       if(Nshift == 1){
