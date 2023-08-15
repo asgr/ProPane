@@ -63,7 +63,7 @@ If using the output of this to fix the header CRPIX then the fixed/new CRPIX bel
 When \option{shift_int} is TRUE:
 
 \item{optim_out}{The output of the actual optimisation (includes the best par).}
-\item{image_post_fix}{The tweaked image (if \option{return_image} is TRUE). This will either have the image pixels directly manipulated or the WCS header, depending on whether a Rfits_image was passed in for \option{image_pre_fix}.}
+\item{image_post_fix}{The tweaked image (if \option{return_image} is TRUE). This will either have the image pixels directly manipulated or the WCS header, depending on whether a Rfits_image was passed in for \option{image_pre_fix}. There are 3 potential outputs: if the input \option{image_pre_fix} was an image matrix then obviously the output has to be a modified image (there is no header), but if the input \option{image_pre_fix} is an Rfits_image then \option{WCS_match} = FALSE means the header will be changed, and \option{WCS_match} = TRUE means the image pixels will be adjusted direclty.}
 \item{time}{The total running time in seconds.}
 \item{cost_mat}{The cost outputs for the final iteration. Thie has dimensions x = delta_x, y = delta_y, z = cost.}
 \item{at_lim}{Logical; has the solution hit a limit. If so maybe re-run with larger \option{delta_max} and/or larger \option{Nmeta}.}

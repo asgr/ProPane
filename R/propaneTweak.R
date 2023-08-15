@@ -224,22 +224,42 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
     }
 
     if(inherits(image_pre_fix_orig, 'Rfits_image')){
-      if(length(optim_out$par) == 2){
-        image_post_fix = propaneWCSmod(image_pre_fix_orig, delta_x=optim_out$par[1], delta_y=optim_out$par[2])
+      if(WCS_match){
+        image_post_fix = image_pre_fix_orig
+
+        if(optim_out$par[1] != 0 | optim_out$par[2] != 0){
+          image_post_fix$imDat = .cost_fn(par = optim_out$par,
+                                    image_ref = image_ref$imDat,
+                                    image_pre_fix = image_pre_fix_orig$imDat,
+                                    scale = scale,
+                                    direction = direction,
+                                    return = 'image_post_fix',
+                                    shift_int = FALSE,
+                                    WCS_match = TRUE)
+        }
       }else{
-        image_post_fix = propaneWCSmod(image_pre_fix_orig, delta_x=optim_out$par[1], delta_y=optim_out$par[2], delta_rot=optim_out$par[3])
+        if(length(optim_out$par) == 2){
+          image_post_fix = propaneWCSmod(image_pre_fix_orig, delta_x=optim_out$par[1], delta_y=optim_out$par[2])
+        }else{
+          image_post_fix = propaneWCSmod(image_pre_fix_orig, delta_x=optim_out$par[1], delta_y=optim_out$par[2], delta_rot=optim_out$par[3])
+        }
       }
     }else{
-      image_post_fix_temp = .cost_fn(par = optim_out$par,
-                                     image_ref = image_ref,
-                                     image_pre_fix = image_pre_fix_orig,
-                                     scale = scale,
-                                     direction = direction,
-                                     return = 'image_post_fix',
-                                     shift_int = FALSE)
+      if(optim_out$par[1] != 0 | optim_out$par[2] != 0){
+        image_post_fix = .cost_fn(par = optim_out$par,
+                                       image_ref = image_ref,
+                                       image_pre_fix = image_pre_fix_orig,
+                                       scale = scale,
+                                       direction = direction,
+                                       return = 'image_post_fix',
+                                       shift_int = FALSE,
+                                       WCS_match = TRUE)
+      }else{
+        image_post_fix = image_pre_fix_orig
+      }
 
-      image_post_fix = matrix(NA, dim_orig[1], dim_orig[2])
-      image_post_fix[x_lo:x_hi, y_lo:y_hi] = image_post_fix_temp
+      # image_post_fix = matrix(NA, dim_orig[1], dim_orig[2])
+      # image_post_fix[x_lo:x_hi, y_lo:y_hi] = image_post_fix_temp
     }
   }else{
     image_post_fix = NULL
