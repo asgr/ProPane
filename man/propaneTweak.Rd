@@ -128,7 +128,7 @@ image_tran2 = propaneWCSmod(image, 2, 2, 5)
 plot(image_tran2)
 
 # Note we set WCS_match to FALSE since it is the WCS itself that is wrong.
-# The tweak of the WCS directly will takes longer than before (about 100 seconds):
+# The tweak of the WCS directly will takes longer than before (about 30 seconds):
 
 tweak2 = propaneTweak(image, image_tran2, delta_max=c(5,10), shift_int=FALSE,
   WCS_match=FALSE)

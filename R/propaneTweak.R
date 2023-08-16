@@ -65,7 +65,6 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
     }else{
       image_ref_warp = propaneWarp(image_ref,
                                    keyvalues_out = image_pre_fix$keyvalues,
-                                   header_out = image_pre_fix$raw,
                                    direction = 'backward'
       )$imDat
       sel = which(!is.na(image_ref_warp))
@@ -462,7 +461,6 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
       }
       image_post_fix = propaneWarp(image_in = image_pre_fix,
                                    keyvalues_out = image_ref$keyvalues,
-                                   header_out = image_ref$raw,
                                    direction = 'backward')$imDat
       image_ref = image_ref$imDat
     }
