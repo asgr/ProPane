@@ -143,14 +143,14 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
     keyvalues_out$PANE_VER = as.character(packageVersion('ProPane'))
     keyvalues_out$RWCS_VER = as.character(packageVersion('Rwcs'))
 
-    image_out = Rfits_create_image(image=post_stack_image,
+    image_out = Rfits_create_image(post_stack_image,
                                    keyvalues=keyvalues_out,
                                    keypass=FALSE,
                                    history='Stacked with propaneStackWarpInVar')
 
     keyvalues_out$EXTNAME = 'weight'
     keyvalues_out$MAGZERO = NULL
-    weight_out = Rfits_create_image(image=post_stack_weight,
+    weight_out = Rfits_create_image(post_stack_weight,
                                     keyvalues=keyvalues_out,
                                     keypass=FALSE)
 
@@ -1021,21 +1021,21 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
   keyvalues_out$PANE_VER = as.character(packageVersion('ProPane'))
   keyvalues_out$RWCS_VER = as.character(packageVersion('Rwcs'))
 
-  image_out = Rfits_create_image(image=post_stack_image,
+  image_out = Rfits_create_image(post_stack_image,
                                  keyvalues=keyvalues_out,
                                  keypass=FALSE,
                                  history='Stacked with propaneStackWarpInVar')
 
   keyvalues_out$EXTNAME = 'weight'
   keyvalues_out$MAGZERO = NULL
-  weight_out = Rfits_create_image(image=post_stack_weight,
+  weight_out = Rfits_create_image(post_stack_weight,
                                  keyvalues=keyvalues_out,
                                  keypass=FALSE)
 
   if(!is.null(post_stack_inVar)){
     keyvalues_out$EXTNAME = 'inVar'
     keyvalues_out$MAGZERO = magzero_out
-    inVar_out = Rfits_create_image(image=post_stack_inVar,
+    inVar_out = Rfits_create_image(post_stack_inVar,
                                     keyvalues=keyvalues_out,
                                     keypass=FALSE)
   }else{
@@ -1045,7 +1045,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
   if(!is.null(post_stack_exp)){
     keyvalues_out$EXTNAME = 'exp'
     keyvalues_out$MAGZERO = NULL
-    exp_out = Rfits_create_image(image=post_stack_exp,
+    exp_out = Rfits_create_image(post_stack_exp,
                                           keyvalues=keyvalues_out,
                                           keypass=FALSE)
   }else{
@@ -1057,14 +1057,14 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
 
     keyvalues_out$EXTNAME = 'cold'
     keyvalues_out$MAGZERO = magzero_out
-    cold_out = Rfits_create_image(image=post_stack_cold,
+    cold_out = Rfits_create_image(post_stack_cold,
                                         keyvalues=keyvalues_out,
                                         keypass=FALSE)
 
     post_stack_hot[weight_out$imDat == 0L] = NA
 
     keyvalues_out$EXTNAME = 'hot'
-    hot_out = Rfits_create_image(image=post_stack_hot,
+    hot_out = Rfits_create_image(post_stack_hot,
                                          keyvalues=keyvalues_out,
                                          keypass=FALSE)
   }else{
@@ -1077,7 +1077,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
 
     keyvalues_out$EXTNAME = 'clip'
     keyvalues_out$MAGZERO = NULL
-    mask_clip = Rfits_create_image(image=mask_clip,
+    mask_clip = Rfits_create_image(mask_clip,
                                           keyvalues=keyvalues_out,
                                           keypass=FALSE)
   }

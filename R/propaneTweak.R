@@ -61,7 +61,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
   if(inherits(image_pre_fix, 'Rfits_image')){
     if(WCS_match){
       im_med = median(image_pre_fix$imDat, na.rm=TRUE)
-      im_quan = quantile(image_pre_fix$imDat, quan_cut, na.rm=TRUE)
+      im_quan_lo = quantile(image_pre_fix$imDat, quan_cut[1], na.rm=TRUE)
     }else{
       image_ref_warp = propaneWarp(image_ref,
                                    keyvalues_out = image_pre_fix$keyvalues,
@@ -70,18 +70,24 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
       )$imDat
       sel = which(!is.na(image_ref_warp))
       im_med = median(image_pre_fix$imDat[sel], na.rm=TRUE)
-      im_quan = quantile(image_pre_fix$imDat[sel], quan_cut, na.rm=TRUE)
+      im_quan_lo = quantile(image_pre_fix$imDat[sel], quan_cut[1], na.rm=TRUE)
+    }
+    if(length(quan_cut)==2){
+      image_pre_fix$imDat[image_pre_fix$imDat > quantile(image_pre_fix$imDat, quan_cut[2], na.rm=TRUE)] = NA
     }
     image_pre_fix$imDat = image_pre_fix$imDat - im_med
-    image_pre_fix$imDat = image_pre_fix$imDat / im_quan
+    image_pre_fix$imDat = image_pre_fix$imDat / im_quan_lo
     image_pre_fix$imDat[image_pre_fix$imDat < 1] = NA
     if(cutcheck){
       plot(image_pre_fix)
       legend('topleft', 'image_pre_fix')
     }
   }else{
+    if(length(quan_cut)==2){
+      image_pre_fix[image_pre_fix > quantile(image_pre_fix, quan_cut[2], na.rm=TRUE)] = NA
+    }
     image_pre_fix = image_pre_fix - median(image_pre_fix, na.rm=TRUE)
-    image_pre_fix = image_pre_fix / quantile(image_pre_fix, quan_cut, na.rm=TRUE)
+    image_pre_fix = image_pre_fix / quantile(image_pre_fix, quan_cut[1], na.rm=TRUE)
     image_pre_fix[image_pre_fix < 1] = NA
     if(cutcheck){
       magimage(image_pre_fix)
@@ -90,8 +96,11 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
   }
 
   if(inherits(image_ref, 'Rfits_image')){
+    if(length(quan_cut)==2){
+      image_ref$imDat[image_ref$imDat > quantile(image_ref$imDat, quan_cut[2], na.rm=TRUE)] = NA
+    }
     image_ref$imDat = image_ref$imDat - median(image_ref$imDat, na.rm=TRUE)
-    image_ref$imDat = image_ref$imDat / quantile(image_ref$imDat, quan_cut, na.rm=TRUE)
+    image_ref$imDat = image_ref$imDat / quantile(image_ref$imDat, quan_cut[1], na.rm=TRUE)
     image_ref$imDat[image_ref$imDat < 1] = NA
     if(cutcheck){
       plot(image_ref)
@@ -99,8 +108,11 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
       return(NULL)
     }
   }else{
+    if(length(quan_cut)==2){
+      image_ref[image_ref > quantile(image_ref, quan_cut[2], na.rm=TRUE)] = NA
+    }
     image_ref = image_ref - median(image_ref, na.rm=TRUE)
-    image_ref = image_ref / quantile(image_ref, quan_cut, na.rm=TRUE)
+    image_ref = image_ref / quantile(image_ref, quan_cut[1], na.rm=TRUE)
     image_ref[image_ref < 1] = NA
     if(cutcheck){
       magimage(image_ref)
@@ -229,7 +241,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
 
         if(optim_out$par[1] != 0 | optim_out$par[2] != 0){
           image_post_fix$imDat = .cost_fn(par = optim_out$par,
-                                    image_ref = image_ref$imDat,
+                                    image_ref = image_ref,
                                     image_pre_fix = image_pre_fix_orig$imDat,
                                     scale = scale,
                                     direction = direction,

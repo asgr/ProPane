@@ -152,7 +152,7 @@ propaneStackWarpMed = function(
     keyvalues_out$PANE_VER = as.character(packageVersion('ProPane'))
     keyvalues_out$RWCS_VER = as.character(packageVersion('Rwcs'))
 
-    image_out = Rfits_create_image(image=image_out,
+    image_out = Rfits_create_image(image_out,
                                           keyvalues=keyvalues_out,
                                           keypass=FALSE,
                                           history='Stacked with Rwcs_stack')
@@ -160,7 +160,7 @@ propaneStackWarpMed = function(
     if(doweight){
       keyvalues_out$EXTNAME = 'weight'
       keyvalues_out$MAGZERO = NULL
-      weight_out = Rfits_create_image(image=weight_out,
+      weight_out = Rfits_create_image(weight_out,
                                       keyvalues=keyvalues_out,
                                       keypass=FALSE)
     }
@@ -382,7 +382,7 @@ propaneStackWarpFunc = function(
     keyvalues_out$PANE_VER = as.character(packageVersion('ProPane'))
     keyvalues_out$RWCS_VER = as.character(packageVersion('Rwcs'))
 
-    image_out = Rfits_create_image(image=image_out,
+    image_out = Rfits_create_image(image_out,
                                    keyvalues=keyvalues_out,
                                    keypass=FALSE,
                                    history='Stacked with Rwcs_stack')
@@ -390,7 +390,7 @@ propaneStackWarpFunc = function(
     if(doweight){
       keyvalues_out$EXTNAME = 'weight'
       keyvalues_out$MAGZERO = NULL
-      weight_out = Rfits_create_image(image=weight_out,
+      weight_out = Rfits_create_image(weight_out,
                                       keyvalues=keyvalues_out,
                                       keypass=FALSE)
     }

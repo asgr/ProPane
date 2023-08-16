@@ -24,7 +24,7 @@ Rfits_image / Numeric matrix; image to be tweaked (must have exactly the same di
 Numeric vector; the first element is maximum number of pixels to explore in +/-x and +/- y; the second element is the maximum rotation to apply in degrees. If \option{delta_max}[2] = 0 then only translation optimisation is computed (no rotation).
 }
   \item{quan_cut}{
-Numeric scalar; bright pixel thesholding to apply to \option{image_ref} and \option{image_pre_fix}. Generally you want this quite high so that only cores of bright objects are compared. Suggested range to try (depending on image crowding) is 0.9-0.999 (see also \option{cutcheck} to aid this process).
+Numeric scalar/vector; when length 1 a bright pixel thesholding to apply to \option{image_ref} and \option{image_pre_fix}. Generally you want this quite high so that only cores of bright objects are compared. Suggested range to try (depending on image crowding) is 0.9 - 0.999 (see also \option{cutcheck} to aid this process). If length 2 then the first element (\option{quan_cut}[1]) is the bright pixel thresholding, and the second element (\option{quan_cut}[2]) is used to clip artificially bright pixels. Generally the seconed value should be in the range 0.9999 - 0.99999.
 }
   \item{Nmeta}{
 Integer scalar; how many shifts of the search box can be applied. This is only relevant when \option{shift_int} is TRUE.
