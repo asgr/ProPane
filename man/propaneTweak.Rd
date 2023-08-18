@@ -175,14 +175,28 @@ plot(tweak2$image_post_fix)
 
 library(ProFound)
 
+plot(image_tran)
+
 pro_im = profoundProFound(image)$segstats
 pro_im_tran = profoundProFound(image_tran)$segstats
 
 output = propaneTweakCat(pro_im[,c("xcen", "ycen")], pro_im_tran[,c("xcen", "ycen")],
   delta_max = c(5,20))
-output
+best3 = output$par
+best3
 # The above is very fast, but obviously a bit less accurate (there is less information
 # and signal in a catalogue versus the full image).
+
+image_fix3 = image
+image_fix3$imDat = propaneTran(image_tran$imDat, best3[1], best3[2], best3[3])
+plot(image_fix)
+
+# Or also:
+
+image_fix4 = propaneWCSmod(image_tran, best3[1], best3[2], best3[3]) #correct WCS
+plot(image_fix4)
+
+# Where the WCS is now rotated to follow that of the original image.
 }
 }
 
