@@ -283,6 +283,53 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
   }
 }
 
+propaneTweakImage = propaneTweak
+
+propaneTweakCat = function(cat_ref, cat_pre_fix, delta_max=c(100,0), mode='pix',
+                           keyvalues_ref=NULL, ...){
+
+  if(mode == 'coord'){
+    if(is.null(keyvalues_ref)){
+      stop('keyvalues_ref must be provided when input mode is coord!')
+    }
+    cat_ref = Rwcs_s2p(cat_ref, keyvalues=keyvalues_ref)
+    cat_pre_fix = Rwcs_s2p(cat_ref, cat_pre_fix=keyvalues_ref)
+  }
+
+  if(!requireNamespace("RANN", quietly = TRUE)){
+    stop('The RANN package is needed for matching to work. Please install from CRAN.', call. = FALSE)
+  }
+
+  if(delta_max[2] == 0){
+    par = c(0,0)
+    lower = c(-delta_max[1], -delta_max[1])
+    upper = c(delta_max[1], delta_max[1])
+    xcen_rot = 0
+    ycen_rot = 0
+  }else{
+    xcen_rot = mean(cat_ref[,1], na.rm=TRUE)
+    ycen_rot = mean(cat_ref[,2], na.rm=TRUE)
+
+    par = c(0,0,0)
+    lower = c(-delta_max[1], -delta_max[1], -delta_max[2])
+    upper = c(delta_max[1], delta_max[1], delta_max[2])
+  }
+
+  optim_out = optim(par = par,
+                    fn = .cost_fn_cat,
+                    method = "L-BFGS-B",
+                    lower = lower,
+                    upper = upper,
+                    cat_ref = cat_ref,
+                    cat_pre_fix = cat_pre_fix,
+                    rad_max = delta_max[1],
+                    xcen_rot = xcen_rot,
+                    ycen_rot = ycen_rot
+  )
+
+  return(optim_out)
+}
+
 propaneTran = function(image, delta_x = 0, delta_y = 0, delta_rot = 0, xcen_rot = dim(image)[1]/2,
                        ycen_rot = dim(image)[1]/2, direction='backward', padNA=TRUE, shift_int=TRUE){
   #delta refers to the direction we shift the image, not the view point.
@@ -483,4 +530,18 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
       return(list(cost=cost, image_post_fix=image_post_fix))
     }
   }
+}
+
+.cost_fn_cat = function(par, cat_ref, cat_pre_fix, rad_max, xcen_rot, ycen_rot){
+
+  if(length(par) == 2L){
+    cat_pre_fix = as.data.frame(.map.tran(cat_pre_fix[,1], cat_pre_fix[,2], delta_x=par[1], delta_y=par[2]))
+  }else if(length(par) == 3L){
+    cat_pre_fix = as.data.frame(.map.tran(cat_pre_fix[,1], cat_pre_fix[,2], delta_x=par[1], delta_y=par[2],
+                                          delta_rot=par[3], xcen_rot=xcen_rot, ycen_rot=ycen_rot))
+  }
+
+  temp_dist = RANN::nn2(cat_pre_fix, cat_ref, searchtype='radius', radius=rad_max, k=1)$nn.dists[,1]
+  temp_dist[temp_dist > 1.3e+154] = rad_max
+  return(sum(temp_dist^2, na.rm=TRUE))
 }

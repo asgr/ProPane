@@ -1,5 +1,7 @@
 \name{propaneTweak}
 \alias{propaneTweak}
+\alias{propaneTweakImage}
+\alias{propaneTweakCat}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Tweak the Translation Astrometry of an Image
@@ -11,6 +13,13 @@ Function to rapidly find translation and rotation tweaks directly in the image d
 propaneTweak(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99, Nmeta = 3,
   WCS_match = TRUE, cores = 4, shift_int = TRUE, return_image = TRUE,
   direction = "backward", final_centre = TRUE, cutcheck = FALSE, verbose = TRUE)
+
+propaneTweakImage(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99,
+  Nmeta = 3, WCS_match = TRUE, cores = 4, shift_int = TRUE, return_image = TRUE,
+  direction = "backward", final_centre = TRUE, cutcheck = FALSE, verbose = TRUE)
+
+propaneTweakCat(cat_ref, cat_pre_fix, delta_max = c(100,0), mode = 'pix',
+  keyvalues_ref = NULL, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -19,6 +28,12 @@ Rfits_image / Numeric matrix; static reference image (must have exactly the same
 }
   \item{image_pre_fix}{
 Rfits_image / Numeric matrix; image to be tweaked (must have exactly the same dimensions as \option{image_ref} if \option{shift_int} or \option{WCS_match} is TRUE). If \option{WCS_match} is FALSE then \option{image_pre_fix} must be a Rfits_image.
+}
+  \item{cat_ref}{
+Numeric matrix / data.frame; simple two column reference catalogue containing x/RA [,1] and y/Dec [,2] columns. xy corresponds to \option{mode} = 'pix', 'RA/Dec to  \option{mode} = 'coord'. The \option{mode} type must be the same as \option{cat_pre_fix}. If \option{mode} = 'coord' then \option{keyvalues_ref} must also be provided.
+}
+  \item{cat_pre_fix}{
+Numeric matrix / data.frame; simple two column tweak catalogue containing x/RA [,1] and y/Dec [,2] columns. xy corresponds to \option{mode} = 'pix', 'RA/Dec to  \option{mode} = 'coord'. The \option{mode} type must be the same as \option{cat_ref}. If \option{mode} = 'coord' then \option{keyvalues_ref} must also be provided.
 }
   \item{delta_max}{
 Numeric vector; the first element is maximum number of pixels to explore in +/-x and +/- y; the second element is the maximum rotation to apply in degrees. If \option{delta_max}[2] = 0 then only translation optimisation is computed (no rotation).
@@ -50,8 +65,17 @@ Logical; should a final round of costs be computed once the best tweak is found.
   \item{cutcheck}{
 Logical; if TRUE then quick plots showing the results of \option{quancut} are displayed. If the good quality sources to WCS match against are not present then consider lowering \option{quancut} (suggestion of 0.95 of 0.9). If a lot of noise and artefacts are present then consider increasing it. Note if this is TRUE then the function will exit after displaying the plots returning NULL (i.e. no tweaking is actually done).
 }
+  \item{mode}{
+Logical; the type of input for \option{cat_ref} and \option{cat_pre_fix}, either 'pix' (for x/y pixels) or 'coord' (For RA/Dec in degrees). Both catalogues must have the same data \option{mode}. If \option{mode} = 'coord' then \option{keyvalues_ref} must also be provided.
+}
+ \item{keyvalues_ref}{
+List; header values that detail the WCS for \option{cat_ref}. This must be provided when \option{mode} = 'coord'.
+}
   \item{verbose}{
 Logical; should verbose outputs be printed as it runs?
+}
+  \item{\dots}{
+Other arguments to pass to \code{coordmatch}.
 }
 }
 \details{
@@ -60,9 +84,11 @@ Image tweaking is useful before stacking with e.g. \code{\link{propaneStackWarpI
 If using the output of this to fix the header CRPIX then the fixed/new CRPIX belonging to \option{image_pre_fix} becomes \option{image_pre_fix}$keyvalues$CRPIX[1-2] (fixed) = \option{image_pre_fix}$keyvalues$CRPIX[1-2] (old) - tweak$optim_out$par[1-2] (i.e. we subtract the tweaked solution). In this case you might need to replace the raw list item with either the output of Rfits_keyvalues_to_header(Rfits_header_to_raw(keyvalues_fixed)) or set to NULL (this is because, if present, raw header items take precedence).
 }
 \value{
+For \code{propaneTweak} and \code{propaneTweakImage} (which are the same function):
+
 When \option{shift_int} is TRUE:
 
-\item{optim_out}{The output of the actual optimisation (includes the best par).}
+\item{optim_out}{The output of the actual optimisation (includes the best par). This can be used to update the relevent image header of \option{image_pre_fix} via \code{\link{propaneWCSmod}} (see Examples)}
 \item{image_post_fix}{The tweaked image (if \option{return_image} is TRUE). This will either have the image pixels directly manipulated or the WCS header, depending on whether a Rfits_image was passed in for \option{image_pre_fix}. There are 3 potential outputs: if the input \option{image_pre_fix} was an image matrix then obviously the output has to be a modified image (there is no header), but if the input \option{image_pre_fix} is an Rfits_image then \option{WCS_match} = FALSE means the header will be changed, and \option{WCS_match} = TRUE means the image pixels will be adjusted direclty.}
 \item{time}{The total running time in seconds.}
 \item{cost_mat}{The cost outputs for the final iteration. Thie has dimensions x = delta_x, y = delta_y, z = cost.}
@@ -73,6 +99,10 @@ When \option{shift_int} is FALSE:
 \item{optim_out}{The output of the actual optimisation (includes the best par).}
 \item{image_post_fix}{The tweaked image (if \option{return_image} is TRUE).}
 \item{time}{The total running time in seconds.}
+
+For \code{propaneTweakCat}:
+
+The output of the actual optimisation (includes the best par). This can be used to update the relevent image header of \option{cat_pre_fix} via \code{\link{propaneWCSmod}} (see Examples).
 }
 \author{
 Aaron Robotham
@@ -141,6 +171,18 @@ print(tweak2$optim_out$par)
 
 plot(tweak2$image_post_fix)
 
+# Now some catalogue level tweaking:
+
+library(ProFound)
+
+pro_im = profoundProFound(image)$segstats
+pro_im_tran = profoundProFound(image_tran)$segstats
+
+output = propaneTweakCat(pro_im[,c("xcen", "ycen")], pro_im_tran[,c("xcen", "ycen")],
+  delta_max = c(5,20))
+output
+# The above is very fast, but obviously a bit less accurate (there is less information
+# and signal in a catalogue versus the full image).
 }
 }
 
