@@ -439,21 +439,13 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
     keyvalues$CD2_2 = rotmat[2,2]
   }
 
-  header = Rfits_keyvalues_to_header(keyvalues)
-  hdr = Rfits_keyvalues_to_hdr(keyvalues)
-  raw = Rfits_header_to_raw(header)
-
   if(keylist){
-    return(list(keyvalues = keyvalues,
-                header = header,
-                hdr = hdr,
-                raw = raw)
-    )
+    return(keyvalues)
   }else{
     input$keyvalues = keyvalues
-    input$header = header
-    input$hdr = hdr
-    input$raw = raw
+    input$header = Rfits_keyvalues_to_header(keyvalues)
+    input$hdr = Rfits_keyvalues_to_hdr(keyvalues)
+    input$raw = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues))
 
     return(input)
   }
