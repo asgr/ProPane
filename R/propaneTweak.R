@@ -1,6 +1,6 @@
 propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.99, Nmeta=3,
                       WCS_match=TRUE, cores=4, shift_int=TRUE, return_image=TRUE, direction='backward',
-                      final_centre=TRUE, cutcheck=FALSE, verbose=TRUE){
+                      final_centre=TRUE, cutcheck=FALSE, quick=FALSE, verbose=TRUE){
 
   if(!requireNamespace("imager", quietly = TRUE)){
     stop('The imager package is needed for smoothing to work. Please install from CRAN.', call. = FALSE)
@@ -41,7 +41,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
     }
   }
 
-  dim_orig = dim(image_ref)
+  #dim_orig = dim(image_ref)
 
   if(verbose){
     message("Trimming comparison region and auto scaling")
@@ -100,7 +100,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
     }
     image_ref$imDat = image_ref$imDat - median(image_ref$imDat, na.rm=TRUE)
     image_ref$imDat = image_ref$imDat / quantile(image_ref$imDat, quan_cut[1], na.rm=TRUE)
-    image_ref$imDat[image_ref$imDat < 1] = NA
+    image_ref$imDat[image_ref$imDat < 1] = 0
     if(cutcheck){
       plot(image_ref)
       legend('topleft', 'image_ref')
@@ -112,7 +112,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
     }
     image_ref = image_ref - median(image_ref, na.rm=TRUE)
     image_ref = image_ref / quantile(image_ref, quan_cut[1], na.rm=TRUE)
-    image_ref[image_ref < 1] = NA
+    image_ref[image_ref < 1] = 0
     if(cutcheck){
       magimage(image_ref)
       legend('topleft', 'image_ref')
@@ -214,19 +214,43 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
       upper = c(delta_max[1], delta_max[1], delta_max[2])
     }
 
-    optim_out = optim(par = par,
-                      fn = .cost_fn,
-                      method = "L-BFGS-B",
-                      lower = lower,
-                      upper = upper,
-                      image_ref = image_ref,
-                      image_pre_fix = image_pre_fix,
-                      scale = scale,
-                      direction = direction,
-                      pix_cost_use = NULL,
-                      shift_int = FALSE,
-                      WCS_match = WCS_match
-    )
+    if(quick==FALSE){
+      optim_out = optim(par = par,
+                        fn = .cost_fn_image,
+                        method = "L-BFGS-B",
+                        lower = lower,
+                        upper = upper,
+                        image_ref = image_ref,
+                        image_pre_fix = image_pre_fix,
+                        scale = scale,
+                        direction = direction,
+                        pix_cost_use = NULL,
+                        shift_int = FALSE,
+                        WCS_match = WCS_match
+      )
+    }else{
+      if(inherits(image_pre_fix, 'Rfits_image')){
+        image_pre_fix_xysub = which(!is.na(image_pre_fix$imDat), arr.ind = TRUE)
+        image_pre_fix_xysub = cbind(image_pre_fix_xysub, image_pre_fix$imDat[image_pre_fix_xysub])
+      }else{
+        image_pre_fix_xysub = which(!is.na(image_pre_fix), arr.ind = TRUE)
+        image_pre_fix_xysub = cbind(image_pre_fix_xysub, image_pre_fix[image_pre_fix_xysub])
+      }
+
+      optim_out = optim(par = par,
+                        fn = .cost_fn_image_approx,
+                        method = "L-BFGS-B",
+                        lower = lower,
+                        upper = upper,
+                        image_ref = image_ref,
+                        image_pre_fix_xysub = image_pre_fix_xysub,
+                        keyvalues_pre_fix = image_pre_fix$keyvalues,
+                        scale = scale,
+                        WCS_match = WCS_match,
+                        xcen_rot = mean(image_pre_fix_xysub[,1], na.rm=TRUE),
+                        ycen_rot = mean(image_pre_fix_xysub[,2], na.rm=TRUE)
+      )
+    }
   }
 
   if(return_image){
@@ -239,7 +263,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
         image_post_fix = image_pre_fix_orig
 
         if(optim_out$par[1] != 0 | optim_out$par[2] != 0){
-          image_post_fix$imDat = .cost_fn(par = optim_out$par,
+          image_post_fix$imDat = .cost_fn_image(par = optim_out$par,
                                     image_ref = image_ref,
                                     image_pre_fix = image_pre_fix_orig$imDat,
                                     scale = scale,
@@ -257,7 +281,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
       }
     }else{
       if(optim_out$par[1] != 0 | optim_out$par[2] != 0){
-        image_post_fix = .cost_fn(par = optim_out$par,
+        image_post_fix = .cost_fn_image(par = optim_out$par,
                                        image_ref = image_ref,
                                        image_pre_fix = image_pre_fix_orig,
                                        scale = scale,
@@ -439,21 +463,13 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
     keyvalues$CD2_2 = rotmat[2,2]
   }
 
-  header = Rfits_keyvalues_to_header(keyvalues)
-  hdr = Rfits_keyvalues_to_hdr(keyvalues)
-  raw = Rfits_header_to_raw(header)
-
   if(keylist){
-    return(list(keyvalues = keyvalues,
-                header = header,
-                hdr = hdr,
-                raw = raw)
-    )
+    return(keyvalues)
   }else{
     input$keyvalues = keyvalues
-    input$header = header
-    input$hdr = hdr
-    input$raw = raw
+    input$header = Rfits_keyvalues_to_header(keyvalues)
+    input$hdr = Rfits_keyvalues_to_hdr(keyvalues)
+    input$raw = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues))
 
     return(input)
   }
@@ -472,8 +488,8 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
   list(x = x_mod, y = y_mod)
 }
 
-.cost_fn = function(par, image_ref, image_pre_fix, scale=1, direction='backward', pix_cost_use=NULL,
-                    shift_int=TRUE, return='cost', WCS_match=TRUE){
+.cost_fn_image = function(par, image_ref, image_pre_fix, scale=1, direction='backward',
+                          pix_cost_use=NULL, shift_int=TRUE, return='cost', WCS_match=TRUE){
 
   if(shift_int){
     WCS_match = TRUE
@@ -544,4 +560,37 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
   temp_dist = RANN::nn2(cat_pre_fix, cat_ref, searchtype='radius', radius=rad_max, k=1)$nn.dists[,1]
   temp_dist[temp_dist > 1.3e+154] = rad_max
   return(sum(temp_dist^2, na.rm=TRUE))
+}
+
+.cost_fn_image_approx = function(par, image_ref, image_pre_fix_xysub, keyvalues_pre_fix, scale=1,
+                                 WCS_match=TRUE, xcen_rot, ycen_rot){
+  #image_pre_fix_xysub is just meant to be the pixels we want to transform, rather than the full image
+
+  if(WCS_match){
+    if(length(par) == 2L){
+      image_pre_fix_xysub[,1:2] = as.data.frame(.map.tran(image_pre_fix_xysub[,1], image_pre_fix_xysub[,2], delta_x=par[1], delta_y=par[2]))
+    }else if(length(par) == 3L){
+      image_pre_fix_xysub[,1:2] = as.data.frame(.map.tran(image_pre_fix_xysub[,1], image_pre_fix_xysub[,2], delta_x=par[1], delta_y=par[2],
+                                            delta_rot=par[3], xcen_rot=xcen_rot, ycen_rot=ycen_rot))
+    }
+    image_pre_fix_xysub[,1:2] = ceiling(image_pre_fix_xysub[,1:2])
+  }else{
+    if(length(par) == 2){
+      keyvalues_pre_fix = propaneWCSmod(keyvalues_pre_fix, delta_x=par[1], delta_y=par[2])
+    }else{
+      keyvalues_pre_fix = propaneWCSmod(keyvalues_pre_fix, delta_x=par[1], delta_y=par[2], delta_rot=par[3])
+    }
+    image_pre_fix_radecsub = Rwcs_p2s(image_pre_fix_xysub[,1:2], keyvalues=keyvalues_pre_fix)
+    image_pre_fix_xysub[,1:2] = ceiling(Rwcs_s2p(image_pre_fix_radecsub, keyvalues=image_ref$keyvalues))
+  }
+
+  image_pre_fix_xysub = image_pre_fix_xysub[image_pre_fix_xysub[,1] >= 1L & image_pre_fix_xysub[,1] <= dim(image_ref)[1] & image_pre_fix_xysub[,2] >= 1L & image_pre_fix_xysub[,2] <= dim(image_ref)[2],]
+
+  if(inherits(image_ref, 'Rfits_image')){
+    cost = sum(((image_ref$imDat[image_pre_fix_xysub[,1:2]] - image_pre_fix_xysub[,3])/scale)^2, na.rm=TRUE)
+  }else{
+    cost = sum(((image_ref[image_pre_fix_xysub[,1:2]] - image_pre_fix_xysub[,3])/scale)^2, na.rm=TRUE)
+  }
+
+  return(cost)
 }

@@ -12,11 +12,13 @@ Function to rapidly find translation and rotation tweaks directly in the image d
 \usage{
 propaneTweak(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99, Nmeta = 3,
   WCS_match = TRUE, cores = 4, shift_int = TRUE, return_image = TRUE,
-  direction = "backward", final_centre = TRUE, cutcheck = FALSE, verbose = TRUE)
+  direction = "backward", final_centre = TRUE, cutcheck = FALSE, quick = FALSE,
+  verbose = TRUE)
 
 propaneTweakImage(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99,
   Nmeta = 3, WCS_match = TRUE, cores = 4, shift_int = TRUE, return_image = TRUE,
-  direction = "backward", final_centre = TRUE, cutcheck = FALSE, verbose = TRUE)
+  direction = "backward", final_centre = TRUE, cutcheck = FALSE, quick = FALSE,
+  verbose = TRUE)
 
 propaneTweakCat(cat_ref, cat_pre_fix, delta_max = c(100,0), mode = 'pix',
   keyvalues_ref = NULL, ...)
@@ -64,6 +66,9 @@ Logical; should a final round of costs be computed once the best tweak is found.
 }
   \item{cutcheck}{
 Logical; if TRUE then quick plots showing the results of \option{quancut} are displayed. If the good quality sources to WCS match against are not present then consider lowering \option{quancut} (suggestion of 0.95 of 0.9). If a lot of noise and artefacts are present then consider increasing it. Note if this is TRUE then the function will exit after displaying the plots returning NULL (i.e. no tweaking is actually done).
+}
+  \item{quick}{
+Logical; determines whether an approximate 'quick' solution is found. This will often be very good, but it does not compute a full image warp (it rounds pixels to the nearest match).
 }
   \item{mode}{
 Logical; the type of input for \option{cat_ref} and \option{cat_pre_fix}, either 'pix' (for x/y pixels) or 'coord' (For RA/Dec in degrees). Both catalogues must have the same data \option{mode}. If \option{mode} = 'coord' then \option{keyvalues_ref} must also be provided.
