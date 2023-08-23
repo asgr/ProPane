@@ -1,6 +1,6 @@
 propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.99, Nmeta=3,
                       WCS_match=TRUE, cores=4, shift_int=TRUE, return_image=TRUE, direction='backward',
-                      final_centre=TRUE, cutcheck=FALSE, quick=FALSE, verbose=TRUE){
+                      final_centre=TRUE, cutcheck=FALSE, quick=FALSE, Niter=1e4, verbose=TRUE){
 
   if(!requireNamespace("imager", quietly = TRUE)){
     stop('The imager package is needed for smoothing to work. Please install from CRAN.', call. = FALSE)
@@ -76,7 +76,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
     }
     image_pre_fix$imDat = image_pre_fix$imDat - im_med
     image_pre_fix$imDat = image_pre_fix$imDat / im_quan_lo
-    image_pre_fix$imDat[image_pre_fix$imDat < 1] = NA
+    image_pre_fix$imDat[image_pre_fix$imDat < 1] = 0
     if(cutcheck){
       plot(image_pre_fix)
       legend('topleft', 'image_pre_fix')
@@ -87,7 +87,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
     }
     image_pre_fix = image_pre_fix - median(image_pre_fix, na.rm=TRUE)
     image_pre_fix = image_pre_fix / quantile(image_pre_fix, quan_cut[1], na.rm=TRUE)
-    image_pre_fix[image_pre_fix < 1] = NA
+    image_pre_fix[image_pre_fix < 1] = 0
     if(cutcheck){
       magimage(image_pre_fix)
       legend('topleft', 'image_pre_fix')
@@ -121,7 +121,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
   }
 
 
-  scale = 1 # not really used anymore
+  #scale = 1 # not really used anymore
   i = NULL #to avoid warnings
 
   #pix_cost_use = which(!is.na(image_ref) & !is.na(image_pre_fix))
@@ -149,7 +149,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
       grid_search = expand.grid(-delta_max[1]:delta_max[1] + current_par[1], -delta_max[1]:delta_max[1] + current_par[2])
 
       cost_mat = foreach(i = 1:dim(grid_search)[1], .combine='c')%dopar%{
-        cost = .mat_diff_sum(image_ref, image_pre_fix, scale, grid_search[i,1], grid_search[i,2])
+        cost = .mat_diff_sum(image_ref, image_pre_fix, 1, grid_search[i,1], grid_search[i,2]) #1 is the unused scale param
         if(verbose){
           message(grid_search[i,1],' ', grid_search[i,2],' ',cost)
         }
@@ -172,7 +172,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
           grid_search = expand.grid(-delta_max[1]:delta_max[1] + current_par[1], -delta_max[1]:delta_max[1] + current_par[2])
 
           cost_mat = foreach(i = 1:dim(grid_search)[1], .combine='c')%dopar%{
-            cost = .mat_diff_sum(image_ref, image_pre_fix, scale, grid_search[i,1], grid_search[i,2])
+            cost = .mat_diff_sum(image_ref, image_pre_fix, 1, grid_search[i,1], grid_search[i,2]) #1 is the unused scale param
             if(verbose){
               message(grid_search[i,1],' ', grid_search[i,2],' ',cost)
             }
@@ -222,33 +222,48 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
                         upper = upper,
                         image_ref = image_ref,
                         image_pre_fix = image_pre_fix,
-                        scale = scale,
                         direction = direction,
                         pix_cost_use = NULL,
                         shift_int = FALSE,
                         WCS_match = WCS_match
       )
     }else{
+      if(!requireNamespace("cmaes", quietly = TRUE)){
+        stop('The cmaes package is needed for matching to work. Please install from CRAN.', call. = FALSE)
+      }
+
       if(inherits(image_pre_fix, 'Rfits_image')){
-        image_pre_fix_xysub = which(!is.na(image_pre_fix$imDat), arr.ind = TRUE)
+        image_pre_fix_xysub = which(image_pre_fix$imDat > 0, arr.ind = TRUE)
         image_pre_fix_xysub = cbind(image_pre_fix_xysub, image_pre_fix$imDat[image_pre_fix_xysub])
       }else{
-        image_pre_fix_xysub = which(!is.na(image_pre_fix), arr.ind = TRUE)
+        image_pre_fix_xysub = which(image_pre_fix > 0, arr.ind = TRUE)
         image_pre_fix_xysub = cbind(image_pre_fix_xysub, image_pre_fix[image_pre_fix_xysub])
       }
 
-      optim_out = optim(par = par,
-                        fn = .cost_fn_image_approx,
-                        method = "L-BFGS-B",
-                        lower = lower,
-                        upper = upper,
-                        image_ref = image_ref,
-                        image_pre_fix_xysub = image_pre_fix_xysub,
-                        keyvalues_pre_fix = image_pre_fix$keyvalues,
-                        scale = scale,
-                        WCS_match = WCS_match,
-                        xcen_rot = mean(image_pre_fix_xysub[,1], na.rm=TRUE),
-                        ycen_rot = mean(image_pre_fix_xysub[,2], na.rm=TRUE)
+      # optim_out = optim(par = par,
+      #                   fn = .cost_fn_image_approx,
+      #                   method = "L-BFGS-B",
+      #                   lower = lower,
+      #                   upper = upper,
+      #                   image_ref = image_ref,
+      #                   image_pre_fix_xysub = image_pre_fix_xysub,
+      #                   keyvalues_pre_fix = image_pre_fix$keyvalues,
+      #                   WCS_match = WCS_match,
+      #                   xcen_rot = mean(image_pre_fix_xysub[,1], na.rm=TRUE),
+      #                   ycen_rot = mean(image_pre_fix_xysub[,2], na.rm=TRUE)
+      # )
+      optim_out = cmaes::cma_es(
+        par = par,
+        fn = .cost_fn_image_approx,
+        lower = lower,
+        upper = upper,
+        image_ref = image_ref,
+        image_pre_fix_xysub = image_pre_fix_xysub,
+        keyvalues_pre_fix = image_pre_fix$keyvalues,
+        WCS_match = WCS_match,
+        xcen_rot = mean(image_pre_fix_xysub[,1], na.rm=TRUE),
+        ycen_rot = mean(image_pre_fix_xysub[,2], na.rm=TRUE),
+        control = list(maxit = Niter)
       )
     }
   }
@@ -266,7 +281,6 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
           image_post_fix$imDat = .cost_fn_image(par = optim_out$par,
                                     image_ref = image_ref,
                                     image_pre_fix = image_pre_fix_orig$imDat,
-                                    scale = scale,
                                     direction = direction,
                                     return = 'image_post_fix',
                                     shift_int = FALSE,
@@ -284,7 +298,6 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
         image_post_fix = .cost_fn_image(par = optim_out$par,
                                        image_ref = image_ref,
                                        image_pre_fix = image_pre_fix_orig,
-                                       scale = scale,
                                        direction = direction,
                                        return = 'image_post_fix',
                                        shift_int = FALSE,
@@ -488,7 +501,7 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
   list(x = x_mod, y = y_mod)
 }
 
-.cost_fn_image = function(par, image_ref, image_pre_fix, scale=1, direction='backward',
+.cost_fn_image = function(par, image_ref, image_pre_fix, direction='backward',
                           pix_cost_use=NULL, shift_int=TRUE, return='cost', WCS_match=TRUE){
 
   if(shift_int){
@@ -506,7 +519,7 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
   }
 
   if(shift_int){
-    cost = .mat_diff_sum(image_ref, image_pre_fix, scale, par[1], par[2])
+    cost = .mat_diff_sum(image_ref, image_pre_fix, 1, par[1], par[2]) #1 is the unused scale param
     message(par[1],' ',par[2],' ',cost)
     return(cost)
   }else{
@@ -533,10 +546,10 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
     #frac_good = length(which(!is.na(image_post_fix))) / prod(dim(image_post_fix))
     if(is.null(pix_cost_use)){
       #cost = sum(asinh((image_ref * image_post_fix)/scale/frac_good), na.rm=TRUE)
-      cost = sum(((image_ref - image_post_fix)/scale)^2, na.rm=TRUE)
+      cost = sum(((image_ref - image_post_fix))^2/image_ref, na.rm=TRUE)
     }else{
       #cost = sum(asinh((image_ref[pix_cost_use] * image_post_fix[pix_cost_use])/scale/frac_good), na.rm=TRUE)
-      cost = sum(((image_ref - image_post_fix[pix_cost_use])/scale)^2, na.rm=TRUE)
+      cost = sum(((image_ref - image_post_fix[pix_cost_use]))^2/image_ref, na.rm=TRUE)
     }
     #message(par[1],' ',par[2],' ',cost)
     if(return=='cost'){
@@ -562,35 +575,58 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
   return(sum(temp_dist^2, na.rm=TRUE))
 }
 
-.cost_fn_image_approx = function(par, image_ref, image_pre_fix_xysub, keyvalues_pre_fix, scale=1,
+.cost_fn_image_approx = function(par, image_ref, image_pre_fix_xysub, keyvalues_pre_fix,
                                  WCS_match=TRUE, xcen_rot, ycen_rot){
   #image_pre_fix_xysub is just meant to be the pixels we want to transform, rather than the full image
 
+  flux = image_pre_fix_xysub[,3]
+
   if(WCS_match){
     if(length(par) == 2L){
-      image_pre_fix_xysub[,1:2] = as.data.frame(.map.tran(image_pre_fix_xysub[,1], image_pre_fix_xysub[,2], delta_x=par[1], delta_y=par[2]))
+      image_pre_fix_xysub = as.data.frame(.map.tran(image_pre_fix_xysub[,1], image_pre_fix_xysub[,2], delta_x=par[1], delta_y=par[2]))
     }else if(length(par) == 3L){
-      image_pre_fix_xysub[,1:2] = as.data.frame(.map.tran(image_pre_fix_xysub[,1], image_pre_fix_xysub[,2], delta_x=par[1], delta_y=par[2],
+      image_pre_fix_xysub = as.data.frame(.map.tran(image_pre_fix_xysub[,1], image_pre_fix_xysub[,2], delta_x=par[1], delta_y=par[2],
                                             delta_rot=par[3], xcen_rot=xcen_rot, ycen_rot=ycen_rot))
     }
-    image_pre_fix_xysub[,1:2] = ceiling(image_pre_fix_xysub[,1:2])
+
   }else{
     if(length(par) == 2){
       keyvalues_pre_fix = propaneWCSmod(keyvalues_pre_fix, delta_x=par[1], delta_y=par[2])
     }else{
       keyvalues_pre_fix = propaneWCSmod(keyvalues_pre_fix, delta_x=par[1], delta_y=par[2], delta_rot=par[3])
     }
-    image_pre_fix_radecsub = Rwcs_p2s(image_pre_fix_xysub[,1:2], keyvalues=keyvalues_pre_fix)
-    image_pre_fix_xysub[,1:2] = ceiling(Rwcs_s2p(image_pre_fix_radecsub, keyvalues=image_ref$keyvalues))
+    radecsub = Rwcs_p2s(image_pre_fix_xysub[,1:2], keyvalues=keyvalues_pre_fix)
+    image_pre_fix_xysub = Rwcs_s2p(radecsub, keyvalues=image_ref$keyvalues)
   }
 
-  image_pre_fix_xysub = image_pre_fix_xysub[image_pre_fix_xysub[,1] >= 1L & image_pre_fix_xysub[,1] <= dim(image_ref)[1] & image_pre_fix_xysub[,2] >= 1L & image_pre_fix_xysub[,2] <= dim(image_ref)[2],]
+  image_pre_fix_xysub = image_pre_fix_xysub - 0.5 #to get in R units
+  xysub_loc = ceiling(image_pre_fix_xysub)
+  goodsel = xysub_loc[,1] >= 1L & xysub_loc[,1] <= dim(image_ref)[1] & xysub_loc[,2] >= 1L & xysub_loc[,2] <= dim(image_ref)[2]
+  image_pre_fix_xysub = image_pre_fix_xysub[goodsel,]
+  xysub_loc = xysub_loc[goodsel,]
+  flux = flux[goodsel]
+
+  #cen
+  fluxshare = flux*((1 - abs(xysub_loc[,1] - 0.5 - image_pre_fix_xysub[,1]))*(1 - abs(xysub_loc[,2] - 0.5 - image_pre_fix_xysub[,2])))
+
+  #cost_image = akima::interp(image_pre_fix_xysub[,1], image_pre_fix_xysub[,2], flux, xo=1:dim(image_ref)[1], yo=1:dim(image_ref)[2], linear=FALSE)$z
 
   if(inherits(image_ref, 'Rfits_image')){
-    cost = sum(((image_ref$imDat[image_pre_fix_xysub[,1:2]] - image_pre_fix_xysub[,3])/scale)^2, na.rm=TRUE)
+    costmat = image_ref$imDat
+    costmat[xysub_loc] = costmat[xysub_loc] - fluxshare
+    costmat = costmat^2
+    #scaleloc = image_ref$imDat > 0
+    #costmat[scaleloc] = costmat[scaleloc]/image_ref$imDat[scaleloc]
   }else{
-    cost = sum(((image_ref[image_pre_fix_xysub[,1:2]] - image_pre_fix_xysub[,3])/scale)^2, na.rm=TRUE)
+    costmat = image_ref
+    costmat[xysub_loc] = costmat[xysub_loc] - fluxshare
+    costmat = costmat^2
+    #scaleloc = image_ref > 0
+    #costmat[scaleloc] = costmat[scaleloc]/image_ref[scaleloc]
   }
 
+  cost = sum(costmat, na.rm=TRUE)
+
+  #message(paste(par, collapse=' '),' ',cost)
   return(cost)
 }
