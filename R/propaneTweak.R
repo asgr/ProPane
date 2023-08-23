@@ -546,10 +546,10 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
     #frac_good = length(which(!is.na(image_post_fix))) / prod(dim(image_post_fix))
     if(is.null(pix_cost_use)){
       #cost = sum(asinh((image_ref * image_post_fix)/scale/frac_good), na.rm=TRUE)
-      cost = sum(((image_ref - image_post_fix))^2/image_ref, na.rm=TRUE)
+      cost = sum(((image_ref - image_post_fix))^2, na.rm=TRUE)
     }else{
       #cost = sum(asinh((image_ref[pix_cost_use] * image_post_fix[pix_cost_use])/scale/frac_good), na.rm=TRUE)
-      cost = sum(((image_ref - image_post_fix[pix_cost_use]))^2/image_ref, na.rm=TRUE)
+      cost = sum(((image_ref - image_post_fix[pix_cost_use]))^2, na.rm=TRUE)
     }
     #message(par[1],' ',par[2],' ',cost)
     if(return=='cost'){
