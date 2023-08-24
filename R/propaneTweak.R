@@ -612,7 +612,7 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
   }
 
   image_pre_fix_xysub = image_pre_fix_xysub - 0.5 #to get in R units
-  xysub_loc = ceiling(image_pre_fix_xysub)
+  xysub_loc = as.matrix(ceiling(image_pre_fix_xysub))
   goodsel = xysub_loc[,1] >= 2L & xysub_loc[,1] <= (dim(image_ref)[1] - 1L) & xysub_loc[,2] >= 2L & xysub_loc[,2] <= (dim(image_ref)[2] - 1L)
   image_pre_fix_xysub = image_pre_fix_xysub[goodsel,]
   xysub_loc = xysub_loc[goodsel,]
