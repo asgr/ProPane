@@ -13,12 +13,12 @@ Function to rapidly find translation and rotation tweaks directly in the image d
 propaneTweak(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99, Nmeta = 3,
   WCS_match = TRUE, cores = 4, shift_int = TRUE, return_image = TRUE,
   direction = "backward", final_centre = TRUE, cutcheck = FALSE, quick = FALSE,
-  Niter = 1e4, verbose = TRUE)
+  qtype = 'optim', Niter = 1e4, verbose = TRUE)
 
 propaneTweakImage(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99,
   Nmeta = 3, WCS_match = TRUE, cores = 4, shift_int = TRUE, return_image = TRUE,
   direction = "backward", final_centre = TRUE, cutcheck = FALSE, quick = FALSE,
-  Niter = 1e4, verbose = TRUE)
+  qtype = 'optim', Niter = 1e4, verbose = TRUE)
 
 propaneTweakCat(cat_ref, cat_pre_fix, delta_max = c(100,0), mode = 'pix',
   keyvalues_ref = NULL, ...)
@@ -68,7 +68,10 @@ Logical; should a final round of costs be computed once the best tweak is found.
 Logical; if TRUE then quick plots showing the results of \option{quancut} are displayed. If the good quality sources to WCS match against are not present then consider lowering \option{quancut} (suggestion of 0.95 of 0.9). If a lot of noise and artefacts are present then consider increasing it. Note if this is TRUE then the function will exit after displaying the plots returning NULL (i.e. no tweaking is actually done).
 }
   \item{quick}{
-Logical; determines whether an approximate 'quick' solution is found. This will often be very good, but it does not compute a full image warp (it rounds pixels to the nearest match). This uses CMA (the \code{cma_es function}), which requires the installation of the cmaes package.
+Logical; determines whether an approximate 'quick' solution is found. This will often be very good, but it does not compute a full image warp (it rounds pixels to the nearest match).
+}
+  \item{qtype}{
+
 }
   \item{Niter}{
 Integer scalar; if \option{quick} = TRUE, then this sets the maximum number of iterations to try. If it converges faster then the \option{Niter} will not be reached, so usually best not to reduce it from the default.

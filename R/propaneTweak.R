@@ -1,6 +1,6 @@
 propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.99, Nmeta=3,
                       WCS_match=TRUE, cores=4, shift_int=TRUE, return_image=TRUE, direction='backward',
-                      final_centre=TRUE, cutcheck=FALSE, quick=FALSE, Niter=1e4, verbose=TRUE){
+                      final_centre=TRUE, cutcheck=FALSE, quick=FALSE, qtype='optim', Niter=1e4, verbose=TRUE){
 
   if(!requireNamespace("imager", quietly = TRUE)){
     stop('The imager package is needed for smoothing to work. Please install from CRAN.', call. = FALSE)
@@ -228,8 +228,10 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
                         WCS_match = WCS_match
       )
     }else{
-      if(!requireNamespace("cmaes", quietly = TRUE)){
-        stop('The cmaes package is needed for matching to work. Please install from CRAN.', call. = FALSE)
+      if(qtype == 'cma'){
+        if(!requireNamespace("cmaes", quietly = TRUE)){
+          stop('The cmaes package is needed for matching to work. Please install from CRAN.', call. = FALSE)
+        }
       }
 
       if(inherits(image_pre_fix, 'Rfits_image')){
@@ -240,31 +242,36 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
         image_pre_fix_xysub = cbind(image_pre_fix_xysub, image_pre_fix[image_pre_fix_xysub])
       }
 
-      # optim_out = optim(par = par,
-      #                   fn = .cost_fn_image_approx,
-      #                   method = "L-BFGS-B",
-      #                   lower = lower,
-      #                   upper = upper,
-      #                   image_ref = image_ref,
-      #                   image_pre_fix_xysub = image_pre_fix_xysub,
-      #                   keyvalues_pre_fix = image_pre_fix$keyvalues,
-      #                   WCS_match = WCS_match,
-      #                   xcen_rot = mean(image_pre_fix_xysub[,1], na.rm=TRUE),
-      #                   ycen_rot = mean(image_pre_fix_xysub[,2], na.rm=TRUE)
-      # )
-      optim_out = cmaes::cma_es(
-        par = par,
-        fn = .cost_fn_image_approx,
-        lower = lower,
-        upper = upper,
-        image_ref = image_ref,
-        image_pre_fix_xysub = image_pre_fix_xysub,
-        keyvalues_pre_fix = image_pre_fix$keyvalues,
-        WCS_match = WCS_match,
-        xcen_rot = mean(image_pre_fix_xysub[,1], na.rm=TRUE),
-        ycen_rot = mean(image_pre_fix_xysub[,2], na.rm=TRUE),
-        control = list(maxit = Niter)
-      )
+      if(qtype == 'optim'){
+        optim_out = optim(par = par,
+                          fn = .cost_fn_image_approx,
+                          method = "L-BFGS-B",
+                          lower = lower,
+                          upper = upper,
+                          image_ref = image_ref,
+                          image_pre_fix_xysub = image_pre_fix_xysub,
+                          keyvalues_pre_fix = image_pre_fix$keyvalues,
+                          WCS_match = WCS_match,
+                          xcen_rot = mean(image_pre_fix_xysub[,1], na.rm=TRUE),
+                          ycen_rot = mean(image_pre_fix_xysub[,2], na.rm=TRUE)
+        )
+      }else if(qtype == 'cma'){
+        optim_out = cmaes::cma_es(
+          par = par,
+          fn = .cost_fn_image_approx,
+          lower = lower,
+          upper = upper,
+          image_ref = image_ref,
+          image_pre_fix_xysub = image_pre_fix_xysub,
+          keyvalues_pre_fix = image_pre_fix$keyvalues,
+          WCS_match = WCS_match,
+          xcen_rot = mean(image_pre_fix_xysub[,1], na.rm=TRUE),
+          ycen_rot = mean(image_pre_fix_xysub[,2], na.rm=TRUE),
+          control = list(maxit = Niter)
+        )
+      }else{
+        stop('')
+      }
     }
   }
 
@@ -540,23 +547,28 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
                                    direction = 'backward')$imDat
       image_ref = image_ref$imDat
     }
+
     if(return=='image_post_fix'){
       return(image_post_fix)
     }
+
+    costmat = image_ref - image_post_fix
+
     #frac_good = length(which(!is.na(image_post_fix))) / prod(dim(image_post_fix))
     if(is.null(pix_cost_use)){
       #cost = sum(asinh((image_ref * image_post_fix)/scale/frac_good), na.rm=TRUE)
-      cost = sum(((image_ref - image_post_fix))^2, na.rm=TRUE)
+      #cost = sum(((image_ref - image_post_fix))^2, na.rm=TRUE)
+      cost = sum(costmat^2, na.rm=TRUE)
     }else{
       #cost = sum(asinh((image_ref[pix_cost_use] * image_post_fix[pix_cost_use])/scale/frac_good), na.rm=TRUE)
-      cost = sum(((image_ref - image_post_fix[pix_cost_use]))^2, na.rm=TRUE)
+      #cost = sum(((image_ref[pix_cost_use] - image_post_fix[pix_cost_use]))^2, na.rm=TRUE)
+      cost = sum(costmat[pix_cost_use]^2, na.rm=TRUE)
     }
     #message(par[1],' ',par[2],' ',cost)
-    if(return=='cost'){
+    if(return == 'cost'){
       return(cost)
-    }
-    if(return=='all'){
-      return(list(cost=cost, image_post_fix=image_post_fix))
+    }else if(return == 'all'){
+      return(list(cost=cost, image_post_fix=image_post_fix, costmat=costmat, pix_cost_use=pix_cost_use))
     }
   }
 }
@@ -601,31 +613,51 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0){
 
   image_pre_fix_xysub = image_pre_fix_xysub - 0.5 #to get in R units
   xysub_loc = ceiling(image_pre_fix_xysub)
-  goodsel = xysub_loc[,1] >= 1L & xysub_loc[,1] <= dim(image_ref)[1] & xysub_loc[,2] >= 1L & xysub_loc[,2] <= dim(image_ref)[2]
+  goodsel = xysub_loc[,1] >= 2L & xysub_loc[,1] <= (dim(image_ref)[1] - 1L) & xysub_loc[,2] >= 2L & xysub_loc[,2] <= (dim(image_ref)[2] - 1L)
   image_pre_fix_xysub = image_pre_fix_xysub[goodsel,]
   xysub_loc = xysub_loc[goodsel,]
   flux = flux[goodsel]
 
-  #cen
-  fluxshare = flux*((1 - abs(xysub_loc[,1] - 0.5 - image_pre_fix_xysub[,1]))*(1 - abs(xysub_loc[,2] - 0.5 - image_pre_fix_xysub[,2])))
+  if(inherits(image_ref, 'Rfits_image')){
+    costmat = image_ref$imDat
+  }else{
+    costmat = image_ref
+  }
+
+  # #cen
+  # xfrac = (1 - abs(xysub_loc[,1] - 0.5 - image_pre_fix_xysub[,1]))
+  # yfrac = (1 - abs(xysub_loc[,2] - 0.5 - image_pre_fix_xysub[,2]))
+  # fluxshare = flux*xfrac*yfrac
+  #
+  # costmat[xysub_loc] = costmat[xysub_loc] - fluxshare
+
+  #3x3 loops to correctly interpolate flux locally and subtract from the reference cost image
+  for(ix in -1:1){
+    for(jy in -1:1){
+      xfrac = (1 - abs((xysub_loc[,1] + ix) - 0.5 - image_pre_fix_xysub[,1]))
+      yfrac = (1 - abs((xysub_loc[,2] + jy) - 0.5 - image_pre_fix_xysub[,2]))
+
+      if(ix != 0L | jy != 0L){ #since [0,0] is the centre pixel, which will always have some flux share between 0-1
+        xfrac[xfrac < 0] = 0
+        xfrac[xfrac > 1] = 0
+        yfrac[yfrac < 0] = 0
+        yfrac[yfrac > 1] = 0
+
+        subset = cbind(xysub_loc[,1] + ix, xysub_loc[,2] + jy)
+        costmat[subset] = costmat[subset] - (flux*xfrac*yfrac)
+      }else{
+        costmat[xysub_loc] = costmat[xysub_loc] - (flux*xfrac*yfrac)
+      }
+    }
+  }
 
   #cost_image = akima::interp(image_pre_fix_xysub[,1], image_pre_fix_xysub[,2], flux, xo=1:dim(image_ref)[1], yo=1:dim(image_ref)[2], linear=FALSE)$z
 
-  if(inherits(image_ref, 'Rfits_image')){
-    costmat = image_ref$imDat
-    costmat[xysub_loc] = costmat[xysub_loc] - fluxshare
-    costmat = costmat^2
-    #scaleloc = image_ref$imDat > 0
-    #costmat[scaleloc] = costmat[scaleloc]/image_ref$imDat[scaleloc]
-  }else{
-    costmat = image_ref
-    costmat[xysub_loc] = costmat[xysub_loc] - fluxshare
-    costmat = costmat^2
-    #scaleloc = image_ref > 0
-    #costmat[scaleloc] = costmat[scaleloc]/image_ref[scaleloc]
-  }
+  # if(dump){
+  #   dumpdata <<- costmat
+  # }
 
-  cost = sum(costmat, na.rm=TRUE)
+  cost = sum(costmat^2, na.rm=TRUE)
 
   #message(paste(par, collapse=' '),' ',cost)
   return(cost)
