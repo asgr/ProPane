@@ -21,7 +21,7 @@ propaneTweakImage(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99,
   qtype = 'optim', Niter = 1e4, verbose = TRUE)
 
 propaneTweakCat(cat_ref, cat_pre_fix, delta_max = c(100,0), mode = 'pix',
-  keyvalues_ref = NULL, ...)
+  keyvalues_pre_fix = NULL, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -77,10 +77,10 @@ Logical; determines whether an approximate 'quick' solution is found. This will 
 Integer scalar; if \option{quick} = TRUE, then this sets the maximum number of iterations to try. If it converges faster then the \option{Niter} will not be reached, so usually best not to reduce it from the default.
 }
   \item{mode}{
-Logical; the type of input for \option{cat_ref} and \option{cat_pre_fix}, either 'pix' (for x/y pixels) or 'coord' (For RA/Dec in degrees). Both catalogues must have the same data \option{mode}. If \option{mode} = 'coord' then \option{keyvalues_ref} must also be provided.
+Logical; the type of input for \option{cat_ref} and \option{cat_pre_fix}, either 'pix' (for x/y pixels) or 'coord' (For RA/Dec in degrees). Both catalogues must have the same data \option{mode}. If \option{mode} = 'coord' then \option{keyvalues_pre_fix} must also be provided. This means both sets of RA and Dec (for \option{cat_ref} and \option{cat_pre_fix}) will be projected onto the nominal image pixels of \option{cat_ref}.
 }
- \item{keyvalues_ref}{
-List; header values that detail the WCS for \option{cat_ref}. This must be provided when \option{mode} = 'coord'.
+ \item{keyvalues_pre_fix}{
+List; header values that detail the WCS for \option{cat_pre_fix}. This must be provided when \option{mode} = 'coord'. This means both sets of RA and Dec (for \option{cat_ref} and \option{cat_pre_fix}) will be projected onto the nominal image pixels of \option{cat_ref}.
 }
   \item{verbose}{
 Logical; should verbose outputs be printed as it runs?

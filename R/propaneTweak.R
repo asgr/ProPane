@@ -330,14 +330,14 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
 propaneTweakImage = propaneTweak
 
 propaneTweakCat = function(cat_ref, cat_pre_fix, delta_max=c(100,0), mode='pix',
-                           keyvalues_ref=NULL, ...){
+                           keyvalues_pre_fix=NULL, ...){
 
   if(mode == 'coord'){
-    if(is.null(keyvalues_ref)){
-      stop('keyvalues_ref must be provided when input mode is coord!')
+    if(is.null(keyvalues_pre_fix)){
+      stop('keyvalues_pre_fix must be provided when input mode is coord!')
     }
-    cat_ref = Rwcs_s2p(cat_ref, keyvalues=keyvalues_ref)
-    cat_pre_fix = Rwcs_s2p(cat_ref, cat_pre_fix=keyvalues_ref)
+    cat_ref = Rwcs_s2p(cat_ref, keyvalues=keyvalues_pre_fix)
+    cat_pre_fix = Rwcs_s2p(cat_ref, cat_pre_fix=keyvalues_pre_fix)
   }
 
   if(!requireNamespace("RANN", quietly = TRUE)){
