@@ -22,7 +22,6 @@ export(propaneFrameFinder)
 export(propaneBadPix)
 export(propanePatchPix)
 export(propaneDilate)
-export(propaneCrop)
 
 useDynLib(ProPane, .registration=TRUE)
 
