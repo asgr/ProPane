@@ -1,12 +1,15 @@
 propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.99, Nmeta=3,
-                      WCS_match=TRUE, cores=4, shift_int=TRUE, return_image=TRUE, direction='backward',
-                      final_centre=TRUE, cutcheck=FALSE, quick=FALSE, qtype='optim', Niter=1e4, verbose=TRUE){
+                      WCS_match=TRUE, cores=4, shift_int=TRUE, algotype='optim', Niter=1e4,
+                      return_image=TRUE, direction='backward', final_centre=TRUE, cutcheck=FALSE,
+                      quick=FALSE, verbose=TRUE){
 
   if(!requireNamespace("imager", quietly = TRUE)){
     stop('The imager package is needed for smoothing to work. Please install from CRAN.', call. = FALSE)
   }
 
   timestart = proc.time()[3]
+
+  algotype = tolower(algotype)
 
   if(shift_int){
     WCS_match = TRUE
@@ -214,26 +217,42 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
       upper = c(delta_max[1], delta_max[1], delta_max[2])
     }
 
-    if(quick==FALSE){
-      optim_out = optim(par = par,
-                        fn = .cost_fn_image,
-                        method = "L-BFGS-B",
-                        lower = lower,
-                        upper = upper,
-                        image_ref = image_ref,
-                        image_pre_fix = image_pre_fix,
-                        direction = direction,
-                        pix_cost_use = NULL,
-                        shift_int = FALSE,
-                        WCS_match = WCS_match
-      )
-    }else{
-      if(qtype == 'cma'){
-        if(!requireNamespace("cmaes", quietly = TRUE)){
-          stop('The cmaes package is needed for matching to work. Please install from CRAN.', call. = FALSE)
-        }
+    if(algotype == 'cma'){
+      if(!requireNamespace("cmaes", quietly = TRUE)){
+        stop('The cmaes package is needed for matching to work. Please install from CRAN.', call. = FALSE)
       }
+    }
 
+    if(quick==FALSE){
+      if(algotype == 'optim'){
+        optim_out = optim(par = par,
+                          fn = .cost_fn_image,
+                          method = "L-BFGS-B",
+                          lower = lower,
+                          upper = upper,
+                          image_ref = image_ref,
+                          image_pre_fix = image_pre_fix,
+                          direction = direction,
+                          pix_cost_use = NULL,
+                          shift_int = FALSE,
+                          WCS_match = WCS_match
+        )
+      }else if(algotype == 'cma'){
+        optim_out = optim(par = par,
+                          fn = .cost_fn_image,
+                          method = "L-BFGS-B",
+                          lower = lower,
+                          upper = upper,
+                          image_ref = image_ref,
+                          image_pre_fix = image_pre_fix,
+                          direction = direction,
+                          pix_cost_use = NULL,
+                          shift_int = FALSE,
+                          WCS_match = WCS_match,
+                          control = list(maxit = Niter)
+        )
+      }
+    }else{
       if(inherits(image_pre_fix, 'Rfits_image')){
         image_pre_fix_xysub = which(image_pre_fix$imDat > 0, arr.ind = TRUE)
         image_pre_fix_xysub = cbind(image_pre_fix_xysub, image_pre_fix$imDat[image_pre_fix_xysub])
@@ -242,7 +261,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
         image_pre_fix_xysub = cbind(image_pre_fix_xysub, image_pre_fix[image_pre_fix_xysub])
       }
 
-      if(qtype == 'optim'){
+      if(algotype == 'optim'){
         optim_out = optim(par = par,
                           fn = .cost_fn_image_approx,
                           method = "L-BFGS-B",
@@ -255,7 +274,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), quan_cut=0.9
                           xcen_rot = mean(image_pre_fix_xysub[,1], na.rm=TRUE),
                           ycen_rot = mean(image_pre_fix_xysub[,2], na.rm=TRUE)
         )
-      }else if(qtype == 'cma'){
+      }else if(algotype == 'cma'){
         optim_out = cmaes::cma_es(
           par = par,
           fn = .cost_fn_image_approx,

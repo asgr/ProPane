@@ -11,14 +11,14 @@ Function to rapidly find translation and rotation tweaks directly in the image d
 }
 \usage{
 propaneTweak(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99, Nmeta = 3,
-  WCS_match = TRUE, cores = 4, shift_int = TRUE, return_image = TRUE,
-  direction = "backward", final_centre = TRUE, cutcheck = FALSE, quick = FALSE,
-  qtype = 'optim', Niter = 1e4, verbose = TRUE)
+  WCS_match = TRUE, cores = 4, shift_int = TRUE, algotype = 'optim', Niter = 1e4,
+  return_image = TRUE, direction = "backward", final_centre = TRUE, cutcheck = FALSE,
+  quick = FALSE, verbose = TRUE)
 
 propaneTweakImage(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99,
-  Nmeta = 3, WCS_match = TRUE, cores = 4, shift_int = TRUE, return_image = TRUE,
-  direction = "backward", final_centre = TRUE, cutcheck = FALSE, quick = FALSE,
-  qtype = 'optim', Niter = 1e4, verbose = TRUE)
+  Nmeta = 3, WCS_match = TRUE, cores = 4, shift_int = TRUE, algotype = 'optim',
+  Niter = 1e4, return_image = TRUE, direction = "backward", final_centre = TRUE,
+  cutcheck = FALSE, quick = FALSE, verbose = TRUE)
 
 propaneTweakCat(cat_ref, cat_pre_fix, delta_max = c(100,0), mode = 'pix',
   keyvalues_pre_fix = NULL, ...)
@@ -55,6 +55,9 @@ Integer scalar; the number of cores to run on.
   \item{shift_int}{
 Logical; should the shift applied be purely integer (TRUE) or fractional pixel (FALSE). Integer shifts are much faster to compute, and are better at conserving flux and not introducing pixel covariance, so think carefully before setting to FALSE.
 }
+  \item{algotype}{
+Character scalar; the opimisation mode when \option{shift_int} = FALSE. Either 'optim' (default) or 'CMA'. 'optim' is a fast BFGS gradient descent algorithm, but can get confused by noisy data. 'CMA' is a genetic algorithm, so generally better at finding modes in noisy data, but quite a lot slower to converge.
+}
   \item{return_image}{
 Logical; should the tweaked image be returned as an output? You might only want the solution (for applying to another process), in which case set to FALSE for speed. The returned image will either be pixel shifted if \option{image_pre_fix} is a numeric matrix, or will have its header modified if \option{image_pre_fix} is a Rfits_image using \code{\link{propaneWCSmod}}.
 }
@@ -70,11 +73,8 @@ Logical; if TRUE then quick plots showing the results of \option{quancut} are di
   \item{quick}{
 Logical; determines whether an approximate 'quick' solution is found. This will often be very good, but it does not compute a full image warp (it rounds pixels to the nearest match).
 }
-  \item{qtype}{
-
-}
   \item{Niter}{
-Integer scalar; if \option{quick} = TRUE, then this sets the maximum number of iterations to try. If it converges faster then the \option{Niter} will not be reached, so usually best not to reduce it from the default.
+Integer scalar; if \option{qtype} = 'CMA', then this sets the maximum number of iterations to try. If it converges faster then the \option{Niter} will not be reached, so usually best not to reduce it from the default.
 }
   \item{mode}{
 Logical; the type of input for \option{cat_ref} and \option{cat_pre_fix}, either 'pix' (for x/y pixels) or 'coord' (For RA/Dec in degrees). Both catalogues must have the same data \option{mode}. If \option{mode} = 'coord' then \option{keyvalues_pre_fix} must also be provided. This means both sets of RA and Dec (for \option{cat_ref} and \option{cat_pre_fix}) will be projected onto the nominal image pixels of \option{cat_ref}.
