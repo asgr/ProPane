@@ -11,15 +11,17 @@ Function to rapidly find translation and rotation tweaks directly in the image d
 }
 \usage{
 propaneTweak(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99, Nmeta = 3,
-  WCS_match = TRUE, cores = 4, shift_int = TRUE, return_image = TRUE,
-  direction = "backward", final_centre = TRUE, cutcheck = FALSE, verbose = TRUE)
+  WCS_match = TRUE, cores = 4, shift_int = TRUE, algotype = 'optim', Niter = 1e4,
+  return_image = TRUE, direction = "backward", final_centre = TRUE, cutcheck = FALSE,
+  quick = FALSE, verbose = TRUE)
 
 propaneTweakImage(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99,
-  Nmeta = 3, WCS_match = TRUE, cores = 4, shift_int = TRUE, return_image = TRUE,
-  direction = "backward", final_centre = TRUE, cutcheck = FALSE, verbose = TRUE)
+  Nmeta = 3, WCS_match = TRUE, cores = 4, shift_int = TRUE, algotype = 'optim',
+  Niter = 1e4, return_image = TRUE, direction = "backward", final_centre = TRUE,
+  cutcheck = FALSE, quick = FALSE, verbose = TRUE)
 
 propaneTweakCat(cat_ref, cat_pre_fix, delta_max = c(100,0), mode = 'pix',
-  keyvalues_ref = NULL, ...)
+  keyvalues_pre_fix = NULL, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -53,6 +55,9 @@ Integer scalar; the number of cores to run on.
   \item{shift_int}{
 Logical; should the shift applied be purely integer (TRUE) or fractional pixel (FALSE). Integer shifts are much faster to compute, and are better at conserving flux and not introducing pixel covariance, so think carefully before setting to FALSE.
 }
+  \item{algotype}{
+Character scalar; the opimisation mode when \option{shift_int} = FALSE. Either 'optim' (default) or 'CMA'. 'optim' is a fast BFGS gradient descent algorithm, but can get confused by noisy data. 'CMA' is a genetic algorithm, so generally better at finding modes in noisy data, but quite a lot slower to converge.
+}
   \item{return_image}{
 Logical; should the tweaked image be returned as an output? You might only want the solution (for applying to another process), in which case set to FALSE for speed. The returned image will either be pixel shifted if \option{image_pre_fix} is a numeric matrix, or will have its header modified if \option{image_pre_fix} is a Rfits_image using \code{\link{propaneWCSmod}}.
 }
@@ -65,11 +70,17 @@ Logical; should a final round of costs be computed once the best tweak is found.
   \item{cutcheck}{
 Logical; if TRUE then quick plots showing the results of \option{quancut} are displayed. If the good quality sources to WCS match against are not present then consider lowering \option{quancut} (suggestion of 0.95 of 0.9). If a lot of noise and artefacts are present then consider increasing it. Note if this is TRUE then the function will exit after displaying the plots returning NULL (i.e. no tweaking is actually done).
 }
-  \item{mode}{
-Logical; the type of input for \option{cat_ref} and \option{cat_pre_fix}, either 'pix' (for x/y pixels) or 'coord' (For RA/Dec in degrees). Both catalogues must have the same data \option{mode}. If \option{mode} = 'coord' then \option{keyvalues_ref} must also be provided.
+  \item{quick}{
+Logical; determines whether an approximate 'quick' solution is found. This will often be very good, but it does not compute a full image warp (it rounds pixels to the nearest match).
 }
- \item{keyvalues_ref}{
-List; header values that detail the WCS for \option{cat_ref}. This must be provided when \option{mode} = 'coord'.
+  \item{Niter}{
+Integer scalar; if \option{qtype} = 'CMA', then this sets the maximum number of iterations to try. If it converges faster then the \option{Niter} will not be reached, so usually best not to reduce it from the default.
+}
+  \item{mode}{
+Logical; the type of input for \option{cat_ref} and \option{cat_pre_fix}, either 'pix' (for x/y pixels) or 'coord' (For RA/Dec in degrees). Both catalogues must have the same data \option{mode}. If \option{mode} = 'coord' then \option{keyvalues_pre_fix} must also be provided. This means both sets of RA and Dec (for \option{cat_ref} and \option{cat_pre_fix}) will be projected onto the nominal image pixels of \option{cat_ref}.
+}
+ \item{keyvalues_pre_fix}{
+List; header values that detail the WCS for \option{cat_pre_fix}. This must be provided when \option{mode} = 'coord'. This means both sets of RA and Dec (for \option{cat_ref} and \option{cat_pre_fix}) will be projected onto the nominal image pixels of \option{cat_ref}.
 }
   \item{verbose}{
 Logical; should verbose outputs be printed as it runs?
@@ -88,7 +99,7 @@ For \code{propaneTweak} and \code{propaneTweakImage} (which are the same functio
 
 When \option{shift_int} is TRUE:
 
-\item{optim_out}{The output of the actual optimisation (includes the best par). This can be used to update the relevent image header of \option{image_pre_fix} via \code{\link{propaneWCSmod}} (see Examples)}
+\item{optim_out}{The output of the actual optimisation (includes the best par etc). This can be used to update the relevent image header of \option{image_pre_fix} via \code{\link{propaneWCSmod}} (see Examples)}
 \item{image_post_fix}{The tweaked image (if \option{return_image} is TRUE). This will either have the image pixels directly manipulated or the WCS header, depending on whether a Rfits_image was passed in for \option{image_pre_fix}. There are 3 potential outputs: if the input \option{image_pre_fix} was an image matrix then obviously the output has to be a modified image (there is no header), but if the input \option{image_pre_fix} is an Rfits_image then \option{WCS_match} = FALSE means the header will be changed, and \option{WCS_match} = TRUE means the image pixels will be adjusted direclty.}
 \item{time}{The total running time in seconds.}
 \item{cost_mat}{The cost outputs for the final iteration. Thie has dimensions x = delta_x, y = delta_y, z = cost.}
@@ -96,7 +107,7 @@ When \option{shift_int} is TRUE:
 
 When \option{shift_int} is FALSE:
 
-\item{optim_out}{The output of the actual optimisation (includes the best par).}
+\item{optim_out}{The output of the actual optimisation (includes the best par etc).}
 \item{image_post_fix}{The tweaked image (if \option{return_image} is TRUE).}
 \item{time}{The total running time in seconds.}
 
@@ -171,6 +182,15 @@ print(tweak2$optim_out$par)
 
 plot(tweak2$image_post_fix)
 
+# we can compare this to the 'quick' tweaking method:
+
+tweak3 = propaneTweak(image, image_tran2, delta_max=c(5,10), shift_int=FALSE,
+  WCS_match=FALSE, quick=TRUE)
+
+print(tweak3$optim_out$par)
+
+plot(tweak3$image_post_fix)
+
 # Now some catalogue level tweaking:
 
 library(ProFound)
@@ -180,9 +200,9 @@ plot(image_tran)
 pro_im = profoundProFound(image)$segstats
 pro_im_tran = profoundProFound(image_tran)$segstats
 
-output = propaneTweakCat(pro_im[,c("xcen", "ycen")], pro_im_tran[,c("xcen", "ycen")],
+tweak4 = propaneTweakCat(pro_im[,c("xcen", "ycen")], pro_im_tran[,c("xcen", "ycen")],
   delta_max = c(5,20))
-best3 = output$par
+best3 = tweak4$par
 best3
 # The above is very fast, but obviously a bit less accurate (there is less information
 # and signal in a catalogue versus the full image).
