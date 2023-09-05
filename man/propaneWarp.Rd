@@ -4,6 +4,7 @@
 \alias{propaneTran}
 \alias{propaneWarpProPane}
 \alias{propaneWCSmod}
+\alias{propaneCropOverlap}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Remap and Rebin Image WCS via Warping
@@ -12,6 +13,10 @@ Remap and Rebin Image WCS via Warping
 Remaps an input projection system to a different target WCS.
 
 \code{propaneWarp} does precise remapping of one WCS to another, \code{propaneRebin} does quick coarse down-sampling (via re-binning), which can be useful for faster visualisations (since fewer pixels to worry about). Both conserve flux correctly. \code{propaneTran} just applies a translational shift and rotation. \code{propaneWarpProPane} warps all elements of a ProPane class object (as returned by e.g. \code{\link{propaneStackWarpInVar}}).
+
+\code{propaneWCSmod} just modifies a WCS with a translation and/or rotation term.
+
+\code{propaneCropOverlap} creates a cropped and warped version of the maximal overlapping input frames- i.e. they have the same end WCS and with all NA border removed. This can be useful for efficeintly trimming down frames to compare.
 }
 \usage{
 propaneWarp(image_in, keyvalues_out = NULL, header_out = NULL, dim_out = NULL,
@@ -29,7 +34,9 @@ propaneRebin(image, scale = 1, interpolation = 6)
 propaneTran(image, delta_x = 0, delta_y = 0, delta_rot = 0, xcen_rot = dim(image)[1]/2,
   ycen_rot = dim(image)[1]/2, direction = 'backward', padNA = TRUE, shift_int = TRUE)
 
-propaneWCSmod(input, delta_x = 0, delta_y = 0, delta_rot = 0)
+propaneWCSmod(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen = TRUE)
+
+propaneCropOverlap(image_ref, image_warp, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -44,6 +51,12 @@ Numeric matrix; required, the image we want to rebin. If \option{image} is a lis
 }
   \item{input}{
 List; required, the WCS to fix. Can be one of Rfits_keylist, Rfits_image, Rfits_pointer, Rfits_header. The returns objects will be the same class, but with all WCS terms correctly updated as specified with \option{delta_x}, \option{delta_y}, \option{delta_rot}.
+}
+  \item{image_ref}{
+Rfits_image; the reference image. This image will be the target WCS, but will have pixels cropped (so not warped).
+}
+  \item{image_warp}{
+Rfits_image; the image to be warped. This image will be warped and have pixels cropped.
 }
   \item{keyvalues_out}{
 List; output header values to be used for the WCS. This is the target WCS projection that \option{image_in} will be mapped onto.
@@ -110,6 +123,9 @@ Numeric scalar; the x pivot point for the rotation specified by \option{delta_ro
 }
   \item{ycen_rot}{
 Numeric scalar; the y pivot point for the rotation specified by \option{delta_rot}. The default is around the y centre of the image.
+}
+  \item{recen}{
+Logical; should the WCS of the image be redifined so CRPIX1 and CRPIX2 are the centre of the current version of the image?
 }
   \item{padNA}{
 Logical; should vacant pixels be padded with NA (TRUE) or left as 0 (FALSE).
@@ -183,6 +199,7 @@ The output is an object of class 'ProPane' (warped as appropriate) containing:
 \item{hot}{If \option{keep_extreme_pix} = TRUE, the extreme hot pixel value for the input \option{image_list} that formed the final stacked \option{image}. If \option{keep_extreme_pix} = FALSE this will be NULL. Class Rfits_image when present.}
 \item{clip}{The number of frames clipped from the stacked \option{image}. This is only relevant when \option{doclip} is TRUE. Values larger than 1 can indicate that both cold and hot pixels have been clipped in this location, and also that the dilation process has masked a pixel multiple times.}
 
+\code{propaneCropOverlap} output will be a two component list (\option{image_ref} and \option{image_warp}). The reference image \option{image_ref} will be a purely cropped version of the input, whilst \option{image_warp} will be warped and cropped to same final geometry as \option{image_ref}.
 }
 \author{
 Aaron Robotham

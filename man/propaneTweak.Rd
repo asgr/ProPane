@@ -10,18 +10,19 @@ Tweak the Translation Astrometry of an Image
 Function to rapidly find translation and rotation tweaks directly in the image domain (i.e. it does not require a catalogue to be generated first). This is generally pretty fast, especially when running in integer shift mode.
 }
 \usage{
-propaneTweak(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99, Nmeta = 3,
-  WCS_match = TRUE, cores = 4, shift_int = TRUE, algotype = 'optim', Niter = 1e4,
-  return_image = TRUE, direction = "backward", final_centre = TRUE, cutcheck = FALSE,
-  quick = FALSE, verbose = TRUE)
+propaneTweak(image_ref, image_pre_fix, delta_max = c(3,0), Nmeta = 3, quan_cut = c(0.98,
+  0.9999), stretch = 'asinh', WCS_match = TRUE, cores = 4, shift_int = TRUE,
+  algotype = 'optim', Niter = 1e4, return_image = TRUE, direction = "backward",
+  final_centre = FALSE, cutcheck = FALSE, quick = FALSE, verbose = TRUE)
 
-propaneTweakImage(image_ref, image_pre_fix, delta_max = c(3,0), quan_cut = 0.99,
-  Nmeta = 3, WCS_match = TRUE, cores = 4, shift_int = TRUE, algotype = 'optim',
-  Niter = 1e4, return_image = TRUE, direction = "backward", final_centre = TRUE,
-  cutcheck = FALSE, quick = FALSE, verbose = TRUE)
+propaneTweakImage(image_ref, image_pre_fix, delta_max = c(3,0), Nmeta = 3,
+  quan_cut = c(0.98, 0.9999), stretch = 'asinh', WCS_match = TRUE, cores = 4,
+  shift_int = TRUE, algotype = 'optim', Niter = 1e4, return_image = TRUE,
+  direction = "backward", final_centre = FALSE, cutcheck = FALSE, quick = FALSE,
+  verbose = TRUE)
 
 propaneTweakCat(cat_ref, cat_pre_fix, delta_max = c(100,0), mode = 'pix',
-  keyvalues_pre_fix = NULL, ...)
+  keyvalues_pre_fix = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -40,11 +41,14 @@ Numeric matrix / data.frame; simple two column tweak catalogue containing x/RA [
   \item{delta_max}{
 Numeric vector; the first element is maximum number of pixels to explore in +/-x and +/- y; the second element is the maximum rotation to apply in degrees. If \option{delta_max}[2] = 0 then only translation optimisation is computed (no rotation).
 }
-  \item{quan_cut}{
-Numeric scalar/vector; when length 1 a bright pixel thesholding to apply to \option{image_ref} and \option{image_pre_fix}. Generally you want this quite high so that only cores of bright objects are compared. Suggested range to try (depending on image crowding) is 0.9 - 0.999 (see also \option{cutcheck} to aid this process). If length 2 then the first element (\option{quan_cut}[1]) is the bright pixel thresholding, and the second element (\option{quan_cut}[2]) is used to clip artificially bright pixels. Generally the seconed value should be in the range 0.9999 - 0.99999.
-}
   \item{Nmeta}{
 Integer scalar; how many shifts of the search box can be applied. This is only relevant when \option{shift_int} is TRUE.
+}
+  \item{quan_cut}{
+Numeric scalar/vector; when length 1 a bright pixel thesholding to apply to \option{image_ref} and \option{image_pre_fix}. Generally you want this quite high so that only cores of bright objects are compared (and noise pixels ignores). Suggested range to try (depending on image crowding) is 0.9 - 0.999 (see also \option{cutcheck} to aid this process). If length 2 then the first element (\option{quan_cut}[1]) is the bright pixel thresholding, and the second element (\option{quan_cut}[2]) is used to clip artificially bright pixels. If used, generally the second value should be in the range 0.999 - 0.99999.
+}
+  \item{stretch}{
+Character scalar; image stretch to apply. stretch = 'lin' gives linear mapping. stretch = 'log' gives logarithmic mapping. stretch = 'atan' gives atan mapping. stretch = 'asinh' gives asinh mapping. stretch = 'sqrt' gives sqrt mapping. Depending on the type of data you might find better tweak solutions using one of these re-mappings.
 }
   \item{WCS_match}{
 Logical; specifies whether we are expecting the input WCS to be matched between \option{image_ref} and \option{image_pre_fix} or not. If \option{WCS_match} is TRUE then the image itself is directly manipulated and the WCS is left alone. If \option{WCS_match} is FALSE then the WCS header is modified and \option{image_pre_fix} is projected onto the WCS of \option{image_ref} for each iteration (therefore \option{image_ref} and \option{image_pre_fix} must both be Rfits_image objects in this case). \option{WCS_match} = FALSE is often the more useful way to tweak images (since often images are known not to have exactly matching WCS because they are dithered etc), but it is quite a bit slower (about x5 longer to run) since the projection has to go through \code{\link{propaneWarp}} and therefore \code{wcslib}.
@@ -68,7 +72,7 @@ Character scalar; "forward" or "backward", see \code{imwarp}.
 Logical; should a final round of costs be computed once the best tweak is found. This is only relevant if \option{shift_int} = TRUE, and can be useful if you want to explore the output \option{cost_mat}.
 }
   \item{cutcheck}{
-Logical; if TRUE then quick plots showing the results of \option{quancut} are displayed. If the good quality sources to WCS match against are not present then consider lowering \option{quancut} (suggestion of 0.95 of 0.9). If a lot of noise and artefacts are present then consider increasing it. Note if this is TRUE then the function will exit after displaying the plots returning NULL (i.e. no tweaking is actually done).
+Logical; if TRUE then quick plots showing the results of \option{quancut} are displayed. If the good quality sources to WCS match against are not present then consider lowering \option{quancut} (suggestion of 0.95). If a lot of noise and artefacts are present then consider increasing it. Note if this is TRUE then the function will exit after displaying the plots returning NULL (i.e. no tweaking is actually done).
 }
   \item{quick}{
 Logical; determines whether an approximate 'quick' solution is found. This will often be very good, but it does not compute a full image warp (it rounds pixels to the nearest match).
@@ -84,9 +88,6 @@ List; header values that detail the WCS for \option{cat_pre_fix}. This must be p
 }
   \item{verbose}{
 Logical; should verbose outputs be printed as it runs?
-}
-  \item{\dots}{
-Other arguments to pass to \code{coordmatch}.
 }
 }
 \details{
@@ -174,7 +175,7 @@ plot(image_tran2)
 tweak2 = propaneTweak(image, image_tran2, delta_max=c(5,10), shift_int=FALSE,
   WCS_match=FALSE)
 
-# The answer almost perfectly corrects are adjustment to the WCS:
+# The answer almost perfectly corrects our adjustment to the WCS:
 
 print(tweak2$optim_out$par)
 
