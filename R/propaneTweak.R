@@ -324,9 +324,9 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), Nmeta=3, qua
         }
       }else{
         if(length(optim_out$par) == 2){
-          image_post_fix = propaneWCSmod(image_pre_fix_orig, delta_x=optim_out$par[1], delta_y=optim_out$par[2])
+          image_post_fix = propaneWCSmod(image_pre_fix_orig, delta_x=optim_out$par[1], delta_y=optim_out$par[2], recen=FALSE)
         }else{
-          image_post_fix = propaneWCSmod(image_pre_fix_orig, delta_x=optim_out$par[1], delta_y=optim_out$par[2], delta_rot=optim_out$par[3])
+          image_post_fix = propaneWCSmod(image_pre_fix_orig, delta_x=optim_out$par[1], delta_y=optim_out$par[2], delta_rot=optim_out$par[3], recen=FALSE)
         }
       }
     }else{
@@ -535,7 +535,7 @@ propaneTran = function(image, delta_x = 0, delta_y = 0, delta_rot = 0, xcen_rot 
   }
 }
 
-propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen = TRUE){
+propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen = FALSE){
 
   if(inherits(input, 'Rfits_keylist')){
     keyvalues = input
@@ -650,9 +650,9 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen =
       }
     }else{
       if(length(par) == 2){
-        image_pre_fix = propaneWCSmod(image_pre_fix, delta_x=par[1], delta_y=par[2])
+        image_pre_fix = propaneWCSmod(image_pre_fix, delta_x=par[1], delta_y=par[2], recen=FALSE)
       }else{
-        image_pre_fix = propaneWCSmod(image_pre_fix, delta_x=par[1], delta_y=par[2], delta_rot=par[3])
+        image_pre_fix = propaneWCSmod(image_pre_fix, delta_x=par[1], delta_y=par[2], delta_rot=par[3], recen=FALSE)
       }
       image_post_fix = propaneWarp(image_in = image_pre_fix,
                                    keyvalues_out = image_ref$keyvalues,
@@ -714,9 +714,9 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen =
     }
   }else{
     if(length(par) == 2){
-      keyvalues_pre_fix = propaneWCSmod(keyvalues_pre_fix, delta_x=par[1], delta_y=par[2])
+      keyvalues_pre_fix = propaneWCSmod(keyvalues_pre_fix, delta_x=par[1], delta_y=par[2], recen=FALSE)
     }else{
-      keyvalues_pre_fix = propaneWCSmod(keyvalues_pre_fix, delta_x=par[1], delta_y=par[2], delta_rot=par[3])
+      keyvalues_pre_fix = propaneWCSmod(keyvalues_pre_fix, delta_x=par[1], delta_y=par[2], delta_rot=par[3], recen=FALSE)
     }
     radecsub = Rwcs_p2s(image_pre_fix_xysub[,1:2], keyvalues=keyvalues_pre_fix, cores=cores)
     image_pre_fix_xysub = Rwcs_s2p(radecsub, keyvalues=image_ref$keyvalues, cores=cores)

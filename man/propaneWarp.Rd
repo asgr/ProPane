@@ -34,7 +34,7 @@ propaneRebin(image, scale = 1, interpolation = 6)
 propaneTran(image, delta_x = 0, delta_y = 0, delta_rot = 0, xcen_rot = dim(image)[1]/2,
   ycen_rot = dim(image)[1]/2, direction = 'backward', padNA = TRUE, shift_int = TRUE)
 
-propaneWCSmod(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen = TRUE)
+propaneWCSmod(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen = FALSE)
 
 propaneCropOverlap(image_ref, image_warp, ...)
 }
@@ -125,7 +125,7 @@ Numeric scalar; the x pivot point for the rotation specified by \option{delta_ro
 Numeric scalar; the y pivot point for the rotation specified by \option{delta_rot}. The default is around the y centre of the image.
 }
   \item{recen}{
-Logical; should the WCS of the image be redifined so CRPIX1 and CRPIX2 are the centre of the current version of the image?
+Logical; should the WCS of the image be redifined so CRPIX1 and CRPIX2 are the centre of the current version of the image? Be careful before setting this to be TRUE- often distortion and projection terms are stictly relative to the true projection centre, so it is not quite accurate to redefine the centre. For small shifts (a few pixels) this effect should be negligible though.
 }
   \item{padNA}{
 Logical; should vacant pixels be padded with NA (TRUE) or left as 0 (FALSE).
