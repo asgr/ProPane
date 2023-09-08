@@ -1,5 +1,5 @@
 propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), Nmeta=3, quan_cut=c(0.98,0.9999),
-                        stretch='asinh', WCS_match=TRUE, cores=4, shift_int=TRUE, algotype='optim',
+                        stretch='lin', WCS_match=TRUE, cores=1, shift_int=TRUE, algotype='optim',
                         Niter=1e4, return_image=TRUE, direction='backward', final_centre=FALSE,
                         cutcheck=FALSE, quick=FALSE, verbose=TRUE){
 
@@ -76,7 +76,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), Nmeta=3, qua
       im_quan_lo = quantile(image_pre_fix$imDat[sel], quan_cut[1], na.rm=TRUE)
     }
     if(length(quan_cut)==2){
-      image_pre_fix$imDat[image_pre_fix$imDat > quantile(image_pre_fix$imDat, quan_cut[2], na.rm=TRUE)] = NA
+      image_pre_fix$imDat[image_pre_fix$imDat > quantile(image_pre_fix$imDat, quan_cut[2], na.rm=TRUE)] = 0
     }
     image_pre_fix$imDat = image_pre_fix$imDat - im_med
     image_pre_fix$imDat = image_pre_fix$imDat / im_quan_lo
@@ -88,7 +88,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), Nmeta=3, qua
     }
   }else{
     if(length(quan_cut)==2){
-      image_pre_fix[image_pre_fix > quantile(image_pre_fix, quan_cut[2], na.rm=TRUE)] = NA
+      image_pre_fix[image_pre_fix > quantile(image_pre_fix, quan_cut[2], na.rm=TRUE)] = 0
     }
     image_pre_fix = image_pre_fix - median(image_pre_fix, na.rm=TRUE)
     image_pre_fix = image_pre_fix / quantile(image_pre_fix, quan_cut[1], na.rm=TRUE)
@@ -106,7 +106,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), Nmeta=3, qua
     }
     image_ref$imDat = image_ref$imDat - median(image_ref$imDat, na.rm=TRUE)
     image_ref$imDat = image_ref$imDat / quantile(image_ref$imDat, quan_cut[1], na.rm=TRUE)
-    image_ref$imDat[image_ref$imDat < 1] = 0
+    image_ref$imDat[image_ref$imDat < 1] = NA
     image_ref$imDat = .stretch(image_ref$imDat, stretch=stretch)
     if(cutcheck){
       plot(image_ref)
@@ -119,7 +119,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), Nmeta=3, qua
     }
     image_ref = image_ref - median(image_ref, na.rm=TRUE)
     image_ref = image_ref / quantile(image_ref, quan_cut[1], na.rm=TRUE)
-    image_ref[image_ref < 1] = 0
+    image_ref[image_ref < 1] = NA
     image_ref = .stretch(image_ref, stretch=stretch)
     if(cutcheck){
       magimage(image_ref)
@@ -244,7 +244,7 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), Nmeta=3, qua
                           cores = cores
         )
       }else if(algotype == 'cma'){
-        optim_out = optim(par = par,
+        optim_out = cmaes::cma_es(par = par,
                           fn = .cost_fn_image,
                           method = "L-BFGS-B",
                           lower = lower,
@@ -267,6 +267,8 @@ propaneTweak = function(image_ref, image_pre_fix, delta_max=c(3,0), Nmeta=3, qua
         image_pre_fix_xysub = which(image_pre_fix > 0, arr.ind = TRUE)
         image_pre_fix_xysub = cbind(image_pre_fix_xysub, image_pre_fix[image_pre_fix_xysub])
       }
+
+      #image_pre_fix_xysub[,1:2] = image_pre_fix_xysub[,1:2] - 0.5 #to get into R units
 
       if(algotype == 'optim'){
         optim_out = optim(par = par,
@@ -475,8 +477,8 @@ propaneTweakCat = function(cat_ref, cat_pre_fix, delta_max=c(100,0), mode='pix',
 #   return(list(image_post_fix=image_post_fix, tweak_grid_ref=tweak_grid_ref, tweak_grid_pre_fix=tweak_grid_pre_fix, tweak_out=tweak_out))
 # }
 
-propaneTran = function(image, delta_x = 0, delta_y = 0, delta_rot = 0, xcen_rot = dim(image)[1]/2,
-                       ycen_rot = dim(image)[1]/2, direction='backward', padNA=TRUE, shift_int=TRUE){
+propaneTran = function(image, delta_x = 0, delta_y = 0, delta_rot = 0, xcen_rot = dim(image)[1]/2 + 0.5,
+                       ycen_rot = dim(image)[1]/2 + 0.5, direction='backward', padNA=TRUE, shift_int=TRUE){
   #delta refers to the direction we shift the image, not the view point.
   #postive delta_x moves image on our viewer to the right
   #positive delta_y moves image on our viewer up
@@ -722,8 +724,7 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen =
     image_pre_fix_xysub = Rwcs_s2p(radecsub, keyvalues=image_ref$keyvalues, cores=cores)
   }
 
-  image_pre_fix_xysub = image_pre_fix_xysub - 0.5 #to get in R units
-  xysub_loc = as.matrix(ceiling(image_pre_fix_xysub))
+  xysub_loc = as.matrix(ceiling(image_pre_fix_xysub - 0.5)) #need the -0.5 because positions are in FITS format.
   goodsel = xysub_loc[,1] >= 2L & xysub_loc[,1] <= (dim(image_ref)[1] - 1L) & xysub_loc[,2] >= 2L & xysub_loc[,2] <= (dim(image_ref)[2] - 1L)
   image_pre_fix_xysub = image_pre_fix_xysub[goodsel,]
   xysub_loc = xysub_loc[goodsel,]
@@ -735,6 +736,8 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen =
     costmat = image_ref
   }
 
+  #image_interp = matrix(0, dim(image_ref)[1], dim(image_ref)[2])
+
   # #cen
   # xfrac = (1 - abs(xysub_loc[,1] - 0.5 - image_pre_fix_xysub[,1]))
   # yfrac = (1 - abs(xysub_loc[,2] - 0.5 - image_pre_fix_xysub[,2]))
@@ -742,31 +745,46 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen =
   #
   # costmat[xysub_loc] = costmat[xysub_loc] - fluxshare
 
+  #Note below we are using positions in FITS standard. This means the centre of a pixel is integer, so pixel [1,1] goes from 0.5-1.5 in x and y.
+
   #3x3 loops to correctly interpolate flux locally and subtract from the reference cost image
   for(ix in -1:1){
     for(jy in -1:1){
-      xfrac = (1 - abs((xysub_loc[,1] + ix) - 0.5 - image_pre_fix_xysub[,1]))
-      yfrac = (1 - abs((xysub_loc[,2] + jy) - 0.5 - image_pre_fix_xysub[,2]))
+      xfrac = (1 - abs((xysub_loc[,1] + ix) - image_pre_fix_xysub[,1]))
+      yfrac = (1 - abs((xysub_loc[,2] + jy) - image_pre_fix_xysub[,2]))
 
       if(ix != 0L | jy != 0L){ #since [0,0] is the centre pixel, which will always have some flux share between 0-1
         xfrac[xfrac < 0] = 0
-        xfrac[xfrac > 1] = 0
+        xfrac[xfrac > 1] = 1
         yfrac[yfrac < 0] = 0
-        yfrac[yfrac > 1] = 0
+        yfrac[yfrac > 1] = 1
+      }
 
-        subset = cbind(xysub_loc[,1] + ix, xysub_loc[,2] + jy)
-        costmat[subset] = costmat[subset] - (flux*xfrac*yfrac)
+      subset = cbind(xysub_loc[,1] + ix, xysub_loc[,2] + jy)
+      subset_dup = duplicated(subset)
+
+      if(any(subset_dup)){
+        costmat[subset[!subset_dup,]] = costmat[subset[!subset_dup,]] - (flux[!subset_dup]*xfrac[!subset_dup]*yfrac[!subset_dup])
+        for(k in which(subset_dup)){
+          costmat[subset[k,]] = costmat[subset[k,]] - (flux[k]*xfrac[k]*yfrac[k])
+        }
       }else{
-        costmat[xysub_loc] = costmat[xysub_loc] - (flux*xfrac*yfrac)
+        costmat[subset] = costmat[subset] - (flux*xfrac*yfrac)
       }
     }
   }
+  #image_interp = propaneImBlur(image_interp, smooth=0.5)
+  #temp = akima::interp(image_pre_fix_xysub[,1], image_pre_fix_xysub[,2], z=flux, xo=1:dim(costmat)[1], yo=1:dim(costmat)[2], linear=FALSE)$z
+  #costmat = costmat - akima::interp(image_pre_fix_xysub[,1], image_pre_fix_xysub[,2], z=flux, xo=1:dim(costmat)[1], yo=1:dim(costmat)[2], linear=FALSE)$z
 
+  #OMG, I already had this idea once... Must have been too slow!
   #cost_image = akima::interp(image_pre_fix_xysub[,1], image_pre_fix_xysub[,2], flux, xo=1:dim(image_ref)[1], yo=1:dim(image_ref)[2], linear=FALSE)$z
 
   # if(dump){
   #   dumpdata <<- costmat
   # }
+
+  #costmat = costmat - image_interp
 
   cost = sum(costmat^2, na.rm=TRUE)
 

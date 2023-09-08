@@ -11,12 +11,12 @@ Function to rapidly find translation and rotation tweaks directly in the image d
 }
 \usage{
 propaneTweak(image_ref, image_pre_fix, delta_max = c(3,0), Nmeta = 3, quan_cut = c(0.98,
-  0.9999), stretch = 'asinh', WCS_match = TRUE, cores = 4, shift_int = TRUE,
+  0.9999), stretch = 'lin', WCS_match = TRUE, cores = 1, shift_int = TRUE,
   algotype = 'optim', Niter = 1e4, return_image = TRUE, direction = "backward",
   final_centre = FALSE, cutcheck = FALSE, quick = FALSE, verbose = TRUE)
 
 propaneTweakImage(image_ref, image_pre_fix, delta_max = c(3,0), Nmeta = 3,
-  quan_cut = c(0.98, 0.9999), stretch = 'asinh', WCS_match = TRUE, cores = 4,
+  quan_cut = c(0.98, 0.9999), stretch = 'lin', WCS_match = TRUE, cores = 1,
   shift_int = TRUE, algotype = 'optim', Niter = 1e4, return_image = TRUE,
   direction = "backward", final_centre = FALSE, cutcheck = FALSE, quick = FALSE,
   verbose = TRUE)
@@ -202,7 +202,7 @@ pro_im = profoundProFound(image)$segstats
 pro_im_tran = profoundProFound(image_tran)$segstats
 
 tweak4 = propaneTweakCat(pro_im[,c("xcen", "ycen")], pro_im_tran[,c("xcen", "ycen")],
-  delta_max = c(5,20))
+  delta_max = c(5,10))
 best3 = tweak4$par
 best3
 # The above is very fast, but obviously a bit less accurate (there is less information

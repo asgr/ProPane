@@ -31,8 +31,9 @@ propaneWarpProPane(propane_in, keyvalues_out = NULL, dim_out = NULL,
 
 propaneRebin(image, scale = 1, interpolation = 6)
 
-propaneTran(image, delta_x = 0, delta_y = 0, delta_rot = 0, xcen_rot = dim(image)[1]/2,
-  ycen_rot = dim(image)[1]/2, direction = 'backward', padNA = TRUE, shift_int = TRUE)
+propaneTran(image, delta_x = 0, delta_y = 0, delta_rot = 0,
+  xcen_rot = dim(image)[1]/2 + 0.5, ycen_rot = dim(image)[1]/2 + 0.5,
+  direction = 'backward', padNA = TRUE, shift_int = TRUE)
 
 propaneWCSmod(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen = FALSE)
 
@@ -119,10 +120,10 @@ Numeric scalar; the shift in apply in the y-axis of the input \option{image}. Po
 Numeric scalar; rotation in degrees to apply to the image around \option{xcen_rot}, \option{ycen_rot}. Positive means a visual rotation clockwise around the pivot point.
 }
   \item{xcen_rot}{
-Numeric scalar; the x pivot point for the rotation specified by \option{delta_rot}. The default is around the x centre of the image.
+Numeric scalar; the x pivot point for the rotation specified by \option{delta_rot}. The default is around the x centre of the image as defined in the FITS scheme (where pixel centres have integer values).
 }
   \item{ycen_rot}{
-Numeric scalar; the y pivot point for the rotation specified by \option{delta_rot}. The default is around the y centre of the image.
+Numeric scalar; the y pivot point for the rotation specified by \option{delta_rot}. The default is around the y centre of the image as defined in the FITS scheme (where pixel centres have integer values).
 }
   \item{recen}{
 Logical; should the WCS of the image be redifined so CRPIX1 and CRPIX2 are the centre of the current version of the image? Be careful before setting this to be TRUE- often distortion and projection terms are stictly relative to the true projection centre, so it is not quite accurate to redefine the centre. For small shifts (a few pixels) this effect should be negligible though.
