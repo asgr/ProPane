@@ -724,16 +724,18 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen =
     image_pre_fix_xysub = Rwcs_s2p(radecsub, keyvalues=image_ref$keyvalues, cores=cores)
   }
 
-  xysub_loc = as.matrix(ceiling(image_pre_fix_xysub - 0.5)) #need the -0.5 because positions are in FITS format.
-  goodsel = xysub_loc[,1] >= 2L & xysub_loc[,1] <= (dim(image_ref)[1] - 1L) & xysub_loc[,2] >= 2L & xysub_loc[,2] <= (dim(image_ref)[2] - 1L)
-  image_pre_fix_xysub = image_pre_fix_xysub[goodsel,]
-  xysub_loc = xysub_loc[goodsel,]
-  flux = flux[goodsel]
+  #xysub_loc = as.matrix(ceiling(image_pre_fix_xysub - 0.5)) #need the -0.5 because positions are in FITS format.
+  #goodsel = xysub_loc[,1] >= 2L & xysub_loc[,1] <= (dim(image_ref)[1] - 1L) & xysub_loc[,2] >= 2L & xysub_loc[,2] <= (dim(image_ref)[2] - 1L)
+  #image_pre_fix_xysub = image_pre_fix_xysub[goodsel,]
+  #xysub_loc = xysub_loc[goodsel,]
+  #flux = flux[goodsel]
+
+  costmat = matrix(0, dim(image_ref)[1], dim(image_ref)[2])
 
   if(inherits(image_ref, 'Rfits_image')){
-    costmat = image_ref$imDat
+    costmat[] = image_ref$imDat
   }else{
-    costmat = image_ref
+    costmat[] = image_ref
   }
 
   #image_interp = matrix(0, dim(image_ref)[1], dim(image_ref)[2])
@@ -748,31 +750,31 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen =
   #Note below we are using positions in FITS standard. This means the centre of a pixel is integer, so pixel [1,1] goes from 0.5-1.5 in x and y.
 
   #3x3 loops to correctly interpolate flux locally and subtract from the reference cost image
-  for(ix in -1:1){
-    for(jy in -1:1){
-      xfrac = (1 - abs((xysub_loc[,1] + ix) - image_pre_fix_xysub[,1]))
-      yfrac = (1 - abs((xysub_loc[,2] + jy) - image_pre_fix_xysub[,2]))
-
-      if(ix != 0L | jy != 0L){ #since [0,0] is the centre pixel, which will always have some flux share between 0-1
-        xfrac[xfrac < 0] = 0
-        xfrac[xfrac > 1] = 1
-        yfrac[yfrac < 0] = 0
-        yfrac[yfrac > 1] = 1
-      }
-
-      subset = cbind(xysub_loc[,1] + ix, xysub_loc[,2] + jy)
-      subset_dup = duplicated(subset)
-
-      if(any(subset_dup)){
-        costmat[subset[!subset_dup,]] = costmat[subset[!subset_dup,]] - (flux[!subset_dup]*xfrac[!subset_dup]*yfrac[!subset_dup])
-        for(k in which(subset_dup)){
-          costmat[subset[k,]] = costmat[subset[k,]] - (flux[k]*xfrac[k]*yfrac[k])
-        }
-      }else{
-        costmat[subset] = costmat[subset] - (flux*xfrac*yfrac)
-      }
-    }
-  }
+  # for(ix in -1:1){
+  #   for(jy in -1:1){
+  #     xfrac = (1 - abs((xysub_loc[,1] + ix) - image_pre_fix_xysub[,1]))
+  #     yfrac = (1 - abs((xysub_loc[,2] + jy) - image_pre_fix_xysub[,2]))
+  #
+  #     if(ix != 0L | jy != 0L){ #since [0,0] is the centre pixel, which will always have some flux share between 0-1
+  #       xfrac[xfrac < 0] = 0
+  #       xfrac[xfrac > 1] = 0
+  #       yfrac[yfrac < 0] = 0
+  #       yfrac[yfrac > 1] = 0
+  #     }
+  #
+  #     subset = cbind(xysub_loc[,1] + ix, xysub_loc[,2] + jy)
+  #     subset_dup = duplicated(subset)
+  #
+  #     if(any(subset_dup)){
+  #       costmat[subset[!subset_dup,]] = costmat[subset[!subset_dup,]] - (flux[!subset_dup]*xfrac[!subset_dup]*yfrac[!subset_dup])
+  #       for(k in which(subset_dup)){
+  #         costmat[subset[k,]] = costmat[subset[k,]] - (flux[k]*xfrac[k]*yfrac[k])
+  #       }
+  #     }else{
+  #       costmat[subset] = costmat[subset] - (flux*xfrac*yfrac)
+  #     }
+  #   }
+  # }
   #image_interp = propaneImBlur(image_interp, smooth=0.5)
   #temp = akima::interp(image_pre_fix_xysub[,1], image_pre_fix_xysub[,2], z=flux, xo=1:dim(costmat)[1], yo=1:dim(costmat)[2], linear=FALSE)$z
   #costmat = costmat - akima::interp(image_pre_fix_xysub[,1], image_pre_fix_xysub[,2], z=flux, xo=1:dim(costmat)[1], yo=1:dim(costmat)[2], linear=FALSE)$z
@@ -785,6 +787,12 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen =
   # }
 
   #costmat = costmat - image_interp
+
+  propaneInterp2D(x = image_pre_fix_xysub[,1],
+                  y = image_pre_fix_xysub[,2],
+                  z = flux,
+                  image = costmat,
+                  type = 'sub')
 
   cost = sum(costmat^2, na.rm=TRUE)
 

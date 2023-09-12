@@ -24,6 +24,8 @@ export(propaneBadPix)
 export(propanePatchPix)
 export(propaneDilate)
 export(propaneImBlur)
+export(propaneInterp2D)
+export(propaneBin2D)
 
 useDynLib(ProPane, .registration=TRUE)
 

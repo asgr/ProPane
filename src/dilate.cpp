@@ -13,7 +13,7 @@ IntegerMatrix dilate_cpp(IntegerMatrix segim, IntegerMatrix kern, IntegerVector 
   bool checkseg = true;
   int max_segim = max(segim);
   IntegerMatrix segim_new(srow, scol);
-  LogicalVector seglogic  (max_segim);
+  LogicalVector seglogic(max_segim);
 
   // if(expand(0) == 0){
   //   expandall = true;
