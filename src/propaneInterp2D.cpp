@@ -89,7 +89,6 @@ NumericMatrix propaneBin2D(NumericVector x, NumericVector y, NumericVector z,
                               bool FITS=true, int type=1L, bool zero=false) {
 
   int i, j, loc, xloc, yloc;
-  float xfrac, yfrac;
   bool zfix;
 
   int dimx = image.nrow();

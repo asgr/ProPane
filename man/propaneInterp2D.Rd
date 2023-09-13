@@ -9,21 +9,21 @@ Rapidly Interpolate and Bin onto an Image
 Rcpp function to rapidly interpolate or bin scatter data onto a target \option{image}. This is much faster than \code{akima} and similar functions (but probably less accurate). It at least guarantees flux is conserved (but maybe slightly in the wrong place).
 }
 \usage{
-propaneInterp2D(x, y, z = 1, image, xlim = NULL, ylim = NULL, pixcen='FITS', type = 'add',
+propaneInterp2D(x, y, z = 1, image, xlim = NULL, ylim = NULL, pixcen='R', type = 'add',
   zero = FALSE)
-propaneBin2D(x, y, z = 1, image, xlim = NULL, ylim = NULL, pixcen='FITS', type = 'add',
+propaneBin2D(x, y, z = 1, image, xlim = NULL, ylim = NULL, pixcen='R', type = 'add',
   zero = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{
-Numeric vector; x locations in FITS/R coordinates. See \option{pixcen}
+Numeric vector; x locations in FITS/R coordinates (see \option{pixcen}). For convenience, if \option{x} is a 2 column matrix/data.frame then x[,1] will be used for \option{x} and x[,2] will be used for \option{y}. If it has 3 columns then x[,3] will be used for \option{z}.
 }
   \item{y}{
-Numeric vector; y locations in FITS/R coordinates. See \option{pixcen}
+Numeric vector; y locations in FITS/R coordinates (see \option{pixcen}. For convenience, if \option{x} is a 2/3 column matrix/data.frame then x[,1] will be used for \option{x} and x[,2] will be used for \option{y}.
 }
   \item{z}{
-Numeric vector; z values to interpolate and add/subtract onto output \option{image} based on \option{type}. If length 1 then the same value is used for all \option{x} and \option{y} locations.
+Numeric vector; z values to interpolate and add/subtract onto output \option{image} based on \option{type}. If length 1 then the same value is used for all \option{x} and \option{y} locations. For convenience, if \option{x} is a 3 column matrix/data.frame then x[,3] will be used for \option{z}.
 }
   \item{image}{
 Numeric matrix; image to interpolate onto. Interpolated values will be added or subtracted from this based on \option{type}.
@@ -69,16 +69,16 @@ magimage(propaneInterp2D(runif(1e4,0,80), runif(1e4,0,80), 1, matrix(0,100,100))
 
 #We can also map the points onto an arbitrary grid by giving x and y limits:
 magimage(propaneInterp2D(runif(1e3,-10,10), runif(1e3,-10,10), 1, image=matrix(0,100,100),
-  xlim=c(-12.5,12.5), ylim=c(-12.5,12.5), pixcen='R'))
+  xlim=c(-12.5,12.5), ylim=c(-12.5,12.5)))
 
 #Notice we conserve flux whether interpolating or binning
 temp1 = propaneInterp2D(runif(1e3,-10,10), runif(1e3,-10,10), 1, image=matrix(0,100,100),
-  xlim=c(-10,50), ylim=c(-10,50), pixcen='R')
+  xlim=c(-10,50), ylim=c(-10,50))
 sum(temp1$z)
 magimage(temp1)
 
 temp2 = propaneBin2D(runif(1e3,-10,10), runif(1e3,-10,10), 1, image=matrix(0,100,100),
-  xlim=c(-10,50), ylim=c(-10,50), pixcen='R')
+  xlim=c(-10,50), ylim=c(-10,50))
 sum(temp2$z)
 magimage(temp2)
 }
