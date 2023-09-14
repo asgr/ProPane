@@ -17,21 +17,17 @@ NumericMatrix propaneInterp2D(NumericVector x, NumericVector y, NumericVector z,
                               bool FITS=true, int type=1L, bool zero=false) {
 
   int i, j, loc, xloc, yloc;
-  float xfrac, yfrac;
+  double xfrac, yfrac;
   bool zfix;
 
   int dimx = image.nrow();
   int dimy = image.ncol();
 
   if(zero){
-    for (i = 0; i < dimx; i++) {
-      for (j = 0; j < dimy; j++) {
-        image(i, j) = 0;
-      }
-    }
+    image.fill(0);
   }
 
-  float shift = 0;
+  double shift = 0;
 
   if(FITS){
     shift = 0.5;
@@ -43,34 +39,25 @@ NumericMatrix propaneInterp2D(NumericVector x, NumericVector y, NumericVector z,
     zfix = false;
   }
 
+  double sign = (type == 1) ? 1 : -1;
 
   for(loc = 0; loc < x.length(); loc++){
     // Rcpp::Rcout << loc << "\n";
     for (i = -1; i < 2; i++) {
       for (j = -1; j < 2; j++) {
-        xloc = ceil(x[loc] + i - shift);
-        if(xloc >= 1 & xloc <= dimx){ //since xloc will be 1 indexed
-          yloc = ceil(y[loc] + j - shift);
-          if(yloc >= 1 & yloc <= dimy){ //since yloc will be 1 indexed
-            xfrac = 1 - abs(xloc - x[loc] - (0.5 - shift));
-            if(xfrac >= 0 & xfrac <= 1){
-              yfrac = 1 - abs(yloc - y[loc] - (0.5 - shift));
+        xloc = floor(x[loc] + i - shift);
+        if(xloc >= 0 && xloc < dimx){ //since xloc will be 1 indexed
+          yloc = floor(y[loc] + j - shift);
+          if(yloc >= 0 && yloc < dimy){ //since yloc will be 1 indexed
+            xfrac = 1 - abs(xloc - x[loc] - (shift - 0.5));
+            if(xfrac >= 0 && xfrac <= 1){
+              yfrac = 1 - abs(yloc - y[loc] - (shift - 0.5));
               // Rcpp::Rcout << xfrac << " " << yfrac << "\n";
-              if(yfrac >= 0 & yfrac <= 1){
-                if(type==1){
-                  // Rcpp::Rcout << z[loc]*xfrac*yfrac << "\n";
-                  if(zfix){
-                    image(xloc - 1, yloc - 1) += z[0]*xfrac*yfrac;
-                  }else{
-                    image(xloc - 1, yloc - 1) += z[loc]*xfrac*yfrac;
-                  }
-                }
-                if(type==2){
-                  if(zfix){
-                    image(xloc - 1, yloc - 1) -= z[0]*xfrac*yfrac;
-                  }else{
-                    image(xloc - 1, yloc - 1) -= z[loc]*xfrac*yfrac;
-                  }
+              if(yfrac >= 0 && yfrac <= 1){
+                if(zfix){
+                  image(xloc, yloc) += z[0]*xfrac*yfrac*sign;
+                }else{
+                  image(xloc, yloc) += z[loc]*xfrac*yfrac*sign;
                 }
               }
             }
@@ -95,14 +82,10 @@ NumericMatrix propaneBin2D(NumericVector x, NumericVector y, NumericVector z,
   int dimy = image.ncol();
 
   if(zero){
-    for (i = 0; i < dimx; i++) {
-      for (j = 0; j < dimy; j++) {
-        image(i, j) = 0;
-      }
-    }
+    image.fill(0);
   }
 
-  float shift = 0;
+  double shift = 0;
 
   if(FITS){
     shift = 0.5;
@@ -114,16 +97,17 @@ NumericMatrix propaneBin2D(NumericVector x, NumericVector y, NumericVector z,
     zfix = false;
   }
 
+  double sign = (type == 1) ? 1 : -1;
 
   for(loc = 0; loc < x.length(); loc++){
-    xloc = ceil(x[loc] - shift);
-    if(xloc >= 1 & xloc <= dimx){ //since xloc will be 1 indexed
-      yloc = ceil(y[loc] - shift);
-      if(yloc >= 1 & yloc <= dimy){ //since yloc will be 1 indexed
+    xloc = floor(x[loc] - shift);
+    if(xloc >= 0 && xloc < dimx){ //since xloc will be 1 indexed
+      yloc = floor(y[loc] - shift);
+      if(yloc >= 0 && yloc < dimy){ //since yloc will be 1 indexed
         if(zfix){
-          image(xloc - 1, yloc - 1) += z[0];
+          image(xloc, yloc) += z[0]*sign;
         }else{
-          image(xloc - 1, yloc - 1) += z[loc];
+          image(xloc, yloc) += z[loc]*sign;
         }
       }
     }
@@ -131,30 +115,3 @@ NumericMatrix propaneBin2D(NumericVector x, NumericVector y, NumericVector z,
 
   return image;
 }
-
-
-// for(ix in -1:1){
-//   for(jy in -1:1){
-//     xfrac = (1 - abs((xysub_loc[,1] + ix) - image_pre_fix_xysub[,1]))
-//     yfrac = (1 - abs((xysub_loc[,2] + jy) - image_pre_fix_xysub[,2]))
-//
-//     if(ix != 0L | jy != 0L){ #since [0,0] is the centre pixel, which will always have some flux share between 0-1
-//       xfrac[xfrac < 0] = 0
-//       xfrac[xfrac > 1] = 1
-//       yfrac[yfrac < 0] = 0
-//       yfrac[yfrac > 1] = 1
-//     }
-//
-//     subset = cbind(xysub_loc[,1] + ix, xysub_loc[,2] + jy)
-//       subset_dup = duplicated(subset)
-//
-//       if(any(subset_dup)){
-//         costmat[subset[!subset_dup,]] = costmat[subset[!subset_dup,]] - (flux[!subset_dup]*xfrac[!subset_dup]*yfrac[!subset_dup])
-//         for(k in which(subset_dup)){
-//           costmat[subset[k,]] = costmat[subset[k,]] - (flux[k]*xfrac[k]*yfrac[k])
-//         }
-//       }else{
-//         costmat[subset] = costmat[subset] - (flux*xfrac*yfrac)
-//       }
-//   }
-// }
