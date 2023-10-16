@@ -132,15 +132,27 @@ propaneBin2D = function(x, y, z = 1, image, xlim=NULL, ylim=NULL, pixcen='R', ty
     }
   }
 
-  image = .propaneBin2D(
-    x = x,
-    y = y,
-    z = z,
-    image = image,
-    FITS = switch(pixcen, FITS = TRUE, R = FALSE),
-    type = switch(type, add = 1L, sub = 2L),
-    zero = zero
-  )
+  if(length(z) == 1 & z[1] == 1){
+    .propaneBin2Dint(
+      x = x,
+      y = y,
+      image = image,
+      FITS = switch(pixcen, FITS = TRUE, R = FALSE),
+      type = switch(type, add = 1L, sub = 2L),
+      zero = zero
+    )
+  }else{
+    .propaneBin2D(
+      x = x,
+      y = y,
+      z = z,
+      image = image,
+      FITS = switch(pixcen, FITS = TRUE, R = FALSE),
+      type = switch(type, add = 1L, sub = 2L),
+      zero = zero
+    )
+  }
+
   if(!is.null(xseq) & !is.null(yseq)){
     image = list(x=xseq, y=yseq, z=image)
   }

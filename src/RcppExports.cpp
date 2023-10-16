@@ -72,6 +72,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// propaneBin2Dint
+IntegerMatrix propaneBin2Dint(NumericVector x, NumericVector y, IntegerMatrix image, bool FITS, int type, bool zero);
+RcppExport SEXP _ProPane_propaneBin2Dint(SEXP xSEXP, SEXP ySEXP, SEXP imageSEXP, SEXP FITSSEXP, SEXP typeSEXP, SEXP zeroSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type image(imageSEXP);
+    Rcpp::traits::input_parameter< bool >::type FITS(FITSSEXP);
+    Rcpp::traits::input_parameter< int >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< bool >::type zero(zeroSEXP);
+    rcpp_result_gen = Rcpp::wrap(propaneBin2Dint(x, y, image, FITS, type, zero));
+    return rcpp_result_gen;
+END_RCPP
+}
 // stack_image_inVar
 SEXP stack_image_inVar(NumericMatrix post_image, NumericMatrix post_inVar, IntegerMatrix post_weight, NumericMatrix pre_image, NumericMatrix pre_inVar, SEXP pre_weight_sexp, IntegerVector offset, Nullable<LogicalMatrix> post_mask);
 RcppExport SEXP _ProPane_stack_image_inVar(SEXP post_imageSEXP, SEXP post_inVarSEXP, SEXP post_weightSEXP, SEXP pre_imageSEXP, SEXP pre_inVarSEXP, SEXP pre_weight_sexpSEXP, SEXP offsetSEXP, SEXP post_maskSEXP) {
@@ -139,6 +155,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_ProPane_mat_diff_sum", (DL_FUNC) &_ProPane_mat_diff_sum, 5},
     {"_ProPane_propaneInterp2D", (DL_FUNC) &_ProPane_propaneInterp2D, 7},
     {"_ProPane_propaneBin2D", (DL_FUNC) &_ProPane_propaneBin2D, 7},
+    {"_ProPane_propaneBin2Dint", (DL_FUNC) &_ProPane_propaneBin2Dint, 6},
     {"_ProPane_stack_image_inVar", (DL_FUNC) &_ProPane_stack_image_inVar, 8},
     {"_ProPane_stack_image", (DL_FUNC) &_ProPane_stack_image, 6},
     {"_ProPane_stack_exp", (DL_FUNC) &_ProPane_stack_exp, 3},

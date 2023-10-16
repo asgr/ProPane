@@ -17,6 +17,10 @@
     .Call(`_ProPane_propaneBin2D`, x, y, z, image, FITS, type, zero)
 }
 
+.propaneBin2Dint <- function(x, y, image, FITS = TRUE, type = 1L, zero = FALSE) {
+    .Call(`_ProPane_propaneBin2Dint`, x, y, image, FITS, type, zero)
+}
+
 .stack_image_inVar_cpp <- function(post_image, post_inVar, post_weight, pre_image, pre_inVar, pre_weight_sexp, offset, post_mask = NULL) {
     .Call(`_ProPane_stack_image_inVar`, post_image, post_inVar, post_weight, pre_image, pre_inVar, pre_weight_sexp, offset, post_mask)
 }

@@ -75,7 +75,7 @@ NumericMatrix propaneBin2D(NumericVector x, NumericVector y, NumericVector z,
                               NumericMatrix image,
                               bool FITS=true, int type=1L, bool zero=false) {
 
-  int i, j, loc, xloc, yloc;
+  int loc, xloc, yloc;
   bool zfix;
 
   int dimx = image.nrow();
@@ -109,6 +109,40 @@ NumericMatrix propaneBin2D(NumericVector x, NumericVector y, NumericVector z,
         }else{
           image(xloc, yloc) += z[loc]*sign;
         }
+      }
+    }
+  }
+
+  return image;
+}
+
+// [[Rcpp::export(".propaneBin2Dint")]]
+IntegerMatrix propaneBin2Dint(NumericVector x, NumericVector y, IntegerMatrix image,
+                           bool FITS=true, int type=1L, bool zero=false) {
+
+  int loc, xloc, yloc;
+
+  int dimx = image.nrow();
+  int dimy = image.ncol();
+
+  if(zero){
+    image.fill(0);
+  }
+
+  double shift = 0;
+
+  if(FITS){
+    shift = 0.5;
+  }
+
+  int sign = (type == 1) ? 1 : -1;
+
+  for(loc = 0; loc < x.length(); loc++){
+    xloc = floor(x[loc] - shift);
+    if(xloc >= 0 && xloc < dimx){ //since xloc will be 1 indexed
+      yloc = floor(y[loc] - shift);
+      if(yloc >= 0 && yloc < dimy){ //since yloc will be 1 indexed
+          image(xloc, yloc) += sign;
       }
     }
   }

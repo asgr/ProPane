@@ -369,7 +369,7 @@ propaneTweakCat = function(cat_ref, cat_pre_fix, delta_max=c(100,0), mode='pix',
       stop('keyvalues_pre_fix must be provided when input mode is coord!')
     }
     cat_ref = Rwcs_s2p(cat_ref, keyvalues=keyvalues_pre_fix)
-    cat_pre_fix = Rwcs_s2p(cat_ref, cat_pre_fix=keyvalues_pre_fix)
+    cat_pre_fix = Rwcs_s2p(cat_pre_fix, keyvalues=keyvalues_pre_fix)
   }
 
   if(!requireNamespace("RANN", quietly = TRUE)){
