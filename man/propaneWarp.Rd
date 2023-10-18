@@ -75,7 +75,7 @@ Character scalar; "auto" (default), "forward" or "backward", see \code{imwarp}. 
 boundary conditions: "dirichlet", "neumann", "periodic" (default "dirichlet"), see \code{imwarp}
 }
   \item{interpolation}{
-Character/integer scalar; For \code{propaneWarp}: "nearest", "linear", "cubic" (default "cubic"), see \code{imwarp}. For \code{imresize}: Linear is 3, Cubic is 5, Lanczos is (higher quality; default).
+Character/integer scalar; For \code{propaneWarp}: "nearest", "linear", "cubic" (default "cubic"), see \code{imwarp}. For \code{propaneRebin}: Linear is 3, Cubic is 5, Lanczos is 6 (higher quality; default), see \code{imresize}.
 }
   \item{doscale}{
 Logical; if TRUE (default) then the image is scaled by the change in pixel scale, i.e. it properly conserves angular flux density. This is usually what you minimally want when warping a flux image between different WCS. If FALSE then nothing is done to rescale the image. This is useful when the input \option{image_in} is something like a segmentation or exposure map, where the actual values matter.
@@ -108,7 +108,7 @@ Numeric scalar; the output mag-zero point desired. Note \option{magzero_in} must
 Numeric scalar; the input mag-zero point. Note \option{magzero_out} must also be provided for any scaling to be applied.
 }
   \item{scale}{
-Numeric scalar; resolution increasing factor, i.e. value larger than 1 will increase the number of output pixels (decrease the asec/pix pixel scale) and vica-versa.
+Numeric scalar; resolution increasing factor, i.e. value larger than 1 will increase the number of output pixels (decrease the asec/pix pixel scale) and vice versa.
 }
   \item{delta_x}{
 Numeric scalar; the shift in apply in the x-axis of the input \option{image}. Positive means a visual shift to the right (with padding applied to the left).
