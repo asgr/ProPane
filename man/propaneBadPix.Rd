@@ -38,7 +38,7 @@ Numeric matrix; the inverse-variance matrix corresponding to \option{image}. If 
 Numeric scalar/vector; standard deviation of the blur. This controls how sensitive we are to bad pixels and image noise. Generally should be in the range of 1-3, and for most types of bad pixel 1 is fine.
 }
   \item{sigma}{
-Numeric scalar/vector; the significance threshold. Higher means fewer (more extreme) pixels will be flagged. You probably want this in the range 5-20. If length 1, then the value will be used for both cold/hot, otherwise provide a vector corresponding to cold (sigma[1] / hot (sigma[2]) options.
+Numeric scalar/vector; the significance threshold. Higher means fewer (more extreme) pixels will be flagged. You probably want this in the range 5-20. If length 1, then the value will be used for both cold/hot, otherwise provide a vector corresponding to cold (sigma[1]) / hot (sigma[2]) options.
 }
   \item{pixcut}{
 Numeric scalar; the maximum number of pixels that need to be grouped to be flagged as bad. Generally this should be quite low (1-5) since larger values will start to identify the cores of bright stars etc as being bad pixels. If length 1, then the value will be used for both cold/hot, otherwise provide a vector corresponding to cold (pixcut[1] / hot (pixcut[2]) options.

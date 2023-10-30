@@ -9,6 +9,7 @@ propaneFrameFinder = function(filelist = NULL,
                             proj = TRUE,
                             border = 'red',
                             col = hsv(alpha=0.2),
+                            bg = par("bg"),
                             ...){
 
   FrameInfo = Rfits_key_scan(filelist = filelist,
@@ -125,7 +126,7 @@ propaneFrameFinder = function(filelist = NULL,
               )
     }
   }
-  legend('topleft', legend = paste0('Nmatch = ', Nmatch))
+  legend('topleft', legend = paste('Nmatch:', Nmatch), bg=bg)
 
   return(invisible(FrameInfo))
 }

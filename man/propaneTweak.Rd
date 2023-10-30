@@ -75,7 +75,7 @@ Logical; should a final round of costs be computed once the best tweak is found.
 Logical; if TRUE then quick plots showing the results of \option{quancut} are displayed. If the good quality sources to WCS match against are not present then consider lowering \option{quancut} (suggestion of 0.95). If a lot of noise and artefacts are present then consider increasing it. Note if this is TRUE then the function will exit after displaying the plots returning NULL (i.e. no tweaking is actually done).
 }
   \item{quick}{
-Logical; determines whether an approximate 'quick' solution is found. This will often be very good, but it does not compute a full image warp (it rounds pixels to the nearest match).
+Logical; determines whether an approximate 'quick' solution is found. This will often be very good, but it does not compute a full image warp (it approximately interpolates pixels using \code{\link{propaneInterp2D}}, which does preserve flux).
 }
   \item{Niter}{
 Integer scalar; if \option{qtype} = 'CMA', then this sets the maximum number of iterations to try. If it converges faster then the \option{Niter} will not be reached, so usually best not to reduce it from the default.
@@ -187,8 +187,8 @@ plot(tweak2$image_post_fix)
 
 tweak3 = propaneTweak(image, image_tran2, delta_max=c(5,10), shift_int=FALSE,
   WCS_match=FALSE, quick=TRUE)
-
-print(tweak3$optim_out$par)
+best3 = tweak3$optim_out$par
+best3
 
 plot(tweak3$image_post_fix)
 
@@ -203,18 +203,18 @@ pro_im_tran = profoundProFound(image_tran)$segstats
 
 tweak4 = propaneTweakCat(pro_im[,c("xcen", "ycen")], pro_im_tran[,c("xcen", "ycen")],
   delta_max = c(5,10))
-best3 = tweak4$par
-best3
+best4 = tweak4$par
+best4
 # The above is very fast, but obviously a bit less accurate (there is less information
 # and signal in a catalogue versus the full image).
 
 image_fix3 = image
-image_fix3$imDat = propaneTran(image_tran$imDat, best3[1], best3[2], best3[3])
+image_fix3$imDat = propaneTran(image_tran$imDat, best4[1], best4[2], best4[3])
 plot(image_fix)
 
 # Or also:
 
-image_fix4 = propaneWCSmod(image_tran, best3[1], best3[2], best3[3]) #correct WCS
+image_fix4 = propaneWCSmod(image_tran, best4[1], best4[2], best4[3]) #correct WCS
 plot(image_fix4)
 
 # Where the WCS is now rotated to follow that of the original image.

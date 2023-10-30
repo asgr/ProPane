@@ -10,7 +10,7 @@ For a given region of sky and a number of on-disk FITS files, this function will
 \usage{
 propaneFrameFinder(filelist = NULL, dirlist = NULL, extlist = 1, RAcen = 180, Deccen = 0,
   rad = 1, cores = 1, plot = TRUE, proj = TRUE, border = "red", col = hsv(alpha = 0.2),
-  ...)
+  bg = par("bg"), ...)
 }
 \arguments{
   \item{filelist}{
@@ -45,6 +45,9 @@ Scalar; colour of the border of frames when \option{plot} = TRUE.
 }
   \item{col}{
 Scalar; colour inside of frames when \option{plot} = TRUE.
+}
+  \item{bg}{
+Scalar; the background color for the legend box (note on some devices [e.g. Quartz] the default it solid white, and others [e.g. pdf] transparent).
 }
   \item{\dots}{
 Other arguments to pass to \code{\link{Rfits_key_scan}}.

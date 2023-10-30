@@ -5,6 +5,7 @@
 \alias{propaneWarpProPane}
 \alias{propaneWCSmod}
 \alias{propaneCropOverlap}
+\alias{propaneSegimWarp}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Remap and Rebin Image WCS via Warping
@@ -38,6 +39,8 @@ propaneTran(image, delta_x = 0, delta_y = 0, delta_rot = 0,
 propaneWCSmod(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen = FALSE)
 
 propaneCropOverlap(image_ref, image_warp, ...)
+
+propaneSegimWarp(segim = NULL, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -149,8 +152,11 @@ Integer scalar; the number of cores to run on. Because of the overhead in launch
   \item{checkWCSequal}{
 Logical; should the WCS be checked to see if the keyvalues_in is the same as keyvalues_out? If TRUE, and the WCS appears to match (when comparing: NAXIS, NAXIS1, NAXIS2, CRPIX1, CRPIX2, CRVAL1, CRVAL2, CTYPE1, CTYPE2, CUNIT1, CUNIT1, CD1_1, CD1_2, CD2_1, CD2_2), then the input \option{image_in} is simply returns. This increases speed and means you do not need to carefully check the input and output WCS.
 }
+  \item{segim}{
+Rfits_image or integer matrix; the segmentation map to be warped.
+}
   \item{\dots}{
-For \code{propaneWarp} dots are passed to \code{\link{Rwcs_image}} (only relevant if \option{plot}=TRUE). For \code{propaneWarpProPane} dots are passed to \code{propaneWarp}.
+For \code{propaneWarp} dots are passed to \code{\link{Rwcs_image}} (only relevant if \option{plot}=TRUE). For \code{propaneWarpProPane} and \code{propaneSegimWarp} dots are passed to \code{propaneWarp}.
 }
 }
 \details{
@@ -201,6 +207,8 @@ The output is an object of class 'ProPane' (warped as appropriate) containing:
 \item{clip}{The number of frames clipped from the stacked \option{image}. This is only relevant when \option{doclip} is TRUE. Values larger than 1 can indicate that both cold and hot pixels have been clipped in this location, and also that the dilation process has masked a pixel multiple times.}
 
 \code{propaneCropOverlap} output will be a two component list (\option{image_ref} and \option{image_warp}). The reference image \option{image_ref} will be a purely cropped version of the input, whilst \option{image_warp} will be warped and cropped to same final geometry as \option{image_ref}.
+
+\code{propaneSegimWarp} returns an integer matrix, representing the warped segmentation map.
 }
 \author{
 Aaron Robotham

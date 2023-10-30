@@ -8,6 +8,7 @@ export(propaneTweakImage)
 export(propaneTweakCat)
 export(propaneWCSmod)
 export(propaneCropOverlap)
+export(propaneSegimWarp)
 
 #Image stacking routines:
 export(propaneStackWarpInVar)
@@ -43,4 +44,4 @@ importFrom("stats", "quantile", "median", "optim")
 importFrom("utils", "packageVersion")
 importFrom("celestial", "coordmatchsing")
 importFrom("grDevices", "hsv")
-importFrom("graphics", "legend", "mtext", "polygon")
+importFrom("graphics", "legend", "mtext", "polygon", "par")

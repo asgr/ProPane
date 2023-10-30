@@ -427,11 +427,11 @@ propaneRebin = function(image, scale = 1,interpolation = 6){
 
   imdim = dim(image)
   if(scale > 1){
-    scale = floor(scale)
-    size_x = imdim[1]*scale - (scale - 1L)
-    size_y = imdim[2]*scale - (scale - 1L)
+    #scale = floor(scale)
+    size_x = floor(imdim[1]*scale - (scale - 1L))
+    size_y = floor(imdim[2]*scale - (scale - 1L))
   }else{
-    scale = 1/ceiling(1/scale)
+    #scale = 1/ceiling(1/scale)
     size_x = floor(imdim[1]*scale)
     size_y = floor(imdim[2]*scale)
   }
@@ -443,8 +443,15 @@ propaneRebin = function(image, scale = 1,interpolation = 6){
     image_resize = (image_resize / norm_resize) / scale^2
 
     keyvalues_out = image$keyvalues
-    keyvalues_out$NAXIS1 = dim(image_resize)[1]
-    keyvalues_out$NAXIS2 = dim(image_resize)[2]
+
+    if(isTRUE(image$keyvalues$ZIMAGE)){
+      keyvalues_out$ZAXIS1 = dim(image_resize)[1]
+      keyvalues_out$ZAXIS2 = dim(image_resize)[2]
+    }else{
+      keyvalues_out$NAXIS1 = dim(image_resize)[1]
+      keyvalues_out$NAXIS2 = dim(image_resize)[2]
+    }
+
     if(scale > 1){
       keyvalues_out$CRPIX1 = (keyvalues_out$CRPIX1 - 0.5) * scale
       keyvalues_out$CRPIX2 = (keyvalues_out$CRPIX2 - 0.5) * scale
@@ -617,4 +624,49 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
 
   class(output) = "ProPane"
   return(invisible(output))
+}
+
+propaneSegimWarp = function(segim=NULL, ...){
+  invisible(propaneWarp(image_in=segim, direction='backward', interpolation='nearest', doscale=FALSE, ...)$imDat)
+}
+
+propaneSegimShare=function(segim=NULL, keyvalues_in=NULL, keyvalues_out=NULL, pixcut=1){
+  segID_in = sort(unique(as.integer(segim[segim > 0])))
+  segim_warp = propaneSegimWarp(segim = segim,
+                                 keyvalues_in = keyvalues_in,
+                                 keyvalues_out = keyvalues_out)
+  segim_warp_tab = tabulate(segim_warp)
+  segID_warp = which(segim_warp_tab >= pixcut)
+  segim_warp[!segim_warp %in% segID_warp] = 0
+  segim_unwarp = propaneSegimWarp(segim = segim_warp,
+                                   keyvalues_in = keyvalues_out,
+                                   keyvalues_out = keyvalues_in)
+  segim_out = NULL
+  segimDT = data.table(segim = as.integer(segim),
+                       segim_out = as.integer(segim_unwarp))
+  segimDT = segimDT[segim > 0, ]
+  segim_groups = segimDT[, list(segim_out = list(tabulate(segim_out))), keyby =
+                           segim]
+  sharemat = matrix(0, max(segim_warp), dim(segim_groups)[1])
+  for (i in 1:(dim(sharemat)[2])) {
+    sharemat[1:length(unlist(segim_groups$segim_out[i])), i] = unlist(segim_groups$segim_out[i])
+  }
+  sharemat = sharemat / rowSums(sharemat)
+  sharemat = sharemat[is.finite(sharemat[, 1]), , drop = FALSE]
+  colnames(sharemat) = segID_in
+  rownames(sharemat) = segID_warp
+  # if (!is.null(weights)) {
+  #   t(t(sharemat) * weights)
+  #   sharemat = sharemat / rowSums(sharemat)
+  # }
+  shareseg = diag(sharemat[segID_warp %in% segID_in, segID_in %in% segID_warp])
+  invisible(
+    list(
+      segID_in = segID_in,
+      segID_warp = segID_warp,
+      segim_warp = segim_warp,
+      sharemat = sharemat,
+      shareseg = shareseg
+    )
+  )
 }
