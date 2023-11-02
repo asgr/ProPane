@@ -9,12 +9,12 @@
   return(xy_out)
 }
 
-propaneWarp = function(image_in, keyvalues_out=NULL, header_out = NULL, dim_out = NULL,
+propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out = NULL,
                        direction = "auto", boundary = "dirichlet", interpolation = "cubic",
                        doscale = TRUE, dofinenorm = TRUE, plot = FALSE, dotightcrop = TRUE,
                        keepcrop = FALSE, extratight = FALSE, WCSref_out = NULL, WCSref_in = NULL,
-                       magzero_out = NULL, magzero_in = NULL, blank=NA, warpfield=NULL,
-                       warpfield_return=FALSE, cores=1, checkWCSequal=FALSE, ...)
+                       magzero_out = NULL, magzero_in = NULL, blank = NA, warpfield = NULL,
+                       warpfield_return = FALSE, cores = 1, checkWCSequal = FALSE, ...)
 {
   if(!requireNamespace("Rwcs", quietly = TRUE)){
     stop("The Rwcs package is needed for this function to work. Please install it from GitHub asgr/Rwcs", call. = FALSE)
@@ -28,29 +28,38 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out = NULL, dim_out 
     stop("The Rfits package is needed for this function to work. Please install it from GitHub asgr/Rfits", call. = FALSE)
   }
 
-  if(! inherits(image_in, c('Rfits_image', 'Rfits_pointer'))){
-    stop('image_in must be either Rfits_image or Rfits_pointer!')
+  if(! inherits(image_in, c('Rfits_image', 'Rfits_pointer', 'matrix'))){
+    stop('image_in must be either Rfits_image, Rfits_pointer or matrix!')
+  }
+
+  if(is.matrix(image_in) & is.null(keyvalues_in)){
+    stop('If image_in is a matrix then keyvalues_in must be provided!')
+  }
+
+  if(!is.null(keyvalues_in) & is.matrix(image_in)){
+    keyvalues_in = keyvalues_in[!is.na(keyvalues_in)]
+    image_in = Rfits_create_image(image_in, keyvalues_in)
   }
 
   keyvalues_in = image_in$keyvalues
   keyvalues_in = keyvalues_in[!is.na(keyvalues_in)]
   header_in = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_in))
-
-  if(is.character(header_out)){
-    if(!is.null(keyvalues_out)){
-      message('Using header_out and ignoring keyvalues_out!')
-    }
-    if(length(header_out) == 1){
-      keyvalues_out = Rfits_header_to_keyvalues(Rfits_raw_to_header(header_out))
-    }else if(length(header_out) > 1){
-      keyvalues_out = Rfits_hdr_to_keyvalues(header_out)
-    }
-  }
-
-  if(is.null(keyvalues_out) & is.null(header_out)){
-    keyvalues_out = options()$current_keyvalues
-    header_out = options()$current_header
-  }
+#
+#   if(is.character(header_out)){
+#     if(!is.null(keyvalues_out)){
+#       message('Using header_out and ignoring keyvalues_out!')
+#     }
+#     if(length(header_out) == 1){
+#       keyvalues_out = Rfits_header_to_keyvalues(Rfits_raw_to_header(header_out))
+#     }else if(length(header_out) > 1){
+#       keyvalues_out = Rfits_hdr_to_keyvalues(header_out)
+#     }
+#   }
+#
+#   if(is.null(keyvalues_out) & is.null(header_out)){
+#     keyvalues_out = options()$current_keyvalues
+#     header_out = options()$current_header
+#   }
 
   keyvalues_out = keyvalues_out[!is.na(keyvalues_out)]
   header_out = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_out))
@@ -95,16 +104,13 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out = NULL, dim_out 
     }
   }
 
-  if (!is.null(keyvalues_out) & is.null(dim_out)){
-    if(is.null(keyvalues_out$ZNAXIS1)){
-      NAXIS1 = keyvalues_out$NAXIS1
-    }else{
+  if(!is.null(keyvalues_out) & is.null(dim_out)){
+    if(isTRUE(keyvalues_out$ZIMAGE)){
       NAXIS1 = keyvalues_out$ZNAXIS1
-    }
-    if(is.null(keyvalues_out$ZNAXIS2)){
-      NAXIS2 = keyvalues_out$NAXIS2
-    }else{
       NAXIS2 = keyvalues_out$ZNAXIS2
+    }else{
+      NAXIS1 = keyvalues_out$NAXIS1
+      NAXIS2 = keyvalues_out$NAXIS2
     }
     dim_out = c(NAXIS1, NAXIS2)
   }else{
@@ -164,12 +170,12 @@ propaneWarp = function(image_in, keyvalues_out=NULL, header_out = NULL, dim_out 
 
     # new code should be more efficient!
 
-    if(!isTRUE(keyvalues_out$ZIMAGE)){
-      keyvalues_out$NAXIS1 = max_x_in - min_x_in + 1L
-      keyvalues_out$NAXIS2 = max_y_in - min_y_in + 1L
-    }else{
+    if(isTRUE(keyvalues_out$ZIMAGE)){
       keyvalues_out$ZNAXIS1 = max_x_in - min_x_in + 1L
       keyvalues_out$ZNAXIS2 = max_y_in - min_y_in + 1L
+    }else{
+      keyvalues_out$NAXIS1 = max_x_in - min_x_in + 1L
+      keyvalues_out$NAXIS2 = max_y_in - min_y_in + 1L
     }
 
     keyvalues_out$CRPIX1 = keyvalues_out$CRPIX1 - min_x_in + 1L

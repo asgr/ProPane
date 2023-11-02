@@ -20,7 +20,7 @@ Remaps an input projection system to a different target WCS.
 \code{propaneCropOverlap} creates a cropped and warped version of the maximal overlapping input frames- i.e. they have the same end WCS and with all NA border removed. This can be useful for efficeintly trimming down frames to compare.
 }
 \usage{
-propaneWarp(image_in, keyvalues_out = NULL, header_out = NULL, dim_out = NULL,
+propaneWarp(image_in, keyvalues_out = NULL, keyvalues_in = NULL, dim_out = NULL,
   direction = "auto", boundary = "dirichlet", interpolation = "cubic", doscale = TRUE,
   dofinenorm = TRUE, plot = FALSE, dotightcrop = TRUE, keepcrop = FALSE,
   extratight = FALSE, WCSref_out = NULL, WCSref_in = NULL, magzero_out = NULL,
@@ -45,7 +45,7 @@ propaneSegimWarp(segim = NULL, ...)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{image_in}{
-List; required, the image we want to warp. \option{image_in} must be either object class Rfits_image or Rfits_pointer, i.e. as read in by \code{\link{Rfits_read_image}} or \code{\link{Rfits_point}}.
+List; required, the image we want to warp. \option{image_in} must be either object class Rfits_image, Rfits_pointer or matrix, i.e. as read in by \code{\link{Rfits_read_image}} or \code{\link{Rfits_point}}. If matrix then \option{keyvalues_in} must be provided.
 }
   \item{propane_in}{
 List; object of class 'ProPane', e.g. the output of \code{\link{propaneStackWarpInVar}}. All present list elements will be warp as appropriate (so conserving flux, inverse-Variance, or value as required): image (flux), weight (value), inVar (rebinned inVar), exp (value), cold (flux), hot (flux), clip (value).
@@ -65,8 +65,8 @@ Rfits_image; the image to be warped. This image will be warped and have pixels c
   \item{keyvalues_out}{
 List; output header values to be used for the WCS. This is the target WCS projection that \option{image_in} will be mapped onto.
 }
-  \item{header_out}{
-Optional output header. To aid backwards compatibility, you can also pass in a 1D character vector of header values, e.g. the \option{hdr} component of \option{Rfits_read_image} from the \code{Rfits} package. If you want to use all distortion terms you can also pass in the raw header output of \code{Rfits_read_header_raw} (which is also the raw list component of an Rfits_image or Rfits_pointer object). If this is present then \option{keyvalues_out} will be ignored!
+  \item{keyvalues_in}{
+List; input header values to be used for the WCS. This is the target WCS projection that \option{image_in} will be mapped from. Only used if \option{image_in} is a matrix.
 }
   \item{dim_out}{
 Integer vector; this defines the desired dimensions of the output image. If this is not provided then the output image is made to be the same size as the NAXIS1 and NAXIS2 arguments taken from \option{header_out} (which is usually what you will want TBH).
