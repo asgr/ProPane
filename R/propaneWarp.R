@@ -451,8 +451,8 @@ propaneRebin = function(image, scale = 1,interpolation = 6){
     keyvalues_out = image$keyvalues
 
     if(isTRUE(image$keyvalues$ZIMAGE)){
-      keyvalues_out$ZAXIS1 = dim(image_resize)[1]
-      keyvalues_out$ZAXIS2 = dim(image_resize)[2]
+      keyvalues_out$ZNAXIS1 = dim(image_resize)[1]
+      keyvalues_out$ZNAXIS2 = dim(image_resize)[2]
     }else{
       keyvalues_out$NAXIS1 = dim(image_resize)[1]
       keyvalues_out$NAXIS2 = dim(image_resize)[2]
