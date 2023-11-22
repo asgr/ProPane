@@ -133,6 +133,10 @@ propaneBin2D = function(x, y, z = 1, image, xlim=NULL, ylim=NULL, pixcen='R', ty
   }
 
   if(length(z) == 1 & z[1] == 1){
+    if(!is.integer(image)){
+      storage.mode(image) = 'integer'
+    }
+
     .propaneBin2Dint(
       x = x,
       y = y,

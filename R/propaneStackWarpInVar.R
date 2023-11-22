@@ -62,6 +62,13 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
     magzero_in = rep(magzero_in, Nim)
   }
 
+  for(i in 1:Nim){
+    if(!is.null(image_list[[i]]$keyvalues$MAGZERO)){
+      if(magzero_in[i] != image_list[[i]]$keyvalues$MAGZERO)
+        message(paste0('WARNING: keyvalues$MAGZERO in image_in ', i, '(',image_list[[i]]$keyvalues$MAGZERO, 'does not match magzero_in[i] (',magzero_in[i],')'))
+    }
+  }
+
   if(is.null(keyvalues_out)){
     keyvalues_out = image_list[[1]]$keyvalues
   }

@@ -2,7 +2,8 @@
   return(10^(-0.4*(mag-magzero)))
 }
 
-propaneStackFlatInVar=function(image_list=NULL, sky_list=NULL, skyRMS_list=NULL, mask_list=NULL, magzero_in=0, magzero_out=0, masking='and'){
+propaneStackFlatInVar=function(image_list=NULL, sky_list=NULL, skyRMS_list=NULL, mask_list=NULL,
+                               magzero_in=0, magzero_out=23.9, masking='and'){
   if(is.list(image_list)){
     if(is.null(sky_list)==FALSE){
       if(length(image_list)!=length(sky_list)){stop('sky_list length does not match image_list length!')}
