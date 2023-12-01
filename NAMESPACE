@@ -21,6 +21,7 @@ export(propanePatch)
 
 #Utility:
 export(propaneFrameFinder)
+export(propaneGenWCS)
 export(propaneBadPix)
 export(propanePatchPix)
 export(propaneDilate)

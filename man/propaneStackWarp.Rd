@@ -57,7 +57,7 @@ Numeric vector; the input mag-zero points. If length 1 then it is assumed all in
 Numeric scalar; the output mag-zero point desired. A nice \option{magzero_out} is perhaps 23.9 (the default), because this means all measured fluxed are in micro-Jansky (rather than arbitrary ADUs). \option{magzero_out} = 8.9 gives Jansky; 16.4 gives milli-Jansky and 31.4 gives nano-Jansky.
 }
   \item{keyvalues_out}{
-List; output header values to be used for the WCS. This is the target WCS projection that each image in \option{image_list} will be mapped onto.
+List; output header values to be used for the WCS. This is the target WCS projection that each image in \option{image_list} will be mapped onto. For help creating this have a look at \code{\link{propaneGenWCS}}.
 }
   \item{imager_func}{
 Function (or character scalar for special case); the \code{imager} combine function to apply. This can be any of the ones in ?imager.combine. The default of NULL means it will use the \code{average} function. As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{probs}). \option{imager_func} = 'InVar' (with speech marks) will return the inverse-variance scaled correctly by exposures (which is what we use for general stacking). \option{imager_func} = 'waverage' will return a weighted average using the \option{weights} values for the per frame weights, but note this only works in regions where all frames contribute. In most practical applications you should use \code{propaneStackWarpInVar} for proper inverse-variance weighted stacking, but this method might be useful as a quick check.
@@ -199,7 +199,7 @@ Aaron Robotham
 }
 
 \seealso{
-\code{\link{propaneWarp}}, \code{\link{propaneStackFlat}}
+\code{\link{propaneWarp}}, \code{\link{propaneStackFlat}}, \code{\link{propaneGenWCS}}
 }
 \examples{
 \dontrun{
@@ -247,6 +247,8 @@ keyvalues_out = Rwcs_setkeyvalues(
     NAXIS1 = 2200,
     NAXIS2 = 2200
 )
+
+#Although see also propaneGenWCS for help doing this
 
 stack = propaneStackWarpInVar(image_list = image_list,
                    inVar_list = 0.000468, #assume all have the same inVar

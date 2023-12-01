@@ -11,7 +11,7 @@ Stacks multiple aligned (flat) images.
 }
 \usage{
 propaneStackFlatInVar(image_list = NULL, sky_list = NULL, skyRMS_list = NULL,
-  mask_list = NULL, magzero_in = 0, magzero_out = 0, masking = 'and')
+  mask_list = NULL, magzero_in = 0, magzero_out = 23.9, masking = 'and')
 
 propaneStackFlatFunc(image_list = NULL, imager_func = NULL, na.rm = TRUE, weights = NULL,
   increasing = TRUE, probs = c(0.159, 0.5, 0.841), parallel = TRUE)
