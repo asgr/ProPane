@@ -9,14 +9,15 @@ Finder Frame Coverage
 For a given region of sky and a number of on-disk FITS files, the \code{propaneFrameFinder} function will find all nearby frames and optional plot their coverage. The \code{propaneGenWCS} can compute the most efficient WCS that covers the target frames. This is useful when trying to figure out an optimal WCS for stacking purposes.
 }
 \usage{
-propaneFrameFinder(filelist = NULL, dirlist = NULL, extlist = 1, RAcen = 180, Deccen = 0,
-  rad = 1, cores = 1, plot = TRUE, proj = TRUE, border = "red", col = hsv(alpha = 0.2),
-  bg = par("bg"), ...)
+propaneFrameFinder(filelist = NULL, dirlist = NULL, extlist = 1, RAcen = 180,
+  Deccen = 0, rad = 1, cores = 1, plot = TRUE, proj = TRUE, border = "red",
+  col = hsv(alpha = 0.2), bg = par("bg"), ...)
 
-propaneGenWCS(image_list = NULL, filelist = NULL, dirlist = NULL, CRVAL1 = NULL,
-  CRVAL2 = NULL, pixscale = NULL, NAXIS1 = NULL, NAXIS2 = NULL, CRPIX1 = NULL,
-  CRPIX2 = NULL, CTYPE1 = "RA---TAN", CTYPE2 = "DEC--TAN", CUNIT1 = "deg", CUNIT2 = "deg",
-  ...)
+propaneGenWCS(filelist = NULL, dirlist = NULL, image_list = NULL, rotation = 'North',
+  CRVAL1 = NULL, CRVAL2 = NULL, pixscale = NULL, NAXIS1 = NULL, NAXIS2 = NULL,
+  CRPIX1 = NULL, CRPIX2 = NULL, CTYPE1 = "RA---TAN", CTYPE2 = "DEC--TAN",
+  CD1_1 = NULL, CD1_2 = NULL, CD2_1 = NULL, CD2_2 = NULL, CUNIT1 = "deg",
+  CUNIT2 = "deg", ...)
 }
 \arguments{
   \item{filelist}{
@@ -58,6 +59,9 @@ Scalar; the background color for the legend box (note on some devices [e.g. Quar
   \item{image_list}{
 List; required. List of the input \code{Rfits_image} or \code{Rfits_pointer} objects to be warped and stacked. If this is not present then one or both of \option{filelist} and/or \option{dirlist} must be provided.
 }
+  \item{rotation}{
+Character/numeric scalar; the alignment of the image. If character then can be the direction which is up, i.e. 'North', 'East', 'South', 'West', or 'get'. If 'get' then it will determine the average rotation of all the target images. If numeric then it specifies the manual rotation to apply. This is the vector of North with respect to y-axis up clockwise (so -> is 90, i.e. East is up). 
+}
   \item{CRVAL1}{
 Numeric scalar; FITS header CRVAL1 for the CTYPE1 projection system. This is the RA in degrees at the location of \option{NAXIS1}/2. This should be chosen to be near the centre of the target projection (i.e. the average RA of the frames to be overlaid). If not provided this will be estimated from the provided data.
 }
@@ -84,6 +88,18 @@ Character scalar; the RA projection system type. Must be a WCS legal type (up to
 }
   \item{CTYPE2}{
 Character scalar; the Dec projection system type. Must be a WCS legal type (up to 4 letter axis followed by 3 letter projection padded as required with "-", e.g.: "DEC--TAN") and 8 characters long. If not provided this will be estimated from the provided data.
+}
+  \item{CD1_1}{
+Numeric scalar; FITS header CD1_1 for the CTYPE1 projection system. Change in CTYPE1 in degrees along x-Axis. If not provided this will be estimated from the provided data.
+}
+  \item{CD1_2}{
+Numeric scalar; FITS header CD1_2 for the CTYPE1 projection system. Change in CTYPE1 in degrees along y-Axis. If not provided this will be estimated from the provided data.
+}
+  \item{CD2_1}{
+Numeric scalar; FITS header CD2_1 for the CTYPE2 projection system. Change in CTYPE2 in degrees along x-Axis. If not provided this will be estimated from the provided data.
+}
+  \item{CD2_2}{
+Numeric scalar; FITS header CD2_2 for the CTYPE2 projection system. Change in CTYPE2 in degrees along y-Axis. If not provided this will be estimated from the provided data.
 }
   \item{CUNIT1}{
 Character scalar; the units of the WCS for the RA axis. Is de facto 'deg' almost always these days, to the degree that many headers do not even list it (or list it and leave it blank) assuming the user will assume it is in degrees. If found and set to a blank string it will be changed to 'deg'. If not provided this will be estimated from the provided data.
@@ -128,7 +144,7 @@ print(ex_frames)
 \dontrun{
 image_list = Rfits_make_list(dirlist = dir_stack, extlist = 2, pointer = FALSE)
 
-keyvalues_out = propaneGenWCS(image_list)
+keyvalues_out = propaneGenWCS(image_list = image_list)
 
 stack = propaneStackWarpInVar(image_list = image_list,
                    inVar_list = 0.000468, #assume all have the same inVar

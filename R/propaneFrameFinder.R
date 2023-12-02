@@ -95,57 +95,22 @@ propaneFrameFinder = function(filelist = NULL,
   return(invisible(FrameInfo))
 }
 
-propaneGenWCS = function(image_list = NULL, filelist = NULL, dirlist = NULL, CRVAL1 = NULL,
-                          CRVAL2 = NULL, pixscale = NULL, NAXIS1 = NULL, NAXIS2 = NULL,
-                          CRPIX1 = NULL, CRPIX2 = NULL, CTYPE1 = "RA---TAN", CTYPE2 = "DEC--TAN",
-                          CUNIT1 = "deg", CUNIT2 = "deg", ...){
-  if(!is.null(image_list)){
-    image = NULL
-    info = foreach(image = image_list, .combine='rbind')%do%{
-      current_info = list()
-
-      temp_cen = centre(image, ...)
-      if(is.na(temp_cen[1])){
-        temp_cen = rep(NA, 2)
-      }
-      current_info = c(current_info,
-                       centre_RA = temp_cen[1], centre_Dec = temp_cen[2]
-      )
-
-      temp_cor = corners(image, ...)
-      if(is.na(temp_cor[1])){
-        temp_cor = matrix(NA, 4, 2)
-      }
-      current_info = c(current_info,
-                       corner_BL_RA = temp_cor[1,1], corner_BL_Dec = temp_cor[1,2],
-                       corner_TL_RA = temp_cor[2,1], corner_TL_Dec = temp_cor[2,2],
-                       corner_TR_RA = temp_cor[3,1], corner_TR_Dec = temp_cor[3,2],
-                       corner_BR_RA = temp_cor[4,1], corner_BR_Dec = temp_cor[4,2]
-      )
-
-      temp_ext = extremes(image, ...)
-      if(is.na(temp_ext[1])){
-        temp_ext = matrix(NA, 3, 2)
-      }
-      current_info = c(current_info,
-                       min_RA = temp_ext[1,1], min_Dec = temp_ext[1,2],
-                       max_RA = temp_ext[2,1], max_Dec = temp_ext[2,2],
-                       range_RA = temp_ext[3,1], range_Dec = temp_ext[3,2]
-      )
-
-      temp_pixscale = pixscale(image, ...)
-      current_info = c(current_info, pixscale = temp_pixscale)
-
-      return(as.data.frame(current_info))
-    }
-  }else{
-    info = Rfits_key_scan(filelist=filelist, dirlist=dirlist,
-                                get_centre = TRUE,
-                                get_corners = TRUE,
-                                get_extremes = TRUE,
-                                get_pixscale = TRUE,
-                                ...)
-  }
+propaneGenWCS = function(filelist = NULL, dirlist = NULL, image_list = NULL, rotation = 'North',
+                         CRVAL1 = NULL, CRVAL2 = NULL, pixscale = NULL,
+                         NAXIS1 = NULL, NAXIS2 = NULL, CRPIX1 = NULL, CRPIX2 = NULL,
+                         CTYPE1 = "RA---TAN", CTYPE2 = "DEC--TAN",
+                         CD1_1 = NULL, CD1_2 = NULL, CD2_1 = NULL, CD2_2 = NULL,
+                         CUNIT1 = "deg", CUNIT2 = "deg", ...){
+  
+    info = Rfits_key_scan(filelist = filelist,
+                          dirlist = dirlist,
+                          image_list = image_list,
+                          get_centre = TRUE,
+                          get_rotation = TRUE,
+                          get_corners = TRUE,
+                          get_extremes = TRUE,
+                          get_pixscale = TRUE,
+                          ...)
 
   if(is.null(CRVAL1)){
     CRVAL1 = (min(info$min_RA) + max(info$max_RA))/2
@@ -163,16 +128,27 @@ propaneGenWCS = function(image_list = NULL, filelist = NULL, dirlist = NULL, CRV
     NAXIS2 = ceiling(3600*diff(range(info$min_Dec, info$max_Dec))/pixscale)
   }
   if(is.null(CRPIX1)){
-    NAXIS1/2 + 0.5
+    CRPIX1 = NAXIS1/2 + 0.5
   }
   if(is.null(CRPIX2)){
-    NAXIS2/2 + 0.5
+    CRPIX2 = NAXIS2/2 + 0.5
+  }
+  if(is.null(CD1_1)){
+    CD1_1 = -pixscale/3600
+  }
+  if(is.null(CD1_2)){
+    CD1_2 = 0
+  }
+  if(is.null(CD2_1)){
+    CD2_1 = 0
+  }
+  if(is.null(CD2_2)){
+    CD2_2 = pixscale/3600
   }
 
   keyvalues = Rwcs_setkeyvalues(
     CRVAL1 = CRVAL1,
     CRVAL2 = CRVAL2,
-    pixscale = pixscale,
     NAXIS1 = NAXIS1,
     NAXIS2 = NAXIS2,
     CRPIX1 = CRPIX1,
@@ -180,8 +156,51 @@ propaneGenWCS = function(image_list = NULL, filelist = NULL, dirlist = NULL, CRV
     CTYPE1 = CTYPE1,
     CTYPE2 = CTYPE2,
     CUNIT1 = CUNIT1,
-    CUNIT2 = CUNIT2
+    CUNIT2 = CUNIT2,
+    CD1_1 = CD1_1,
+    CD1_2 = CD1_2,
+    CD2_1 = CD2_1,
+    CD2_2 = CD2_2
   )
+  
+  if(is.character(rotation)){
+    rotation = tolower(rotation)
+    if(rotation == 'north'){rotation = 0}
+    if(rotation == 'east'){rotation = 90}
+    if(rotation == 'south'){rotation = 180}
+    if(rotation == 'west'){rotation = 270}
+    
+    if(rotation == 'get'){
+      temp_rot = info$rotation_North
+      temp_rot = temp_rot %% 90
+      temp_rot[temp_rot > 45] = temp_rot[temp_rot > 45] - 90
+      rotation = mean(temp_rot, na.rm=TRUE)
+    }
+  }
+  
+  if(rotation != 0){
+    keyvalues = propaneWCSmod(keyvalues, delta_rot = -rotation)
+  }
+  
+  RAcorners = c(info$corner_BL_RA, info$corner_BR_RA, info$corner_TL_RA, info$corner_TR_RA)
+  Deccorners = c(info$corner_BL_Dec, info$corner_BR_Dec, info$corner_TL_Dec, info$corner_TR_Dec)
+  
+  xycorners = Rwcs_s2p(RAcorners, Deccorners, keyvalues=keyvalues)
+  
+  xlo = ceiling(min(xycorners[,'x'], na.rm=TRUE))
+  xhi = ceiling(max(xycorners[,'x'], na.rm=TRUE))
+  ylo = ceiling(min(xycorners[,'y'], na.rm=TRUE))
+  yhi = ceiling(max(xycorners[,'y'], na.rm=TRUE))
+  
+  if(xlo != 1L){
+    keyvalues$CRPIX1 = keyvalues$CRPIX1 - xlo + 1L
+  }
+  if(ylo != 1L){
+    keyvalues$CRPIX2 = keyvalues$CRPIX2 - ylo + 1L
+  }
+  
+  keyvalues$NAXIS1 = xhi - xlo + 1L
+  keyvalues$NAXIS2 = yhi - ylo + 1L
 
   return(keyvalues)
 }
