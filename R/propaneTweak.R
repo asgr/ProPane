@@ -537,7 +537,8 @@ propaneTran = function(image, delta_x = 0, delta_y = 0, delta_rot = 0, xcen_rot 
   }
 }
 
-propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen = FALSE){
+propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen = FALSE,
+                         flipx = FALSE, flipy = FALSE){
 
   if(inherits(input, 'Rfits_keylist')){
     keyvalues = input
@@ -575,7 +576,7 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen =
     delta_rot_rad = -delta_rot*pi/180
 
     rotmat_delta = matrix(c(cos(delta_rot_rad),
-                            -sin(delta_rot_rad),
+                           -sin(delta_rot_rad),
                             sin(delta_rot_rad),
                             cos(delta_rot_rad)
     ),
@@ -589,6 +590,16 @@ propaneWCSmod = function(input, delta_x = 0, delta_y = 0, delta_rot = 0, recen =
     keyvalues$CD1_2 = rotmat[1,2]
     keyvalues$CD2_1 = rotmat[2,1]
     keyvalues$CD2_2 = rotmat[2,2]
+  }
+  
+  if(flipx){
+    keyvalues$CD1_1 = -keyvalues$CD1_1
+    keyvalues$CD1_2 = -keyvalues$CD1_2
+  }
+  
+  if(flipy){
+    keyvalues$CD2_1 = -keyvalues$CD2_1
+    keyvalues$CD2_2 = -keyvalues$CD2_2
   }
 
   if(recen){
