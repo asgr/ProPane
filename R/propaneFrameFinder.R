@@ -101,17 +101,18 @@ propaneGenWCS = function(filelist = NULL, dirlist = NULL, image_list = NULL, rot
                          CTYPE1 = "RA---TAN", CTYPE2 = "DEC--TAN",
                          CD1_1 = NULL, CD1_2 = NULL, CD2_1 = NULL, CD2_2 = NULL,
                          CUNIT1 = "deg", CUNIT2 = "deg", ...){
-  
-    info = Rfits_key_scan(filelist = filelist,
-                          dirlist = dirlist,
-                          image_list = image_list,
-                          get_centre = TRUE,
-                          get_rotation = TRUE,
-                          get_corners = TRUE,
-                          get_extremes = TRUE,
-                          get_pixscale = TRUE,
-                          ...)
 
+  info = Rfits_key_scan(filelist = filelist,
+                        dirlist = dirlist,
+                        image_list = image_list,
+                        get_centre = TRUE,
+                        get_rotation = TRUE,
+                        get_corners = TRUE,
+                        get_extremes = TRUE,
+                        get_pixscale = TRUE,
+                        ...)
+
+  manual = TRUE #don't do final adjustment if NAXIS and CRPIX input is fully manual
   if(is.null(CRVAL1)){
     CRVAL1 = (min(info$min_RA) + max(info$max_RA))/2
   }
@@ -123,15 +124,19 @@ propaneGenWCS = function(filelist = NULL, dirlist = NULL, image_list = NULL, rot
   }
   if(is.null(NAXIS1)){
     NAXIS1 = ceiling(3600*diff(range(info$min_RA, info$max_RA)) * cos(max(abs(info$min_Dec), abs(info$max_Dec))*pi/180)/pixscale)
+    manual = FALSE
   }
   if(is.null(NAXIS2)){
     NAXIS2 = ceiling(3600*diff(range(info$min_Dec, info$max_Dec))/pixscale)
+    manual = FALSE
   }
   if(is.null(CRPIX1)){
     CRPIX1 = NAXIS1/2 + 0.5
+    manual = FALSE
   }
   if(is.null(CRPIX2)){
     CRPIX2 = NAXIS2/2 + 0.5
+    manual = FALSE
   }
   if(is.null(CD1_1)){
     CD1_1 = -pixscale/3600
@@ -162,45 +167,49 @@ propaneGenWCS = function(filelist = NULL, dirlist = NULL, image_list = NULL, rot
     CD2_1 = CD2_1,
     CD2_2 = CD2_2
   )
-  
+
   if(is.character(rotation)){
     rotation = tolower(rotation)
     if(rotation == 'north'){rotation = 0}
     if(rotation == 'east'){rotation = 90}
     if(rotation == 'south'){rotation = 180}
     if(rotation == 'west'){rotation = 270}
-    
+
     if(rotation == 'get'){
+      #The below is so the modular rotation arithmetic is more biased to align vertically.
       temp_rot = info$rotation_North
       temp_rot = temp_rot %% 90
       temp_rot[temp_rot > 45] = temp_rot[temp_rot > 45] - 90
       rotation = mean(temp_rot, na.rm=TRUE)
     }
   }
-  
+
   if(rotation != 0){
     keyvalues = propaneWCSmod(keyvalues, delta_rot = -rotation)
   }
-  
-  RAcorners = c(info$corner_BL_RA, info$corner_BR_RA, info$corner_TL_RA, info$corner_TR_RA)
-  Deccorners = c(info$corner_BL_Dec, info$corner_BR_Dec, info$corner_TL_Dec, info$corner_TR_Dec)
-  
-  xycorners = Rwcs_s2p(RAcorners, Deccorners, keyvalues=keyvalues)
-  
-  xlo = ceiling(min(xycorners[,'x'], na.rm=TRUE))
-  xhi = ceiling(max(xycorners[,'x'], na.rm=TRUE))
-  ylo = ceiling(min(xycorners[,'y'], na.rm=TRUE))
-  yhi = ceiling(max(xycorners[,'y'], na.rm=TRUE))
-  
-  if(xlo != 1L){
-    keyvalues$CRPIX1 = keyvalues$CRPIX1 - xlo + 1L
+
+  if(manual == FALSE){
+    #don't do final adjustment if NAXIS and CRPIX input is fully manual
+    RAcorners = c(info$corner_BL_RA, info$corner_BR_RA, info$corner_TL_RA, info$corner_TR_RA)
+    Deccorners = c(info$corner_BL_Dec, info$corner_BR_Dec, info$corner_TL_Dec, info$corner_TR_Dec)
+
+    xycorners = Rwcs_s2p(RAcorners, Deccorners, keyvalues=keyvalues, ...)
+
+    xlo = ceiling(min(xycorners[,'x'], na.rm=TRUE))
+    xhi = ceiling(max(xycorners[,'x'], na.rm=TRUE))
+    ylo = ceiling(min(xycorners[,'y'], na.rm=TRUE))
+    yhi = ceiling(max(xycorners[,'y'], na.rm=TRUE))
+
+    if(xlo != 1L){
+      keyvalues$CRPIX1 = keyvalues$CRPIX1 - xlo + 1L
+    }
+    if(ylo != 1L){
+      keyvalues$CRPIX2 = keyvalues$CRPIX2 - ylo + 1L
+    }
+
+    keyvalues$NAXIS1 = xhi - xlo + 1L
+    keyvalues$NAXIS2 = yhi - ylo + 1L
   }
-  if(ylo != 1L){
-    keyvalues$CRPIX2 = keyvalues$CRPIX2 - ylo + 1L
-  }
-  
-  keyvalues$NAXIS1 = xhi - xlo + 1L
-  keyvalues$NAXIS2 = yhi - ylo + 1L
 
   return(keyvalues)
 }
