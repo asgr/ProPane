@@ -9,6 +9,7 @@ export(propaneTweakCat)
 export(propaneWCSmod)
 export(propaneCropOverlap)
 export(propaneSegimWarp)
+export(propaneCovTest)
 
 #Image stacking routines:
 export(propaneStackWarpInVar)
