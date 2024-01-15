@@ -66,6 +66,14 @@ propaneStackWarpMed = function(
     NAXIS2 = dim(image_list[[1]])[2]
   }
 
+  if(NAXIS1 %% chunk == 1L){
+    stop('Chunk leaves single pixel sub-array, change chunk size!')
+  }
+
+  if(NAXIS2 %% chunk == 1L){
+    stop('Chunk leaves single pixel sub-array, change chunk size!')
+  }
+
   stack_grid = expand.grid(seq(1L,NAXIS1,by=chunk), seq(1L,NAXIS2,by=chunk))
   stack_grid[,3] = stack_grid[,1] + chunk
   stack_grid[stack_grid[,3] > NAXIS1,3] = NAXIS1
@@ -254,6 +262,14 @@ propaneStackWarpFunc = function(
   }else{
     NAXIS1 = dim(image_list[[1]])[1]
     NAXIS2 = dim(image_list[[1]])[2]
+  }
+
+  if(NAXIS1 %% chunk == 1L){
+    stop('Chunk leaves single pixel sub-array, change chunk size!')
+  }
+
+  if(NAXIS2 %% chunk == 1L){
+    stop('Chunk leaves single pixel sub-array, change chunk size!')
   }
 
   stack_grid = expand.grid(seq(1L,NAXIS1,by=chunk), seq(1L,NAXIS2,by=chunk))

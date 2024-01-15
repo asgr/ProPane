@@ -42,7 +42,7 @@ import("data.table")
 import("parallel")
 import("doParallel")
 
-importFrom("stats", "quantile", "median", "optim")
+importFrom("stats", "quantile", "median", "optim", "lm", "predict")
 importFrom("utils", "packageVersion")
 importFrom("celestial", "coordmatchsing")
 importFrom("grDevices", "hsv")
