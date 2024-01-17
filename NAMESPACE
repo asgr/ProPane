@@ -29,6 +29,7 @@ export(propaneDilate)
 export(propaneImBlur)
 export(propaneInterp2D)
 export(propaneBin2D)
+export(propaneLocalFunc)
 
 useDynLib(ProPane, .registration=TRUE)
 

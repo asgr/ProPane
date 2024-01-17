@@ -26,7 +26,7 @@ propaneImBlur(image, mask = NULL, smooth = 1, keepNA = FALSE)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{image}{
-An image to mask. Must be either object class Rfits_image or Rfits_pointer, i.e. as read in by \code{\link{Rfits_read_image}} or \code{\link{Rfits_point}}, or just a simple matrix.
+An image to process. Must be either object class Rfits_image or Rfits_pointer, i.e. as read in by \code{\link{Rfits_read_image}} or \code{\link{Rfits_point}}, or just a simple matrix.
 }
   \item{mask}{
 Boolean matrix or integer scalar (1,0); optional, parts of the image to mask out (i.e. ignore). This matrix mus* be the same dimensions as \option{image} where 1 means mask out and 0 means use for analysis.
