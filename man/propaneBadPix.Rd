@@ -4,12 +4,16 @@
 \alias{propanePix}
 \alias{propaneDilate}
 \alias{propaneImBlur}
+\alias{propaneImDiff}
+\alias{propaneImGrad}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Automatically Identify Mask and Patch Bad Pixels
+Automatically Identify Mask and Patch Bad Pixels (and Related Functions)
 }
 \description{
 Given an image, can identify bad (cold or hot) pixels with a few parameters controlling how aggressively this is done. Either the binary mask can be returned, or the image itself with bad pixels masked, or finally the masked pixels can be replaced by good local values (patched) to fill the gaps.
+
+Other utility functions are also included here.
 }
 \usage{
 propaneBadPix(image, mask = NULL, inVar = NULL, smooth = 1, sigma = 10, pixcut = 1,
@@ -22,6 +26,10 @@ propanePatchPix(image, mask = NULL, smooth = 1, dilate = FALSE, size = 3,
 propaneDilate(mask, size = 3)
 
 propaneImBlur(image, mask = NULL, smooth = 1, keepNA = FALSE)
+
+propaneImDiff(image, mask = NULL, smooth = 1, keepNA = FALSE)
+
+propaneImGrad(image, mask = NULL, smooth = 1, keepNA = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -88,9 +96,9 @@ For \code{propaneDilate}:
 
 Integer/logical matrix; the dilated mask. Note when dilation clashes/overlaps, the larger valued mask value is used (i.e. it is not summed, it is the max). The logical or integer nature of the mask is maintained in the output.
 
-For \code{propaneImBlur}:
+For \code{propaneImBlur} / \code{propaneImDiff} / \code{propaneImGrad}
 
-A blurred version of the input \option{image}. The input \option{image} type will be maintained, so either a Rfits_image or matrix.
+The input \option{image} type will be maintained, so either a Rfits_image or matrix. \code{propaneImBlur} is a blurred version of the image. \code{propaneImDiff} is an unsharp mask. \code{propaneImGrad} is the magnitude of the local gradient (so agnostic to direction).
 }
 \author{
 Aaron Robotham

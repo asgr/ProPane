@@ -274,5 +274,73 @@ propaneImBlur = function(image, mask=NULL, smooth=1, keepNA=FALSE){
     image = output
   }
 
-  return(image)
+  return(invisible(image))
 }
+
+propaneImDiff = function(image=NULL, mask=NULL, smooth=1, keepNA=FALSE){
+  if(!requireNamespace("imager", quietly = TRUE)){
+    stop('The imager package is needed for this function to work. Please install it from CRAN.', call. = FALSE)
+  }
+
+  if(inherits(image, 'Rfits_image')){
+    image_data = image$imDat
+  }else if(inherits(image, 'Rfits_pointer')){
+    image = image[,]
+    image_data = image$imDat
+  }else if(is.matrix(image)){
+    image_data = image
+  }else{
+    stop('image input must be Rfits_image, Rfits_pointer of matrix!')
+  }
+
+  if(!is.null(mask)){
+    image_data[mask > 0L] = NA
+  }
+
+  blur = as.matrix(imager::isoblur(imager::as.cimg(image_data), smooth, na.rm=TRUE))
+  output = image_data - blur
+
+  if(keepNA){
+    output[is.na(image_data)] = NA
+  }
+
+  if(inherits(image, 'Rfits_image')){
+    image$imDat = output
+  }else if(is.matrix(image)){
+    image = output
+  }
+
+  return(invisible(image))
+}
+
+propaneImGrad = function(image=NULL, mask=NULL, smooth=1, keepNA=FALSE){
+  if(!requireNamespace("imager", quietly = TRUE)){
+    stop('The imager package is needed for this function to work. Please install it from CRAN.', call. = FALSE)
+  }
+
+  if(inherits(image, 'Rfits_image')){
+    image_data = image$imDat
+  }else if(inherits(image, 'Rfits_pointer')){
+    image = image[,]
+    image_data = image$imDat
+  }else if(is.matrix(image)){
+    image_data = image
+  }else{
+    stop('image input must be Rfits_image, Rfits_pointer of matrix!')
+  }
+
+  output = as.matrix(imager::enorm(imager::imgradient(imager::isoblur(imager::as.cimg(image_data), smooth, na.rm=TRUE), "xy")))
+
+  if(keepNA){
+    output[is.na(image_data)] = NA
+  }
+
+  if(inherits(image, 'Rfits_image')){
+    image$imDat = output
+  }else if(is.matrix(image)){
+    image = output
+  }
+
+  return(invisible(image))
+}
+
