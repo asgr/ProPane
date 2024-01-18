@@ -14,7 +14,8 @@ propaneStackFlatInVar(image_list = NULL, sky_list = NULL, skyRMS_list = NULL,
   mask_list = NULL, magzero_in = 0, magzero_out = 23.9, masking = 'and')
 
 propaneStackFlatFunc(image_list = NULL, imager_func = NULL, na.rm = TRUE, weights = NULL,
-  increasing = TRUE, probs = c(0.159, 0.5, 0.841), parallel = TRUE)
+  increasing = TRUE, probs = c(0.159, 0.5, 0.841), ondisk = FALSE,
+  cores = floor(detectCores()/2), multitype = 'fork', chunk = 1e3)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -54,8 +55,17 @@ Logical; if TRUE, sort in increasing order (default TRUE). Only relevant for the
   \item{probs}{
 Numeric vector; quantile probabilites between 0-1. This is only used in the specific case of \option{imager_func} = 'quantile' (with the speech marks). Behind the scenes it uses \code{colQuantiles} in the \code{matrixStats} package.
 }
-  \item{parallel}{
-Logical; do you want to compute quantiles in parallel. Only relevant for \option{imager_func} = 'quantile'.
+  \item{ondisk}{
+Logical; should stacking be done using on-disk data? In this case all objects in \option{image_list} should be an Rfits_pointer. This can be done easily using \code{Rfits_make_list}.
+}
+  \item{cores}{
+Integer scalar; number of cores used.
+}
+  \item{multitype}{
+Character scalar; options are 'fork' (often best for Unix like and non-Gui sessions) and 'cluster' (Windows, and when using a Gui like R-Studio or threaded task). 'cluster' is also meant to be a bit more stable (if you have issues) but there is more memory copying overhead, so will generally be slower.
+}
+  \item{chunk}{
+Integer scalar; chunk sizes to maximally break the image up into to compute the median stacks. The sweet spot seems to be around 1000 - 2000 depending on sytem RAM and number of \option{cores}.
 }
 }
 \details{

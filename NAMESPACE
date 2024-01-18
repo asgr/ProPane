@@ -32,6 +32,7 @@ export(propaneImGrad)
 export(propaneInterp2D)
 export(propaneBin2D)
 export(propaneLocalFunc)
+export(propaneLocalMed)
 
 useDynLib(ProPane, .registration=TRUE)
 

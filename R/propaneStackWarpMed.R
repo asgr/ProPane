@@ -139,17 +139,17 @@ propaneStackWarpMed = function(
     )
   }
 
-  image_out = matrix(0, NAXIS1, NAXIS2)
+  image_stack = matrix(0, NAXIS1, NAXIS2)
   if(doweight){
-    weight_out = matrix(0L, NAXIS1, NAXIS2)
+    weight_stack = matrix(0L, NAXIS1, NAXIS2)
   }else{
-    weight_out = NULL
+    weight_stack = NULL
   }
 
   for(i in 1:dim(stack_grid)[1]){
-    image_out[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_med[[i]]$image
+    image_stack[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_med[[i]]$image
     if(doweight){
-      weight_out[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_med[[i]]$weight
+      weight_stack[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_med[[i]]$weight
     }
   }
 
@@ -160,7 +160,7 @@ propaneStackWarpMed = function(
     keyvalues_out$PANE_VER = as.character(packageVersion('ProPane'))
     keyvalues_out$RWCS_VER = as.character(packageVersion('Rwcs'))
 
-    image_out = Rfits_create_image(image_out,
+    image_stack = Rfits_create_image(image_stack,
                                           keyvalues=keyvalues_out,
                                           keypass=FALSE,
                                           history='Stacked with Rwcs_stack')
@@ -168,7 +168,7 @@ propaneStackWarpMed = function(
     if(doweight){
       keyvalues_out$EXTNAME = 'weight'
       keyvalues_out$MAGZERO = NULL
-      weight_out = Rfits_create_image(weight_out,
+      weight_stack = Rfits_create_image(weight_stack,
                                       keyvalues=keyvalues_out,
                                       keypass=FALSE)
     }
@@ -178,8 +178,8 @@ propaneStackWarpMed = function(
   message('Time taken: ',signif(time_taken,4),' seconds')
 
   output = list(
-    image = image_out,
-    weight = weight_out,
+    image = image_stack,
+    weight = weight_stack,
     which_overlap = which_overlap,
     time = time_taken,
     Nim = length(which_overlap)
@@ -377,17 +377,17 @@ propaneStackWarpFunc = function(
     )
   }
 
-  image_out = matrix(0, NAXIS1, NAXIS2)
+  image_stack = matrix(0, NAXIS1, NAXIS2)
   if(doweight){
-    weight_out = matrix(0L, NAXIS1, NAXIS2)
+    weight_stack = matrix(0L, NAXIS1, NAXIS2)
   }else{
-    weight_out = NULL
+    weight_stack = NULL
   }
 
   for(i in 1:dim(stack_grid)[1]){
-    image_out[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_func[[i]]$image
+    image_stack[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_func[[i]]$image
     if(doweight){
-      weight_out[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_func[[i]]$weight
+      weight_stack[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_func[[i]]$weight
     }
   }
 
@@ -398,7 +398,7 @@ propaneStackWarpFunc = function(
     keyvalues_out$PANE_VER = as.character(packageVersion('ProPane'))
     keyvalues_out$RWCS_VER = as.character(packageVersion('Rwcs'))
 
-    image_out = Rfits_create_image(image_out,
+    image_stack = Rfits_create_image(image_stack,
                                    keyvalues=keyvalues_out,
                                    keypass=FALSE,
                                    history='Stacked with Rwcs_stack')
@@ -406,7 +406,7 @@ propaneStackWarpFunc = function(
     if(doweight){
       keyvalues_out$EXTNAME = 'weight'
       keyvalues_out$MAGZERO = NULL
-      weight_out = Rfits_create_image(weight_out,
+      weight_stack = Rfits_create_image(weight_stack,
                                       keyvalues=keyvalues_out,
                                       keypass=FALSE)
     }
@@ -416,8 +416,8 @@ propaneStackWarpFunc = function(
   message('Time taken: ',signif(time_taken,4),' seconds')
 
   output = list(
-    image = image_out,
-    weight = weight_out,
+    image = image_stack,
+    weight = weight_stack,
     which_overlap = which_overlap,
     time = time_taken,
     Nim = length(which_overlap)

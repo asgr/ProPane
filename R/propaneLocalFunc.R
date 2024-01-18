@@ -1,5 +1,43 @@
-propaneLocalFunc = function(image, imager_func=NULL, dither=1, offset=1, iter=1, kern='square',
-                            cores=1, multitype='fork', verbose=TRUE, ...){
+propaneLocalMed = function(image, dither=1, iter=1, verbose=TRUE){
+
+  if (!requireNamespace("imager", quietly = TRUE)) {
+    stop("The imager package is needed for this function to work. Please install it from CRAN.", call. = FALSE)
+  }
+
+  if(missing(image)){
+    stop('Need image!')
+  }
+
+  if(imager::is.cimg(image)){
+    #do nothing
+  }else{
+    if(is.matrix(image)){
+      image = imager::as.cimg(image)
+    }else{
+      stop('image must be a Cimg or a matrix!')
+    }
+  }
+
+  if(length(dither) == 1L){
+    dither = rep(dither, iter)
+  }
+
+  for(i in 1:iter){
+    if(iter > 1L & verbose){
+      message('Iteration ', i,' of ', iter)
+    }
+
+    box = dither[i]*2 + 1
+
+    image = imager::medianblur(image, n=box, threshold=Inf) #the Inf means NAs will work correctly
+  }
+
+  return(as.matrix(image))
+}
+
+propaneLocalFunc = function(image, imager_func=NULL, dither=1, offset=1, iter=1, kern = 'square',
+                            cores=1, multitype='fork', ondisk=FALSE, dump_dir=tempdir(),
+                            verbose=TRUE, ...){
 
   if(missing(image)){
     stop('Need image!')
@@ -7,6 +45,14 @@ propaneLocalFunc = function(image, imager_func=NULL, dither=1, offset=1, iter=1,
 
   if(!is.matrix(image)){
     stop('image must be a matrix!')
+  }
+
+  if(ondisk){
+    dump_dir = path.expand(dump_dir)
+    if(dir.exists(dump_dir) == FALSE){
+      dir.create(dump_dir, recursive = TRUE)
+    }
+    message('Frames being dumped to ', dump_dir)
   }
 
   if(length(dither) == 1L){
@@ -41,16 +87,36 @@ propaneLocalFunc = function(image, imager_func=NULL, dither=1, offset=1, iter=1,
       stop('kern must be one of square of circle!')
     }
 
+    if(verbose){
+      message(' - Creating image_list')
+    }
+
     image_list = foreach(i = 1:dim(cutgrid)[1])%dopar%{
       temp = magcutout(
                 image = image,
                 loc = c(dim(image)[1]/2 + cutgrid[i,1], dim(image)[2]/2 + cutgrid[i,2]),
                 box = dim(image)
                 )$image
-      return(imager::as.cimg(temp))
+
+      if(ondisk){
+        tempfile = paste0(dump_dir,'/image_local_den_',i,'.fits')
+        Rfits_write_image(temp, tempfile)
+        return(Rfits_point(tempfile))
+      }else{
+        return(imager::as.cimg(temp))
+      }
     }
 
-    image = propaneStackFlatFunc(image_list, imager_func=imager_func, ...)$image
+    if(verbose){
+      message(' - Calculating local median')
+    }
+
+    image = propaneStackFlatFunc(image_list,
+                                 imager_func=imager_func,
+                                 ondisk = ondisk,
+                                 cores = cores,
+                                 multitype = multitype,
+                                 ...)$image
   }
 
   return(image)
