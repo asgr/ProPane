@@ -112,7 +112,7 @@ propaneLocalFunc = function(image, imager_func=NULL, dither=1, offset=1, iter=1,
     }
 
     image = propaneStackFlatFunc(image_list,
-                                 imager_func=imager_func,
+                                 imager_func = imager_func,
                                  ondisk = ondisk,
                                  cores = cores,
                                  multitype = multitype,

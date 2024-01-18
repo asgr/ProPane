@@ -157,3 +157,24 @@ propaneStackFlatFunc = function(image_list=NULL, imager_func=NULL, na.rm=TRUE, w
     return(invisible(list(image=image_stack, weight=weight_stack)))
   }
 }
+
+propaneStackFlatMed = function(image_list=NULL, na.rm=TRUE, ondisk=FALSE,
+                               cores = floor(detectCores()/2), multitype = 'fork', chunk=1e3){
+
+  if(!requireNamespace("imager", quietly = TRUE)){
+    stop('The imager package is needed for stacking to work. Please install from GitHub asgr/Rfits.', call. = FALSE)
+  }
+
+  output = propaneStackFlatFunc(
+    image_list = image_list,
+    imager_func = imager::parmed,
+    na.rm = na.rm,
+    ondisk = ondisk,
+    cores = cores,
+    multitype = multitype,
+    chunk = chunk
+  )
+
+  return(output)
+
+}

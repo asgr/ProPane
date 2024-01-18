@@ -2,6 +2,7 @@
 \alias{propaneStackFlat}
 \alias{propaneStackFlatInVar}
 \alias{propaneStackFlatFunc}
+\alias{propaneStackFlatMed}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Flat Image Stacking
@@ -16,6 +17,9 @@ propaneStackFlatInVar(image_list = NULL, sky_list = NULL, skyRMS_list = NULL,
 propaneStackFlatFunc(image_list = NULL, imager_func = NULL, na.rm = TRUE, weights = NULL,
   increasing = TRUE, probs = c(0.159, 0.5, 0.841), ondisk = FALSE,
   cores = floor(detectCores()/2), multitype = 'fork', chunk = 1e3)
+
+propaneStackFlatMed(image_list = NULL, na.rm = TRUE, ondisk = FALSE,
+  cores = floor(detectCores()/2), multitype = 'fork', chunk=1e3)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -90,6 +94,8 @@ For \code{propaneStackFlatInVar} a list containing:
 For \code{propaneStackFlatFunc} a list containing:
   \item{image}{Numeric matrix; the combined image. Masked pixels are NA.}
   \item{weight}{Integer matrix; the pixel weights (number of non-masked pixels considered). Only relevant if \option{na.rm} is TRUE, and \code{imager} function being used has that as an option.}
+
+\code{propaneStackFlatMed} is just a convenience pointer to propaneStackFlatFunc but setting \option{imager_func} to parmed and removing unused options.
 }
 \author{
 Aaron Robotham

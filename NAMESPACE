@@ -13,11 +13,12 @@ export(propaneCovTest)
 
 #Image stacking routines:
 export(propaneStackWarpInVar)
-export(propaneWarpDump)
-export(propaneStackWarpMed)
 export(propaneStackWarpFunc)
+export(propaneStackWarpMed)
 export(propaneStackFlatInVar)
 export(propaneStackFlatFunc)
+export(propaneStackFlatMed)
+export(propaneWarpDump)
 export(propanePatch)
 
 #Utility:

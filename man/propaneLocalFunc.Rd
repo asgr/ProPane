@@ -55,7 +55,7 @@ Other arguments passed to \code{\link{propaneStackFlatFunc}}.
 }
 }
 \details{
-\code{propaneLocalMed} is an optimised local boxcar median, so whilst you could compute this using \code{propaneLocalFunc} setting \option{image_func} = parmed the latter will be a lot slowed. Any masked pixels should be set to NA in the input \option{image}.
+\code{propaneLocalMed} is an optimised local boxcar median, so whilst you could compute this using \code{propaneLocalFunc} setting \option{imager_func} = parmed the latter will be a lot slowed. Any masked pixels should be set to NA in the input \option{image}.
 
 The core routine will compute medians for local subsets of every pixel. This will produce an image with the same dimensions as the original but now processed using the specified \option{imager_func}. If iterations are being used (via the \option{iter} argument) then the function is re-run on each subsequent output. This allows for quite complex cleaning and pixel averaging, allowing different type of control over the structure to remove (or not).}
 \value{
