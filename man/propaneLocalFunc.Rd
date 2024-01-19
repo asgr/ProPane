@@ -9,7 +9,7 @@ Computer Statistics on Local Pixels
 Computes local quantites such as medians but on a very small dithered regions around each pixel. The default computes statistics on a 3x3 local grid.
 }
 \usage{
-propaneLocalMed(image, dither = 1, iter = 1, verbose = TRUE)
+propaneLocalMed(image, dither = 1, iter = 1, threshold = Inf, verbose = TRUE)
 
 propaneLocalFunc(image, imager_func = NULL, dither = 1, offset = 1, iter = 1,
   kern = 'square', cores = 1, multitype = "fork", ondisk = FALSE,
@@ -31,6 +31,9 @@ Integer scalar/vector; the number of pixels used for each dither. If vector must
 }
   \item{iter}{
 Integer scalar; the number of iterations to apply. Each new iteration will run \code{propaneLocalFunc} on the output of the previous iteration. If \option{dither} / \option{offset} is a vector The i^th iteration will use \option{dither}[i] / \option{offset}[i] as the dither / offset value.
+}
+  \item{threshold}{
+Threshold used to discard pixels too far from the current pixel value in the median computation. Can be used for edge-preserving smoothing. Default 0 (include all pixels in window). Inf will preserve NA (masked) regions correctly and otherwise has no impact (compared to setting to 0), so in an image with masking this will usually need to be used.
 }
   \item{kern}{
 Character scalar; the type of local kernel to use. Options are 'square' which comptues a full grid of local dithers (so a square pattern) or 'circle' (which only users dithers that lie within the radius of \option{dither}). \option{dither} = 'circle' uses fewer dithers at larger radii for this reason, and will be a bit faster to run (about 30\%).

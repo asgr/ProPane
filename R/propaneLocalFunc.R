@@ -1,4 +1,4 @@
-propaneLocalMed = function(image, dither=1, iter=1, verbose=TRUE){
+propaneLocalMed = function(image, dither=1, iter=1, threshold=Inf, verbose=TRUE){
 
   if (!requireNamespace("imager", quietly = TRUE)) {
     stop("The imager package is needed for this function to work. Please install it from CRAN.", call. = FALSE)
@@ -22,6 +22,10 @@ propaneLocalMed = function(image, dither=1, iter=1, verbose=TRUE){
     dither = rep(dither, iter)
   }
 
+  if(length(threshold) == 1L){
+    threshold = rep(threshold, iter)
+  }
+
   for(i in 1:iter){
     if(iter > 1L & verbose){
       message('Iteration ', i,' of ', iter)
@@ -29,7 +33,7 @@ propaneLocalMed = function(image, dither=1, iter=1, verbose=TRUE){
 
     box = dither[i]*2 + 1
 
-    image = imager::medianblur(image, n=box, threshold=Inf) #the Inf means NAs will work correctly
+    image = imager::medianblur(image, n=box, threshold=threshold[i]) #the Inf means NAs will work correctly
   }
 
   return(as.matrix(image))
