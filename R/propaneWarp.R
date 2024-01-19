@@ -131,7 +131,15 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
     })
 
     corners_out = rbind(BL_out, TL_out, TR_out, BR_out)
-    tightcrop_out = ceiling(Rwcs_s2p(corners_out, header=header_in, pixcen='R', WCSref=WCSref_in))
+
+    suppressMessages({
+      tightcrop_out = ceiling(Rwcs_s2p(corners_out, header=header_in, pixcen='R', WCSref=WCSref_in))
+    })
+
+    if(is.na(tightcrop_out[1,1])){tightcrop_out[1,] = c(0,0)}
+    if(is.na(tightcrop_out[2,1])){tightcrop_out[2,] = c(0,dim(image_in)[2])}
+    if(is.na(tightcrop_out[3,1])){tightcrop_out[3,] = c(dim(image_in)[1],dim(image_in)[2])}
+    if(is.na(tightcrop_out[4,1])){tightcrop_out[4,] = c(dim(image_in)[1],0)}
 
     min_x_out = max(1L, min(tightcrop_out[,1]))
     max_x_out = min(dim(image_in)[1], max(tightcrop_out[,1]))
@@ -161,7 +169,15 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
     })
 
     corners_in = rbind(BL_in, TL_in, TR_in, BR_in)
-    tightcrop_in = ceiling(Rwcs_s2p(corners_in, header=header_out, pixcen='R', WCSref=WCSref_out))
+
+    suppressMessages({
+      tightcrop_in = ceiling(Rwcs_s2p(corners_in, header=header_out, pixcen='R', WCSref=WCSref_out))
+    })
+
+    if(is.na(tightcrop_in[1,1])){tightcrop_in[1,] = c(0,0)}
+    if(is.na(tightcrop_in[2,1])){tightcrop_in[2,] = c(0,dim_out[2])}
+    if(is.na(tightcrop_in[3,1])){tightcrop_in[3,] = c(dim_out[1],dim_out[2])}
+    if(is.na(tightcrop_in[4,1])){tightcrop_in[4,] = c(dim_out[1],0)}
 
     min_x_in = max(1L, min(tightcrop_in[,1]))
     max_x_in = max(min_x_in + dim(image_in)[1] - 1L, range(tightcrop_in[,1])[2])
