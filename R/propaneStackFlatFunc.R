@@ -66,7 +66,8 @@ propaneStackFlatFunc = function(image_list=NULL, imager_func=NULL, na.rm=TRUE, w
       ysub = as.integer(stack_grid[i, c(2,4)])
 
       image_list_cut = foreach(j = 1:length(image_list))%do%{ #not sure why this won't work in dopar... Rfits race conditions?
-        return(imager::as.cimg(image_list[[j]][xsub, ysub]$imDat))
+        #header=FALSE since image_list[[j]] will be Rfits_pointer and we don't need header
+        return(imager::as.cimg(image_list[[j]][xsub, ysub, header=FALSE]))
       }
 
       #Now we run our normal stacking just on the sub region
