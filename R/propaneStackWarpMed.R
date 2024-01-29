@@ -8,7 +8,7 @@ propaneStackWarpFunc = function(
     keyvalues_out = NULL,
     imager_func = NULL,
     weights = NULL,
-    probs = c(0.159, 0.5, 0.841),
+    prob = 0.5,
     cores = floor(detectCores()/2),
     multitype = 'fork',
     chunk = 1e3,
@@ -141,28 +141,32 @@ propaneStackWarpFunc = function(
         if(is.null(weights)){
           stop('weights must be specified for imager wsum')
         }
-        image = as.matrix(imager_func(image_list_cut, w=weights_temp, na.rm=TRUE)) #only relevant for wsum
+        image_stack = as.matrix(imager_func(image_list_cut, w=weights_temp, na.rm=TRUE)) #only relevant for wsum
+      }else if('prob' %in% names(formals(imager_func))){
+        image_stack = as.matrix(imager_func(image_list_cut, prob=prob, na.rm=TRUE))
+      }else if('increasing' %in% names(formals(imager_func))){
+        image_stack = imager_func(image_list, increasing=TRUE)
       }else{
         if('na.rm' %in% names(formals(imager_func))){
-          image = as.matrix(imager_func(image_list_cut, na.rm=TRUE))
+          image_stack = as.matrix(imager_func(image_list_cut, na.rm=TRUE))
         }else{
-          image = as.matrix(imager_func(image_list_cut))
+          image_stack = as.matrix(imager_func(image_list_cut))
         }
       }
     }else{
       if(tolower(imager_func) == 'invar'){
-        image = 1/as.matrix(imager::parvar(image_list_cut, na.rm=TRUE))
+        image_stack = 1/as.matrix(imager::parvar(image_list_cut, na.rm=TRUE))
       }else if(tolower(imager_func) == 'quantile' | tolower(imager_func) == 'quan' ){
         im_dim = dim(image_list_cut[[1]])
         temp_mat = matrix(as.numeric(unlist(image_list_cut)), nrow=length(image_list_cut), byrow = TRUE)
 
-        image = list()
-        for(k in 1:length(probs)){
-          temp_out = apply(temp_mat, MARGIN=2, FUN=quantile, probs=probs[k], na.rm=TRUE)
-          image = c(image, list(matrix(temp_out, im_dim[1], im_dim[2])))
+        image_stack = list()
+        for(k in 1:length(prob)){
+          temp_out = apply(temp_mat, MARGIN=2, FUN=quantile, probs=prob[k], na.rm=TRUE)
+          image_stack = c(image_stack, list(matrix(temp_out, im_dim[1], im_dim[2])))
         }
       }else if(tolower(imager_func) == 'waverage'){
-        image = as.matrix(imager::wsum(image_list_cut, w=weights_temp, na.rm=TRUE))
+        image_stack = as.matrix(imager::wsum(image_list_cut, w=weights_temp, na.rm=TRUE))
       }
     }
 
@@ -171,18 +175,18 @@ propaneStackWarpFunc = function(
         return(imager::as.cimg(!is.na(image_list_cut[[j]])))
       }
 
-      weight = as.matrix(imager::add(weight_list))
+      weight_stack = as.matrix(imager::add(weight_list))
 
       if(ifelse(is.character(imager_func), tolower(imager_func) == 'invar', FALSE)){
-        image = image*(weight - 1)
-        image[weight < 2] = NA
+        image_stack = image_stack*(weight_stack - 1)
+        image_stack[weight_stack < 2] = NA
       }
     }else{
-      weight = NULL
+      weight_stack = NULL
     }
 
     return(
-      list(image = image, weight = weight)
+      list(image = image_stack, weight = weight_stack)
     )
   }
 
@@ -263,6 +267,7 @@ propaneStackWarpMed = function(
     zap = zap,
     imager_func = imager::parmed,
     keyvalues_out = keyvalues_out,
+    prob = 0.5,
     cores = cores,
     multitype = multitype,
     chunk = chunk,

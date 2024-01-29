@@ -30,7 +30,7 @@ propaneStackWarpMed(filelist = NULL, dirlist = NULL, extlist = 1,
 
 propaneStackWarpFunc(filelist = NULL, dirlist = NULL, extlist = 1,
   pattern = NULL, recursive = TRUE, zap = NULL, keyvalues_out = NULL, imager_func = NULL,
-  weights = NULL, probs = c(0.159, 0.5, 0.841), cores = floor(detectCores()/2),
+  weights = NULL, prob = 0.5, cores = floor(detectCores()/2),
   multitype = 'fork', chunk = 1e3, doweight = TRUE, useCUTLO = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -65,8 +65,8 @@ Function (or character scalar for special case); the \code{imager} combine funct
   \item{weights}{
 Numeric vector; weights to use for image combining. Only relevant for \option{imager_func} = imager::wsum or \option{imager_func} = 'waverage'. The latter becomes a weighted average, where the input weights should in effect be the per image inverse-variance.
 }
-  \item{probs}{
-Numeric vector; quantile probabilites between 0-1. This is only used in the specific case of \option{imager_func} = 'quantile' / 'quan' (with the speech marks).
+  \item{prob}{
+Numeric scalar/vector; quantile probability between 0-1. The vector mode is only used in the specific case of \option{imager_func} = 'quantile' / 'quan' (with the speech marks). The scalar mode is used when \option{imager_func} = parquan. The latter only accepts a single value of \option{prob} but it is substantially faster to compute (using the \code{imager} package) and in general should be preferred.
 }
   \item{dim_out}{
 Integer vector; this defines the desired dimensions of the output image. If this is not provided then the output image is made to be the same size as the NAXIS1 and NAXIS2 arguments taken from \option{header_out} (which is usually what you will want TBH).

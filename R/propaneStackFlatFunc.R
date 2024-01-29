@@ -1,6 +1,5 @@
 propaneStackFlatFunc = function(image_list=NULL, imager_func=NULL, na.rm=TRUE, weights=NULL,
-                                increasing=TRUE, probs=c(0.159, 0.5, 0.841),
-                                ondisk=FALSE, cores = floor(detectCores()/2),
+                                increasing=TRUE, prob=0.5, ondisk=FALSE, cores = floor(detectCores()/2),
                                 multitype = 'fork', chunk=1e3){
 
   if(!requireNamespace("imager", quietly = TRUE)){
@@ -77,7 +76,7 @@ propaneStackFlatFunc = function(image_list=NULL, imager_func=NULL, na.rm=TRUE, w
           na.rm = na.rm,
           weights = weights,
           increasing = increasing,
-          probs = probs,
+          prob = prob,
           ondisk = FALSE,
       )
 
@@ -115,15 +114,18 @@ propaneStackFlatFunc = function(image_list=NULL, imager_func=NULL, na.rm=TRUE, w
     }
 
     if(is.function(imager_func)){
-      if('na.rm' %in% names(formals(imager_func))){
-        if('w' %in% names(formals(imager_func))){
-          image_stack = as.matrix(imager_func(image_list, w=weights, na.rm=na.rm))
-        }else{
-          image_stack = as.matrix(imager_func(image_list, na.rm=na.rm))
+      if('w' %in% names(formals(imager_func))){
+        if(is.null(weights)){
+          stop('weights must be specified for imager wsum')
         }
+        image_stack = as.matrix(imager_func(image_list, w=weights, na.rm=na.rm)) #only relevant for wsum
+      }else if('prob' %in% names(formals(imager_func))){
+        image_stack = as.matrix(imager_func(image_list, prob=prob, na.rm=na.rm))
+      }else if('increasing' %in% names(formals(imager_func))){
+        image_stack = imager_func(image_list, increasing=TRUE)
       }else{
-        if('increasing' %in% names(formals(imager_func))){
-          image_stack = imager_func(image_list, increasing=increasing)
+        if('na.rm' %in% names(formals(imager_func))){
+          image_stack = as.matrix(imager_func(image_list, na.rm=na.rm))
         }else{
           image_stack = as.matrix(imager_func(image_list))
         }
@@ -138,17 +140,17 @@ propaneStackFlatFunc = function(image_list=NULL, imager_func=NULL, na.rm=TRUE, w
 
         if(na.rm){
           image_stack = list()
-          for(i in 1:length(probs)){
-            temp_out = apply(temp_mat, MARGIN=2, FUN=quantile, probs=probs[i], na.rm=TRUE)
+          for(i in 1:length(prob)){
+            temp_out = apply(temp_mat, MARGIN=2, FUN=quantile, probs=prob[i], na.rm=na.rm)
             image_stack = c(image_stack, list(matrix(temp_out, im_dim[1], im_dim[2])))
           }
         }else{
           if(!requireNamespace("Rfast2", quietly = TRUE)){
             stop('The Rfast2 package is needed for this function to work. Please install it from CRAN', call. = FALSE)
           }
-          temp_out = Rfast2::colQuantile(temp_mat, probs=probs, parallel=TRUE)
+          temp_out = Rfast2::colQuantile(temp_mat, probs=prob, parallel=TRUE)
           image_stack = list()
-          for(i in 1:length(probs)){
+          for(i in 1:length(prob)){
             image_stack = c(image_stack, list(matrix(temp_out[i,], im_dim[1], im_dim[2])))
           }
         }
