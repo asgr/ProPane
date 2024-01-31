@@ -47,7 +47,7 @@ propaneLocalMed = function(image, dither=1, iter=1, threshold=Inf, maxdiff=Inf, 
     image = image_new
   }
 
-  return(image)
+  return(as.matrix(image))
 }
 
 propaneLocalFunc = function(image, imager_func=NULL, dither=1, offset=1, iter=1, kern = 'square',
