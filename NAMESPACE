@@ -10,6 +10,8 @@ export(propaneWCSmod)
 export(propaneCropOverlap)
 export(propaneSegimWarp)
 export(propaneCovTest)
+export(propaneDistortPixscale)
+export(propaneDistortPixarea)
 
 #Image stacking routines:
 export(propaneStackWarpInVar)

@@ -43,7 +43,7 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
 
   keyvalues_in = image_in$keyvalues
   keyvalues_in = keyvalues_in[!is.na(keyvalues_in)]
-  header_in = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_in))
+  header_in = Rfits_keyvalues_to_raw(keyvalues_in)
 #
 #   if(is.character(header_out)){
 #     if(!is.null(keyvalues_out)){
