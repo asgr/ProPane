@@ -33,9 +33,10 @@ As of 06/02/2023 the functions above are identical to **Rwcs** v1.6.0 and **ProF
 You will need a number of other packages for the warping and stacking functions to work, in particular **Rwcs** and **Rfits** (on asgr GitHub) and **imager** (on CRAN but also on asgr GitHub). Once you have these you will be able to install **ProPane** with the following:
 
 ``` r
-# install.packages("remotes")
+install.packages("remotes") # if you don't already have remotes
 remotes::install_github("asgr/ProPane")
 ```
+
 ## Example
 
 Load in the target images:
