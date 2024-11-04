@@ -429,6 +429,8 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
 
     image_out$crop = c(xlo=min_x_in, xhi=max_x_in, ylo=min_y_in, yhi=max_y_in) #we want to keep the subset location for potential later writing
   }
+  
+  image_out = Rfits_check_image(image_out)
 
   if(plot){
     plot(image_out, ...)
@@ -497,14 +499,16 @@ propaneRebin = function(image, scale = 1,interpolation = 6){
     )
     names(image_out$keycomments) = image_out$keynames
     class(image_out) = c('Rfits_image', class(image_out))
-
+    image_out = Rfits_check_image(image_out)
+    
     return(image_out)
   }else{
     image_resize = as.matrix(imager::resize(im=imager::as.cimg(image), size_x=size_x, size_y=size_y, interpolation_type=interpolation))
     norm = matrix(1, dim(image)[1], dim(image)[2])
     norm_resize = as.matrix(imager::resize(im=imager::as.cimg(norm), size_x=size_x, size_y=size_y, interpolation_type=interpolation))
     image_resize = (image_resize / norm_resize) / scale^2
-
+    image_resize = Rfits_check_image(image_resize)
+    
     return(image_resize)
   }
 }
@@ -531,6 +535,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
 
     image_warp$keyvalues$EXTNAME = 'image'
     image_warp$keyvalues$MAGZERO = magzero_out
+    image_warp = Rfits_check_image(image_warp)
   }else{
     image_warp = NULL
   }
@@ -564,6 +569,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
 
     inVar_warp$keyvalues$EXTNAME = 'inVar'
     inVar_warp$keyvalues$MAGZERO = magzero_out
+    inVar_warp = Rfits_check_image(inVar_warp)
   }else{
     inVar_warp = NULL
   }
@@ -580,6 +586,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
     )
 
     exp_warp$keyvalues$EXTNAME = 'exp'
+    exp_warp = Rfits_check_image(exp_warp)
   }else{
     exp_warp = NULL
   }
@@ -597,6 +604,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
 
     cold_warp$keyvalues$EXTNAME = 'cold'
     cold_warp$keyvalues$MAGZERO = magzero_out
+    cold_warp = Rfits_check_image(cold_warp)
   }else{
     cold_warp = NULL
   }
@@ -614,6 +622,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
 
     hot_warp$keyvalues$EXTNAME = 'hot'
     hot_warp$keyvalues$MAGZERO = magzero_out
+    hot_warp = Rfits_check_image(hot_warp)
   }else{
     hot_warp = NULL
   }
@@ -630,6 +639,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
     )
 
     clip_warp$keyvalues$EXTNAME = 'clip'
+    clip_warp = Rfits_check_image(clip_warp)
   }else{
     clip_warp = NULL
   }
@@ -641,7 +651,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
     exp = exp_warp,
     cold = cold_warp,
     hot = hot_warp,
-    clip=clip_warp
+    clip = clip_warp
   )
 
   class(output) = "ProPane"
