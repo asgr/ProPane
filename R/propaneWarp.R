@@ -552,6 +552,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
     )
 
     weight_warp$keyvalues$EXTNAME = 'weight'
+    weight_warp = Rfits_check_image(weight_warp)
   }else{
     weight_warp = NULL
   }
