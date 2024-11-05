@@ -77,10 +77,10 @@ The \code{propaneStackFlatInVar} stacking is actually done based on inverse vari
 
 stack = 0
 stackRMS = 0
-for(i in 1:length(image_list)){
+for(i in 1:length(image_list))
   stack = stack + (image_list[[i]] - sky_list[[i]])/(skyRMS_list[[i]]^2)
   sky_stack = sky_stack + (image_list[[i]]^2)
-}
+
 stack = stack*sky_stack/(length(skyRMS_list)^2)
 
 The output is explictly sky subtracted (so the sky is now 0 everywhere by definition as far as \code{profoundProFound} is concerned). The stacked sky is not returned. However, it can be computed by running \code{propaneStackFlatInVar} again, but passing the sky list originally passed to the \option{sky_list} argument to the \option{image_list} argument instead, and not providing any input to the \option{sky_list} argument (or setting this to 0).
