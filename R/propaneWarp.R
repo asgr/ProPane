@@ -42,24 +42,13 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
   }
 
   keyvalues_in = image_in$keyvalues
-  keyvalues_in = keyvalues_in[!is.na(keyvalues_in)]
+  
+  if(any(is.na(keyvalues_in))){
+    keyvalues_in = keyvalues_in[!is.na(keyvalues_in)]
+    class(keyvalues_in) = 'Rfits_keylist'
+  }
+  
   header_in = Rfits_keyvalues_to_raw(keyvalues_in)
-#
-#   if(is.character(header_out)){
-#     if(!is.null(keyvalues_out)){
-#       message('Using header_out and ignoring keyvalues_out!')
-#     }
-#     if(length(header_out) == 1){
-#       keyvalues_out = Rfits_header_to_keyvalues(Rfits_raw_to_header(header_out))
-#     }else if(length(header_out) > 1){
-#       keyvalues_out = Rfits_hdr_to_keyvalues(header_out)
-#     }
-#   }
-#
-#   if(is.null(keyvalues_out) & is.null(header_out)){
-#     keyvalues_out = options()$current_keyvalues
-#     header_out = options()$current_header
-#   }
 
   if(any(is.na(keyvalues_out))){
     keyvalues_out = keyvalues_out[!is.na(keyvalues_out)]
