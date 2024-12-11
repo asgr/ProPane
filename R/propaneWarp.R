@@ -245,8 +245,8 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
   }
 
   suppressMessages({
-    pixscale_in = pixscale(keyvalues=keyvalues_in)
-    pixscale_out = pixscale(keyvalues=keyvalues_out)
+    pixscale_in = pixscale(keyvalues_in)
+    pixscale_out = pixscale(keyvalues_out)
   })
 
   if (direction == "auto") {
