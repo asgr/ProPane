@@ -61,7 +61,11 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
 #     header_out = options()$current_header
 #   }
 
-  keyvalues_out = keyvalues_out[!is.na(keyvalues_out)]
+  if(any(is.na(keyvalues_out))){
+    keyvalues_out = keyvalues_out[!is.na(keyvalues_out)]
+    class(keyvalues_out) = 'Rfits_keylist'
+  }
+  
   header_out = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_out))
 
   if(checkWCSequal){
