@@ -245,8 +245,8 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
   }
 
   suppressMessages({
-    pixscale_in = Rwcs_pixscale(keyvalues=keyvalues_in)
-    pixscale_out = Rwcs_pixscale(keyvalues=keyvalues_out)
+    pixscale_in = pixscale(keyvalues=keyvalues_in)
+    pixscale_out = pixscale(keyvalues=keyvalues_out)
   })
 
   if (direction == "auto") {
@@ -574,7 +574,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
       dim_out = dim_out,
       doscale = FALSE,
       ...
-    )*(Rwcs_pixscale(propane_in$inVar$keyvalues)^4 / Rwcs_pixscale(keyvalues_out)^4)
+    )*(pixscale(propane_in$inVar$keyvalues)^4 / pixscale(keyvalues_out)^4)
 
     inVar_warp$keyvalues$EXTNAME = 'inVar'
     inVar_warp$keyvalues$MAGZERO = magzero_out
