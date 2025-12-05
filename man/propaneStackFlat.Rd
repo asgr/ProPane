@@ -78,10 +78,10 @@ The \code{propaneStackFlatInVar} stacking is actually done based on inverse vari
 \preformatted{
 stack = 0
 stackRMS = 0
-for(i in 1:length(image_list)){
+for(i in 1:length(image_list))
   stack = stack + (image_list[[i]] - sky_list[[i]])/(skyRMS_list[[i]]^2)
   sky_stack = sky_stack + (image_list[[i]]^2)
-}
+
 stack = stack*sky_stack/(length(skyRMS_list)^2)
 }
 

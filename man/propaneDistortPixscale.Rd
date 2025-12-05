@@ -1,4 +1,4 @@
-\name{propaneDistortPixscale}
+\name{propaneDistort}
 \alias{propaneDistortPixscale}
 \alias{propaneDistortPixarea}
 %- Also NEED an '\alias' for EACH other topic documented here.
