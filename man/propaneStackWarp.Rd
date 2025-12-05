@@ -30,7 +30,7 @@ propaneStackWarpMed(filelist = NULL, dirlist = NULL, extlist = 1,
 
 propaneStackWarpFunc(filelist = NULL, dirlist = NULL, extlist = 1,
   pattern = NULL, recursive = TRUE, zap = NULL, keyvalues_out = NULL, imager_func = NULL,
-  weights = NULL, prob = 0.5, cores = floor(detectCores()/2),
+  weights = NULL, probs = 0.5, cores = floor(detectCores()/2),
   multitype = 'fork', chunk = 1e3, doweight = TRUE, useCUTLO = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -60,12 +60,12 @@ Numeric scalar; the output mag-zero point desired. A nice \option{magzero_out} i
 List; output header values to be used for the WCS. This is the target WCS projection that each image in \option{image_list} will be mapped onto. For help creating this have a look at \code{\link{propaneGenWCS}}.
 }
   \item{imager_func}{
-Function (or character scalar for special case); the \code{imager} combine function to apply. This can be any of the ones in ?imager.combine. The default of NULL means it will use the \code{average} function. As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{probs}). \option{imager_func} = 'InVar' (with speech marks) will return the inverse-variance scaled correctly by exposures (which is what we use for general stacking). \option{imager_func} = 'waverage' will return a weighted average using the \option{weights} values for the per frame weights, but note this only works in regions where all frames contribute. In most practical applications you should use \code{propaneStackWarpInVar} for proper inverse-variance weighted stacking, but this method might be useful as a quick check.
+Function (or character scalar for special case); the \code{imager} combine function to apply. This can be any of the ones in ?imager.combine. The default of NULL means it will use the \code{average} function. As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{probs}) which uses the \code{ProUtils} package to compute matrix quantiles (so this must be installed). \option{imager_func} = 'InVar' (with speech marks) will return the inverse-variance scaled correctly by exposures (which is what we use for general stacking). \option{imager_func} = 'waverage' will return a weighted average using the \option{weights} values for the per frame weights, but note this only works in regions where all frames contribute. In most practical applications you should use \code{propaneStackWarpInVar} for proper inverse-variance weighted stacking, but this method might be useful as a quick check.
 }
   \item{weights}{
 Numeric vector; weights to use for image combining. Only relevant for \option{imager_func} = imager::wsum or \option{imager_func} = 'waverage'. The latter becomes a weighted average, where the input weights should in effect be the per image inverse-variance.
 }
-  \item{prob}{
+  \item{probs}{
 Numeric scalar/vector; quantile probability between 0-1. The vector mode is only used in the specific case of \option{imager_func} = 'quantile' / 'quan' (with the speech marks). The scalar mode is used when \option{imager_func} = parquan. The latter only accepts a single value of \option{prob} but it is substantially faster to compute (using the \code{imager} package) and in general should be preferred.
 }
   \item{dim_out}{

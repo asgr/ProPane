@@ -1,5 +1,6 @@
 \name{propaneDistortPixscale}
 \alias{propaneDistortPixscale}
+\alias{propaneDistortPixarea}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Pixel Distortion Maps
@@ -13,7 +14,7 @@ propaneDistortPixarea(keyvalues, useraw = TRUE, unit = "asec2", ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{keyvalues}{
+  \item{keyvalues}{?pixscale
 List; standard \code{Rfits} list format key values header for the WCS of interest.
 }
   \item{useraw}{
@@ -27,7 +28,7 @@ Other arguments to pass to \code{Rwcs_p2s}.
 }
 }
 \details{
-Both functions return a full image, where pixel values are either the exact pixel scale (\code{propaneDistortPixscale}) or area (\code{propaneDistortPixarea}) of the relevant pixel. These full matrix outputs can be relatively expensive to compute for very big images, so consider using the \code{\link{Rfits::pixscale}} and \code{\link{Rfits::pixarea}} \code{Rfits} methods where you can inspect the extreme corners with the 'loc' option.
+Both functions return a full image, where pixel values are either the exact pixel scale (\code{propaneDistortPixscale}) or area (\code{propaneDistortPixarea}) of the relevant pixel. These full matrix outputs can be relatively expensive to compute for very big images, so consider using the \code{\link[Rfits]{pixscale}} and \code{\link[Rfits]{pixarea}} \code{Rfits} methods where you can inspect the extreme corners with the 'loc' option.
 }
 \value{
 An object of class Rfits_image, where the imDat part is either the pixel scale or pixel area as requested. This will match 1-1 with the original image.
@@ -37,7 +38,7 @@ Aaron Robotham
 }
 
 \seealso{
-\code{\link{Rfits::pixscale}}, \code{\link{Rfits::pixarea}}
+\code{\link[Rfits]{pixscale}}, \code{\link[Rfits]{pixarea}}
 }
 \examples{
 \dontrun{
