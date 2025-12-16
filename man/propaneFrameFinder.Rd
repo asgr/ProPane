@@ -60,7 +60,7 @@ Scalar; the background color for the legend box (note on some devices [e.g. Quar
 List; required. List of the input \code{Rfits_image} or \code{Rfits_pointer} objects to be warped and stacked. If this is not present then one or both of \option{filelist} and/or \option{dirlist} must be provided.
 }
   \item{rotation}{
-Character/numeric scalar; the alignment of the image. If character then can be the direction which is up, i.e. 'North', 'East', 'South', 'West', or 'get'. If 'get' then it will determine the average rotation of all the target images. If numeric then it specifies the manual rotation to apply. This is the vector of North with respect to y-axis up clockwise (so -> is 90, i.e. East is up). 
+Character/numeric scalar; the alignment of the image. If character then can be the direction which is up, i.e. 'North', 'East', 'South', 'West', or 'get'. If 'get' then it will determine the average rotation of all the target images. If numeric then it specifies the manual rotation to apply. This is the vector of North with respect to y-axis up clockwise (so -> is 90, i.e. East is up).
 }
   \item{CRVAL1}{
 Numeric scalar; FITS header CRVAL1 for the CTYPE1 projection system. This is the RA in degrees at the location of \option{NAXIS1}/2. This should be chosen to be near the centre of the target projection (i.e. the average RA of the frames to be overlaid). If not provided this will be estimated from the provided data.
@@ -115,7 +115,7 @@ Other arguments to pass to \code{\link{Rfits_key_scan}}.
 At the simplest level this function uses \code{\link{Rfits_key_scan}} to get useful information about target FITS files. It then uses \code{\link{coordmatchsing}} to find frame centres that are within the circle specified by \option{RAcen}, \option{Deccen} and \option{rad} and trims the output of \code{\link{Rfits_key_scan}} to just these frames. Optionally it can then plot the coverage.
 }
 \value{
-For \code{propaneFrameFinder} the output is the trimmed the output of \code{\link{Rfits_key_scan}} pluts a separation column (sep) in units of \option{radunit}.
+For \code{propaneFrameFinder} the output is the trimmed output of \code{\link{Rfits_key_scan}} plus a separation column (sep) in units of \option{radunit}.
 
 For \code{propaneGenWCS} the output is the automatic keyvalues list that best covers the provided data. Note this might slightly over-extend the minimal pixel limits needed (NAXIS1 and NAXIS2) by 1 or 2 pixels because the RA and Dec limits are estimated for a worst-case scenario projection.
 }

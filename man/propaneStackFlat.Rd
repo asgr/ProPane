@@ -15,7 +15,7 @@ propaneStackFlatInVar(image_list = NULL, sky_list = NULL, skyRMS_list = NULL,
   mask_list = NULL, magzero_in = 0, magzero_out = 23.9, masking = 'and')
 
 propaneStackFlatFunc(image_list = NULL, imager_func = NULL, na.rm = TRUE, weights = NULL,
-  increasing = TRUE, prob = 0.5, ondisk = FALSE,
+  increasing = TRUE, probs = 0.5, ondisk = FALSE,
   cores = floor(detectCores()/2), multitype = 'fork', chunk = 1e3)
 
 propaneStackFlatMed(image_list = NULL, na.rm = TRUE, ondisk = FALSE,
@@ -56,8 +56,8 @@ Numeric vector; weights to use when stacking (must be the same length as the \op
   \item{increasing}{
 Logical; if TRUE, sort in increasing order (default TRUE). Only relevant for the \code{parsort}, \code{parorder}, \option{code} \option{imager_func} \code{imager} combining functions.
 }
-  \item{prob}{
-Numeric scalar/vector; quantile probability between 0-1. The vector mode is only used in the specific case of \option{imager_func} = 'quantile' / 'quan' (with the speech marks). The scalar mode is used when \option{imager_func} = parquan. The latter only accepts a single value of \option{prob} but it is substantially faster to compute (using the \code{imager} package) and in general should be preferred.
+  \item{probs}{
+Numeric scalar/vector; quantile probability between 0-1. The vector mode is only used in the specific case of \option{imager_func} = 'quantile' / 'quan' (with the speech marks). The scalar mode is used when \option{imager_func} = parquan. The latter only accepts a single value of \option{probs} but it is substantially faster to compute (using the \code{imager} package) and in general should be preferred.
 }
   \item{ondisk}{
 Logical; should stacking be done using on-disk data? In this case all objects in \option{image_list} should be an Rfits_pointer. This can be done easily using \code{Rfits_make_list}.

@@ -1,5 +1,5 @@
 propaneStackFlatFunc = function(image_list=NULL, imager_func=NULL, na.rm=TRUE, weights=NULL,
-                                increasing=TRUE, prob=0.5, ondisk=FALSE, cores = floor(detectCores()/2),
+                                increasing=TRUE, probs=0.5, ondisk=FALSE, cores = floor(detectCores()/2),
                                 multitype = 'fork', chunk=1e3){
 
   if(!requireNamespace("imager", quietly = TRUE)){
@@ -76,7 +76,7 @@ propaneStackFlatFunc = function(image_list=NULL, imager_func=NULL, na.rm=TRUE, w
           na.rm = na.rm,
           weights = weights,
           increasing = increasing,
-          prob = prob,
+          probs = probs,
           ondisk = FALSE,
       )
 
@@ -120,7 +120,7 @@ propaneStackFlatFunc = function(image_list=NULL, imager_func=NULL, na.rm=TRUE, w
         }
         image_stack = as.matrix(imager_func(image_list, w=weights, na.rm=na.rm)) #only relevant for wsum
       }else if('prob' %in% names(formals(imager_func))){
-        image_stack = as.matrix(imager_func(image_list, prob=prob, na.rm=na.rm))
+        image_stack = as.matrix(imager_func(image_list, prob=probs, na.rm=na.rm))
       }else if('increasing' %in% names(formals(imager_func))){
         image_stack = imager_func(image_list, increasing=TRUE)
       }else{
@@ -138,22 +138,41 @@ propaneStackFlatFunc = function(image_list=NULL, imager_func=NULL, na.rm=TRUE, w
         im_dim = dim(image_list[[1]])
         temp_mat = matrix(as.numeric(unlist(image_list)), nrow=length(image_list), byrow = TRUE)
 
-        if(na.rm){
-          image_stack = list()
-          for(i in 1:length(prob)){
-            temp_out = apply(temp_mat, MARGIN=2, FUN=quantile, probs=prob[i], na.rm=na.rm)
-            image_stack = c(image_stack, list(matrix(temp_out, im_dim[1], im_dim[2])))
-          }
+        if(is.null(weights)){
+          temp_weight = NULL
         }else{
-          if(!requireNamespace("Rfast2", quietly = TRUE)){
-            stop('The Rfast2 package is needed for this function to work. Please install it from CRAN', call. = FALSE)
-          }
-          temp_out = Rfast2::colQuantile(temp_mat, probs=prob, parallel=TRUE)
-          image_stack = list()
-          for(i in 1:length(prob)){
-            image_stack = c(image_stack, list(matrix(temp_out[i,], im_dim[1], im_dim[2])))
+          temp_weight = matrix(as.numeric(unlist(weights)), nrow=length(image_list_cut), byrow = TRUE)
+        }
+
+        temp_out = ProUtils::quan_wt_mat_col(temp_mat, probs=probs, wt=temp_weight)
+
+        image_stack = list()
+
+        if(length(probs) == 1){
+          image_stack = matrix(temp_out, im_dim[1], im_dim[2])
+        }else{
+          for(k in 1:length(probs)){
+            image_stack = c(image_stack, list(matrix(temp_out[,k], im_dim[1], im_dim[2])))
           }
         }
+
+        #old code (slow!)
+        # if(na.rm){
+        #   image_stack = list()
+        #   for(i in 1:length(prob)){
+        #     temp_out = apply(temp_mat, MARGIN=2, FUN=quantile, probs=prob[i], na.rm=na.rm)
+        #     image_stack = c(image_stack, list(matrix(temp_out, im_dim[1], im_dim[2])))
+        #   }
+        # }else{
+        #   if(!requireNamespace("Rfast2", quietly = TRUE)){
+        #     stop('The Rfast2 package is needed for this function to work. Please install it from CRAN', call. = FALSE)
+        #   }
+        #   temp_out = Rfast2::colQuantile(temp_mat, probs=prob, parallel=TRUE)
+        #   image_stack = list()
+        #   for(i in 1:length(prob)){
+        #     image_stack = c(image_stack, list(matrix(temp_out[i,], im_dim[1], im_dim[2])))
+        #   }
+        # }
       }
     }
 
