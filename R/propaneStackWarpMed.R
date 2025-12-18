@@ -133,7 +133,13 @@ propaneStackWarpFunc = function(
 
       xrange = c(1,(diff(range(xsub)) + 1L)) + (xsub[1] - XCUTLO)
       yrange = c(1,(diff(range(ysub)) + 1L)) + (ysub[1] - YCUTLO)
-      return(imager::as.cimg(image_list[[j]][xrange, yrange]$imDat))
+
+      if(ifelse(is.character(imager_func), tolower(imager_func) == 'quantile' | tolower(imager_func) == 'quan', FALSE)){
+        return(image_list[[j]][xrange, yrange]$imDat)
+      }else{
+        #get it ready for an imager function:
+        return(imager::as.cimg(image_list[[j]][xrange, yrange]$imDat))
+      }
     }
 
     if(is.function(imager_func)){
@@ -161,26 +167,28 @@ propaneStackWarpFunc = function(
           stop('The ProUtils package is needed to compute quantiles, install from asgr/ProUtils')
         }
 
-        im_dim = dim(image_list_cut[[1]])
-        temp_mat = matrix(as.numeric(unlist(image_list_cut)), nrow=length(image_list_cut), byrow = TRUE)
+        image_stack = ProUtils::quan_wt_array(image_list_cut, probs=probs)
 
-        if(is.null(weights)){
-          temp_weight = NULL
-        }else{
-          temp_weight = matrix(as.numeric(unlist(weights)), nrow=length(image_list_cut), byrow = TRUE)
-        }
-
-        temp_out = ProUtils::quan_wt_mat_col(temp_mat, probs=probs, wt=temp_weight)
-
-        image_stack = list()
-
-        if(length(probs) == 1){
-          image_stack = matrix(temp_out, im_dim[1], im_dim[2])
-        }else{
-          for(k in 1:length(probs)){
-            image_stack = c(image_stack, list(matrix(temp_out[,k], im_dim[1], im_dim[2])))
-          }
-        }
+        # im_dim = dim(image_list_cut[[1]])
+        # temp_mat = matrix(as.numeric(unlist(image_list_cut)), nrow=length(image_list_cut), byrow = TRUE)
+        #
+        # if(is.null(weights)){
+        #   temp_weight = NULL
+        # }else{
+        #   temp_weight = matrix(as.numeric(unlist(weights)), nrow=length(image_list_cut), byrow = TRUE)
+        # }
+        #
+        # temp_out = ProUtils::quan_wt_mat_col(temp_mat, probs=probs, wt=temp_weight)
+        #
+        # image_stack = list()
+        #
+        # if(length(probs) == 1){
+        #   image_stack = matrix(temp_out, im_dim[1], im_dim[2])
+        # }else{
+        #   for(k in 1:length(probs)){
+        #     image_stack = c(image_stack, list(matrix(temp_out[,k], im_dim[1], im_dim[2])))
+        #   }
+        # }
         # old code (slow!)
         # image_stack = list()
         # for(k in 1:length(probs)){
@@ -212,17 +220,35 @@ propaneStackWarpFunc = function(
     )
   }
 
-  image_stack = matrix(0, NAXIS1, NAXIS2)
-  if(doweight){
-    weight_stack = matrix(0L, NAXIS1, NAXIS2)
-  }else{
-    weight_stack = NULL
-  }
-
-  for(i in 1:dim(stack_grid)[1]){
-    image_stack[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_temp[[i]]$image
+  if(ifelse(is.character(imager_func), tolower(imager_func) == 'quantile' | tolower(imager_func) == 'quan' & length(probs) > 1, FALSE)){
+    image_stack = array(0, c(NAXIS1, NAXIS2, length(probs)))
     if(doweight){
-      weight_stack[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_temp[[i]]$weight
+      weight_stack = weight_stack = matrix(0L, NAXIS1, NAXIS2)
+    }else{
+      weight_stack = NULL
+    }
+
+    for(j in seq_along(probs)){
+      for(i in 1:dim(stack_grid)[1]){
+        image_stack[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4], j] = stack_temp[[i]]$image[,,j]
+        if(doweight & j==1){
+          weight_stack[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_temp[[i]]$weight
+        }
+      }
+    }
+  }else{
+    image_stack = matrix(0, NAXIS1, NAXIS2)
+    if(doweight){
+      weight_stack = matrix(0L, NAXIS1, NAXIS2)
+    }else{
+      weight_stack = NULL
+    }
+
+    for(i in 1:dim(stack_grid)[1]){
+      image_stack[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_temp[[i]]$image
+      if(doweight){
+        weight_stack[stack_grid[i,1]:stack_grid[i,3], stack_grid[i,2]:stack_grid[i,4]] = stack_temp[[i]]$weight
+      }
     }
   }
 

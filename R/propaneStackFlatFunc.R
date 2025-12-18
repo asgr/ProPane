@@ -135,26 +135,28 @@ propaneStackFlatFunc = function(image_list=NULL, imager_func=NULL, na.rm=TRUE, w
       imager_func = tolower(imager_func)
 
       if(imager_func == 'quantile' | imager_func == 'quan' ){
-        im_dim = dim(image_list[[1]])
-        temp_mat = matrix(as.numeric(unlist(image_list)), nrow=length(image_list), byrow = TRUE)
+        image_stack = ProUtils::quan_wt_array(image_list, probs=probs)
 
-        if(is.null(weights)){
-          temp_weight = NULL
-        }else{
-          temp_weight = matrix(as.numeric(unlist(weights)), nrow=length(image_list_cut), byrow = TRUE)
-        }
-
-        temp_out = ProUtils::quan_wt_mat_col(temp_mat, probs=probs, wt=temp_weight)
-
-        image_stack = list()
-
-        if(length(probs) == 1){
-          image_stack = matrix(temp_out, im_dim[1], im_dim[2])
-        }else{
-          for(k in 1:length(probs)){
-            image_stack = c(image_stack, list(matrix(temp_out[,k], im_dim[1], im_dim[2])))
-          }
-        }
+        # im_dim = dim(image_list[[1]])
+        # temp_mat = matrix(as.numeric(unlist(image_list)), nrow=length(image_list), byrow = TRUE)
+        #
+        # if(is.null(weights)){
+        #   temp_weight = NULL
+        # }else{
+        #   temp_weight = matrix(as.numeric(unlist(weights)), nrow=length(image_list_cut), byrow = TRUE)
+        # }
+        #
+        # temp_out = ProUtils::quan_wt_mat_col(temp_mat, probs=probs, wt=temp_weight)
+        #
+        # image_stack = list()
+        #
+        # if(length(probs) == 1){
+        #   image_stack = matrix(temp_out, im_dim[1], im_dim[2])
+        # }else{
+        #   for(k in 1:length(probs)){
+        #     image_stack = c(image_stack, list(matrix(temp_out[,k], im_dim[1], im_dim[2])))
+        #   }
+        # }
 
         #old code (slow!)
         # if(na.rm){
