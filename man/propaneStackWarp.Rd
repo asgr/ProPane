@@ -4,6 +4,7 @@
 \alias{propaneWarpDump}
 \alias{propaneStackWarpMed}
 \alias{propaneStackWarpFunc}
+\alias{propaneStackWarpQuanWt}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Image Warping and Stacking
@@ -31,6 +32,12 @@ propaneStackWarpMed(filelist = NULL, dirlist = NULL, extlist = 1,
 propaneStackWarpFunc(filelist = NULL, dirlist = NULL, extlist = 1,
   pattern = NULL, recursive = TRUE, zap = NULL, keyvalues_out = NULL, imager_func = NULL,
   weights = NULL, probs = 0.5, cores = floor(detectCores()/2),
+  multitype = 'fork', chunk = 1e3, doweight = TRUE, useCUTLO = TRUE)
+
+propaneStackWarpQuanWt(filelist_image = NULL, filelist_inVar = filelist_image,
+  dirlist_image = NULL, dirlist_inVar = dirlist_image, extlist_image = 1,
+  extlist_inVar = 1, pattern_image = NULL, pattern_inVar = NULL, recursive = TRUE,
+  zap = NULL, keyvalues_out = NULL, probs = 0.5, type = 7, cores = floor(detectCores()/2),
   multitype = 'fork', chunk = 1e3, doweight = TRUE, useCUTLO = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -67,6 +74,9 @@ Numeric vector; weights to use for image combining. Only relevant for \option{im
 }
   \item{probs}{
 Numeric scalar/vector; quantile probability between 0-1. The vector mode is only used in the specific case of \option{imager_func} = 'quantile' / 'quan' (with the speech marks). The scalar mode is used when \option{imager_func} = parquan. The latter only accepts a single value of \option{prob} but it is substantially faster to compute (using the \code{imager} package) and in general should be preferred.
+}
+  \item{type}{
+Integer scalar between 4 and 9 selecting one of the continuous quantile algorithms detailed below to be used (see \code{\link{quantile}}). Default is 7, the same as base \code{\link{quantile}}.
 }
   \item{dim_out}{
 Integer vector; this defines the desired dimensions of the output image. If this is not provided then the output image is made to be the same size as the NAXIS1 and NAXIS2 arguments taken from \option{header_out} (which is usually what you will want TBH).
@@ -111,16 +121,40 @@ Logical; if TRUE then warped frames will be dumped out to the specified \option{
 Character scalar; target directory to write out the dumped frames or (in the case of \code{propaneStackWarpMed}) read them in.
 }
   \item{filelist}{
-Character vector; vector of full paths of FITS files to analyse. This is written as an attribute (called \option{filename}) to the output 'Rfits_list' object.
+Character vector; vector of full paths of FITS files to analyse.
+}
+  \item{filelist_image}{
+Character vector; vector of full paths of FITS image files to analyse.
+}
+  \item{filelist_inVar}{
+Character vector; vector of full paths of FITS inVar (inverse variance) files to analyse.
 }
   \item{dirlist}{
 Character vector; vector of full paths of directories to analyse.
 }
+  \item{dirlist_image}{
+Character vector; vector of full paths of image directories to analyse.
+}
+  \item{dirlist_inVar}{
+Character vector; vector of full paths of inVar (inverse variance) directories to analyse.
+}
   \item{extlist}{
 Integer vector; the extensions to use. If length 1 then it will be used for all \option{filelist}, but otherwise it should be the same length as the final \option{filelist}
 }
+  \item{extlist_image}{
+Integer vector; the extensions to use for images. If length 1 then it will be used for all \option{filelist_image}, but otherwise it should be the same length as the final \option{filelist_image}
+}
+  \item{extlist_inVar}{
+Integer vector; the extensions to use for inVar (inverse variance). If length 1 then it will be used for all \option{filelist_inVar}, but otherwise it should be the same length as the final \option{filelist_inVar}
+}
   \item{pattern}{
 Character vector; regular expressions to filter \option{filelist} by. Most people find it easier to work via \code{\link{glob2rx}} since then you can specify file wild cards in the usual shell way, e.g. glob2rx("*F200W*fits") becomes "^.*F200W.*fits$". Note an extra check that all files are FITS files (a pattern of ".fits$") will be made whether requested or not. Note you should nearly always use a leading and trailing '*' search because the pattern match is made on the full file path string, i.e. glob2rx('u*.fits') = '^u.*\\\\.fits$' would fail on '/path/to/file/u_GAMA.fits' (because of the '/path/to/file/' before 'u_GAMA.fits'), but glob2rx('*u*.fits') = '^.*u.*\\\\.fits$' would work as expected. For images dumped out by \code{\link{propaneStackWarpInVar}} when \option{dump_frames} = TRUE you will want to use glob2rx('*image_warp*') or glob2rx('*image_warp_*.fits').
+}
+  \item{pattern_image}{
+Character vector; regular expressions to filter \option{filelist} by to pick up the image files to use for quantile weighted stacking. See \option{pattern}.
+}
+  \item{pattern_inVar}{
+Character vector; regular expressions to filter \option{filelist} by to pick up the inVar (inverse variance) files to use for quantile weighted stacking. See \option{pattern}.
 }
   \item{recursive}{
 Logical; if using \option{dirlist} should all sub-directories be checked recursively?
@@ -163,6 +197,8 @@ Care needs to be taken to choose appropriate values for \option{cores} and \opti
 \code{propaneStackWarpMed} can also be 'tricked' into stacking non-WCS aligned images. This might be useful when you are e.g. stacking stars that are on inherently different WCS, but you have already cutout and centred then. For this to work no \option{keyvalues_out} should be provided, and \option{useCUTLO} should be set to FALSE (just incase you have XCUTLO and YCUTLO keyvalues produced by \code{Rfits} in your header). The images to be stacked also need to be the same exact dimensions (as well as being centred sensibly on your source of interest, of course).
 
 \code{propaneStackWarpFunc} is like a generic version of \code{propaneStackWarpMed}, where any of the ?imager.combine functions that collapse stacks of images down can be used rather than just \code{parmed} (which is the median function used in \code{propaneStackWarpMed}). For that reason, setting \option{imager_func} = imager::parmed will replicate exactly the behaviour of \code{propaneStackWarpMed}. Useful options to consider using are imager::parvar (variance) and imager::parsd (standard deviation). As a special case you can use \option{imager_func} = 'quantile' / 'quan' (with the speech marks) for quantiles (defined by \option{pro}). Also, \option{imager_func} = 'InVar' (with speech marks) will return the inverse-variance scaled correctly by exposures (which is what we use for general stacking). \option{imager_func} = 'waverage' will return a weighted average using the \option{weights} values for the per frame weights, but note this only works in regions where all frames contribute.
+
+\code{propaneStackWarpQuanWt} is a variant of quantile based stacking, which lower down uses the \code{ProTools} \code{quan_wt_array} function to allow for a weighted quantile stack.
 }
 \value{
 The output of \code{propaneStackWarpInVar} is an object of class 'ProPane' containing:
