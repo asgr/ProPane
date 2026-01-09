@@ -1,6 +1,6 @@
 propaneWarpDump = function(image_list=NULL, magzero_in=0, magzero_out=23.9, keyvalues_out=NULL,
                            dim_out=NULL, cores=floor(detectCores()/2), cores_warp=1,  multitype='fork',
-                           keepcrop=TRUE, dump_dir=tempdir(), ...){
+                           keepcrop=TRUE, dump_dir=tempdir(), stub='image', ...){
 
   if(!requireNamespace("Rfits", quietly = TRUE)){
     stop('The Rfits package is needed for stacking to work. Please install from GitHub asgr/Rfits.', call. = FALSE)
@@ -104,7 +104,7 @@ propaneWarpDump = function(image_list=NULL, magzero_in=0, magzero_out=23.9, keyv
       temp_warp$keyvalues$MAGZERO = magzero_out
       temp_warp$keycomments$MAGZERO = ""
       temp_warp$keynames['MAGZERO'] = "MAGZERO"
-      Rfits_write_image(temp_warp, paste0(dump_dir,'/image_warp_',i,'.fits'))
+      Rfits_write_image(temp_warp, paste0(dump_dir,'/',stub,'_warp_',i,'.fits'))
     })
     return(NULL)
   }

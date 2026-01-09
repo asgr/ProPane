@@ -22,7 +22,7 @@ propaneStackWarpInVar(image_list = NULL, inVar_list = NULL, exp_list = NULL,
 
 propaneWarpDump(image_list = NULL, magzero_in = 0, magzero_out = 23.9,
   keyvalues_out = NULL, dim_out = NULL, cores = floor(detectCores()/2), cores_warp = 1,
-  multitype = 'fork', keepcrop = TRUE, dump_dir = tempdir(), ...)
+  multitype = 'fork', keepcrop = TRUE, dump_dir = tempdir(), stub = 'image', ...)
 
 propaneStackWarpMed(filelist = NULL, dirlist = NULL, extlist = 1,
   pattern = NULL, recursive = TRUE, zap = NULL, keyvalues_out = NULL,
@@ -120,6 +120,9 @@ Logical; if TRUE then warped frames will be dumped out to the specified \option{
   \item{dump_dir}{
 Character scalar; target directory to write out the dumped frames or (in the case of \code{propaneStackWarpMed}) read them in.
 }
+  \item{stub}{
+Character scalar; stub prefix for dumped files. Default of 'image' will generate files with names 'image_warp_X.fits' where X is the position number of \option{image_list}. Normal \code{ProPane} convention would be to use 'image' for image files and 'inVar' for inVar (inverse variance) files.
+}
   \item{filelist}{
 Character vector; vector of full paths of FITS files to analyse.
 }
@@ -151,10 +154,10 @@ Integer vector; the extensions to use for inVar (inverse variance). If length 1 
 Character vector; regular expressions to filter \option{filelist} by. Most people find it easier to work via \code{\link{glob2rx}} since then you can specify file wild cards in the usual shell way, e.g. glob2rx("*F200W*fits") becomes "^.*F200W.*fits$". Note an extra check that all files are FITS files (a pattern of ".fits$") will be made whether requested or not. Note you should nearly always use a leading and trailing '*' search because the pattern match is made on the full file path string, i.e. glob2rx('u*.fits') = '^u.*\\\\.fits$' would fail on '/path/to/file/u_GAMA.fits' (because of the '/path/to/file/' before 'u_GAMA.fits'), but glob2rx('*u*.fits') = '^.*u.*\\\\.fits$' would work as expected. For images dumped out by \code{\link{propaneStackWarpInVar}} when \option{dump_frames} = TRUE you will want to use glob2rx('*image_warp*') or glob2rx('*image_warp_*.fits').
 }
   \item{pattern_image}{
-Character vector; regular expressions to filter \option{filelist} by to pick up the image files to use for quantile weighted stacking. See \option{pattern}.
+Character vector; regular expressions to filter \option{filelist} by to pick up the image files to use for quantile weighted stacking. If these files were made using \code{propaneStackWarpInVar} or \code{propaneWarpDump} they should usually have names like 'image_warp_X.fits'. See \option{pattern}.
 }
   \item{pattern_inVar}{
-Character vector; regular expressions to filter \option{filelist} by to pick up the inVar (inverse variance) files to use for quantile weighted stacking. See \option{pattern}.
+Character vector; regular expressions to filter \option{filelist} by to pick up the inVar (inverse variance) files to use for quantile weighted stacking. If these files were made using \code{propaneStackWarpInVar} or \code{propaneWarpDump} they should usually have names like 'inVar_warp_X.fits'. See \option{pattern}.
 }
   \item{recursive}{
 Logical; if using \option{dirlist} should all sub-directories be checked recursively?
