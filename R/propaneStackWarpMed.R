@@ -94,6 +94,9 @@ propaneStackWarpFunc = function(
     xsub = as.integer(stack_grid[i, c(1,3)])
     ysub = as.integer(stack_grid[i, c(2,4)])
 
+    xdim = diff(range(xsub)) + 1L
+    ydim = diff(range(ysub)) + 1L
+
     if(!is.null(keyvalues_out)){
       keyvalues_sub = Rwcs_keyvalues_sub(keyvalues_out, xsub=xsub, ysub=ysub)
 
@@ -105,8 +108,8 @@ propaneStackWarpFunc = function(
     if(length(temp_overlap) == 0L){
       return(
         list(
-          image = matrix(NA_real_, diff(range(xsub)) + 1L, diff(range(ysub)) + 1L),
-          weight = matrix(0L, diff(range(xsub)) + 1L, diff(range(ysub)) + 1L)
+          image = matrix(NA_real_, xdim, ydim),
+          weight = matrix(0L, xdim, ydim)
         )
       )
     }
@@ -131,14 +134,13 @@ propaneStackWarpFunc = function(
         YCUTLO = 1L #implictly assumed to be aligned images if YCUTLO is missing
       }
 
-      xrange = c(1,(diff(range(xsub)) + 1L)) + (xsub[1] - XCUTLO)
-      yrange = c(1,(diff(range(ysub)) + 1L)) + (ysub[1] - YCUTLO)
+      xrange = c(1,xdim) + (xsub[1] - XCUTLO)
+      yrange = c(1,ydim) + (ysub[1] - YCUTLO)
 
       if(ifelse(is.character(imager_func), tolower(imager_func) == 'quantile' | tolower(imager_func) == 'quan', FALSE)){
-        return(image_list[[j]][xrange, yrange]$imDat)
+          return(image_list[[j]][xrange, yrange]$imDat)
       }else{
-        #get it ready for an imager function:
-        return(imager::as.cimg(image_list[[j]][xrange, yrange]$imDat))
+          return(imager::as.cimg(image_list[[j]][xrange, yrange]$imDat))
       }
     }
 
