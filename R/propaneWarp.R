@@ -229,6 +229,10 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
   dim_min_x_in = min(dim(image_in)[1], dim(image_out$imDat)[1])
   dim_min_y_in = min(dim(image_in)[2], dim(image_out$imDat)[2])
 
+  if(anyInfinite(image_in$imDat)){
+    image_in$imDat[is.infinite(image_in$imDat)] = NA
+  }
+
   image_out$imDat[1:dim_min_x_in, 1:dim_min_y_in] = image_in$imDat[1:dim_min_x_in, 1:dim_min_y_in]
   rm(image_in)
 
