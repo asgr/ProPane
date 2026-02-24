@@ -120,7 +120,7 @@ keyvalues_out_2 = Rwcs_setkeyvalues(
 )
 ```
 
-First we will do a forward projection, where all source pixels are caste onto the target WCS (which is like drizzling):
+First we will do a forward projection, where all source pixels are cast onto the target WCS (which is like drizzling):
 
 ```{r}
 stack_2_forward = propaneStackWarpInVar(image_list = image_list,
@@ -173,7 +173,7 @@ cor(as.numeric(stack_2_backward$image$imDat[1:799,1:799]),
     as.numeric(stack_2_backward$image$imDat[2:800,2:800]), use='complete.obs')
 ```
 
-The default is to project from the higher resolution grid, so in this case without specifiying **Rwcs_stack** would carry out forward propagation. Which makes more sense is really a choice for the user.
+The default is to project from the higher resolution grid, so in this case without specifying **Rwcs_stack** would carry out forward propagation. Which makes more sense is really a choice for the user.
 
 ## A Quick Clip
 
