@@ -74,19 +74,9 @@ propaneWarpDump = function(image_list=NULL, magzero_in=0, magzero_out=23.9, keyv
   message('Projecting Images 1 to ', Nim)
 
   foreach(i = 1:Nim)%dopar%{
-    if(inherits(image_list[[i]], 'Rfits_pointer')){
-      temp_image = image_list[[i]][,]
-    }else{
-      temp_image = image_list[[i]]
-    }
-
-    if(any(!is.finite(temp_image$imDat))){
-      temp_image$imDat[!is.finite(temp_image$imDat)] = NA
-    }
-
     suppressMessages({
       temp_warp = propaneWarp(
-        image_in = temp_image,
+        image_in = image_list[[i]],
         keyvalues_out = keyvalues_out,
         dim_out = dim_out,
         doscale = TRUE,

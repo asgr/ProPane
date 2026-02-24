@@ -241,14 +241,11 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
 
     pre_stack_image_list = foreach(i = seq_start:seq_end,
                                    .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp'))%dopar%{
-      if(inherits(image_list[[i]], 'Rfits_pointer')){
+      needs_read = !is.null(mask_list) || !is.null(inVar_list)
+      if(inherits(image_list[[i]], 'Rfits_pointer') && needs_read){
         temp_image = image_list[[i]][,]
       }else{
         temp_image = image_list[[i]]
-      }
-
-      if(any(!is.finite(temp_image$imDat))){
-        temp_image$imDat[!is.finite(temp_image$imDat)] = NA
       }
 
       if(!is.null(mask_list)){
@@ -318,7 +315,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       pre_stack_inVar_list = foreach(i = seq_start:seq_end,
                                      .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp'))%dopar%{
         if(inherits(image_list[[i]], 'Rfits_pointer')){
-          temp_inVar = image_list[[i]][,]
+          temp_inVar = Rfits_create_image(matrix(0L, dim(image_list[[i]])[1], dim(image_list[[i]])[2]), image_list[[i]]$keyvalues)
         }else{
           temp_inVar = image_list[[i]]
         }
@@ -371,7 +368,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       pre_stack_exp_list = foreach(i = seq_start:seq_end,
                                    .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp', 'pre_stack_inVar_list'))%dopar%{
         if(inherits(image_list[[i]], 'Rfits_pointer')){
-          temp_exp = image_list[[i]][,]
+          temp_exp = Rfits_create_image(matrix(0L, dim(image_list[[i]])[1], dim(image_list[[i]])[2]), image_list[[i]]$keyvalues)
         }else{
           temp_exp = image_list[[i]]
         }
@@ -414,7 +411,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
       pre_stack_weight_list = foreach(i = seq_start:seq_end, .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp', 'pre_stack_inVar_list', 'pre_stack_exp_list'))%dopar%{
         if(weight_image[i]){
           if(inherits(image_list[[i]], 'Rfits_pointer')){
-            temp_weight = image_list[[i]][,]
+            temp_weight = Rfits_create_image(matrix(0L, dim(image_list[[i]])[1], dim(image_list[[i]])[2]), image_list[[i]]$keyvalues)
           }else{
             temp_weight = image_list[[i]]
           }
@@ -727,14 +724,11 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
           message('Projecting Images ',seq_start,' to ',seq_end,' of ',Nim)
 
           pre_stack_image_list = foreach(i = seq_start:seq_end, .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp'))%dopar%{
-            if(inherits(image_list[[i]], 'Rfits_pointer')){
+            needs_read = !is.null(mask_list) || !is.null(inVar_list)
+            if(inherits(image_list[[i]], 'Rfits_pointer') && needs_read){
               temp_image = image_list[[i]][,]
             }else{
               temp_image = image_list[[i]]
-            }
-
-            if(any(!is.finite(temp_image$imDat))){
-              temp_image$imDat[!is.finite(temp_image$imDat)] = NA
             }
 
             if(!is.null(mask_list)){
@@ -798,7 +792,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             pre_stack_inVar_list = foreach(i = seq_start:seq_end,
                                            .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp'))%dopar%{
               if(inherits(image_list[[i]], 'Rfits_pointer')){
-                temp_inVar = image_list[[i]][,]
+                temp_inVar = Rfits_create_image(matrix(0L, dim(image_list[[i]])[1], dim(image_list[[i]])[2]), image_list[[i]]$keyvalues)
               }else{
                 temp_inVar = image_list[[i]]
               }
@@ -856,7 +850,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
                 Rfits_read_image(paste0(dump_dir,'/weight_warp_',i,'.fits'))
               }else{
                 if(inherits(image_list[[i]], 'Rfits_pointer')){
-                  temp_weight = image_list[[i]][,]
+                  temp_weight = Rfits_create_image(matrix(0L, dim(image_list[[i]])[1], dim(image_list[[i]])[2]), image_list[[i]]$keyvalues)
                 }else{
                   temp_weight = image_list[[i]]
                 }
