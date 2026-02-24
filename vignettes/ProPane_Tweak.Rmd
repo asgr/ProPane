@@ -22,6 +22,7 @@ First we load the packages we will need for this vignette:
 library(ProPane)
 library(Rfits)
 library(magicaxis)
+library(imager)
 ```
 
 

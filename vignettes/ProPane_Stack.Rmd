@@ -24,6 +24,7 @@ library(Rfits)
 library(Rwcs)
 library(foreach)
 library(magicaxis)
+library(imager)
 ```
 
 The **ProPane** package comes with key utilities for warping between different WCS systems: **propaneWarp** (for warping individual frames once). **ProPane** also contains the various functions for creating large stacks of many warped frames (which is of class *ProPane*, which is roughly meant to suggest the idea of many *panes* of glass being stacked together). 
