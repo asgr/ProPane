@@ -24,6 +24,7 @@ library(Rfits)
 library(Rwcs)
 library(magicaxis)
 library(imager)
+library(ProFound)
 ```
 
 

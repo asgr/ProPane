@@ -52,6 +52,7 @@ jobs:
           extra-packages: any::rcmdcheck,
             github::asgr/Rwcs@master,
             github::asgr/Rfits@master,
+            github::asgr/ProFound@master,
             any::imager,
             any::knitr,
             any::rmarkdown
