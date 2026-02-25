@@ -1,5 +1,10 @@
 # ProPane
 
+<!-- badges: start -->
+![R-CMD-check](https://github.com/asgr/ProPane/workflows/R-CMD-check/badge.svg)
+<!-- badges: end -->
+
+
 **ProPane** is a general purpose image warping and stacking package. It uses the **wcslib** **C** library for projections (all legal ones are supported) via the **Rwcs** package, and uses the threaded **Cimg** **C++** library via the **imager** library to do image warping. Most of the CPU expensive routines are parallelised at the **R** level, and some aspects are threaded at the **C** level via **OpenMP**. **imager** in particular will need to be built with **OpenMP** threading support to make use of these speed-ups, e.g. for MacOS you will want to look at this page https://mac.r-project.org/openmp/.
 
 ## Synopsis
