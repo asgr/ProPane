@@ -24,6 +24,13 @@ library(Rfits)
 library(Rwcs)
 library(foreach)
 library(magicaxis)
+library(imager)
+```
+
+Set the number of cores to use:
+
+```{r}
+cores = 1
 ```
 
 The **ProPane** package comes with key utilities for warping between different WCS systems: **propaneWarp** (for warping individual frames once). **ProPane** also contains the various functions for creating large stacks of many warped frames (which is of class *ProPane*, which is roughly meant to suggest the idea of many *panes* of glass being stacked together). 
@@ -65,7 +72,7 @@ Now we make a simple stack:
 stack = propaneStackWarpInVar(image_list = image_list,
                    inVar_list = 0.000468, #assume all have the same inVar
                    exp_list = 10, #all have the same exposure time of 10s
-                   cores = 8,
+                   cores = cores,
                    keyvalues_out = keyvalues_out,
                    magzero_in = 30,
                    magzero_out = 23.9 #micro-jansky output
@@ -126,7 +133,7 @@ First we will do a forward projection, where all source pixels are cast onto the
 stack_2_forward = propaneStackWarpInVar(image_list = image_list,
                    inVar_list = 0.000468, #assume all have the same inVar
                    exp_list = 10, #all have the same exposure time of 10s
-                   cores = 8,
+                   cores = cores,
                    keyvalues_out = keyvalues_out_2,
                    magzero_in = 30,
                    magzero_out = 23.9, #micro-jansky output
@@ -140,7 +147,7 @@ Then we can try back projection, where we use the final WCS to look up input flu
 stack_2_backward = propaneStackWarpInVar(image_list = image_list,
                    inVar_list = 0.000468, #assume all have the same inVar
                    exp_list = 10, #all have the same exposure time of 10s
-                   cores = 8,
+                   cores = cores,
                    keyvalues_out = keyvalues_out_2,
                    magzero_in = 30,
                    magzero_out = 23.9, #micro-jansky output
@@ -183,7 +190,7 @@ Commonly when we have multiple input frames we want to detect outlier hot/cold p
 stack_clip = propaneStackWarpInVar(image_list = image_list,
                    inVar_list = 0.000468, #assume all have the same inVar
                    exp_list = 10, #all have the same exposure time of 10s
-                   cores = 8,
+                   cores = cores,
                    keyvalues_out = keyvalues_out,
                    magzero_in = 30,
                    magzero_out = 23.9, #micro-jansky output
@@ -228,7 +235,7 @@ Frames 1 and 4 seem to have unusual sources (perhaps cosmic rays) that are not p
 stack_clip2 = propaneStackWarpInVar(image_list = image_list,
                    inVar_list = 0.000468, #assume all have the same inVar
                    exp_list = 10, #all have the same exposure time of 10s
-                   cores = 8,
+                   cores = cores,
                    keyvalues_out = keyvalues_out,
                    magzero_in = 30,
                    magzero_out = 23.9, #micro-jansky output
@@ -253,7 +260,7 @@ Another route is to use the more conservative *clip_tol* but specify that we dil
 stack_clip3 = propaneStackWarpInVar(image_list = image_list,
                    inVar_list = 0.000468, #assume all have the same inVar
                    exp_list = 10, #all have the same exposure time of 10s
-                   cores = 8,
+                   cores = cores,
                    keyvalues_out = keyvalues_out,
                    magzero_in = 30,
                    magzero_out = 23.9, #micro-jansky output
@@ -309,7 +316,7 @@ We can make use of the frames we have already dumped to do this with *Rwcs_stack
 ```{r}
 stack_med2 = propaneStackWarpMed(dirlist = stack_clip$dump_dir,
                                  keyvalues_out = keyvalues_out,
-                                 cores = 8,
+                                 cores = cores,
                                  pattern = glob2rx('*image*fits') #to only stack images
                                  )
 ```

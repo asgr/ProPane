@@ -21,7 +21,10 @@ First we load the packages we will need for this vignette:
 ```{r}
 library(ProPane)
 library(Rfits)
+library(Rwcs)
 library(magicaxis)
+library(imager)
+library(ProFound)
 ```
 
 
