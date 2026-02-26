@@ -14,10 +14,10 @@ License: LGPL-3
 Imports: Rcpp (>= 1.0.0), Rfits (>= 1.8.13), Rwcs (>= 1.6.2), checkmate, magicaxis, data.table, celestial, foreach, doParallel, parallel
 Suggests: testthat, imager (>= 0.45.7), knitr, rmarkdown, Rfast2, ProFound, RANN, cmaes, ProUtils
 Remotes:
-  asgr/imager
-  asgr/ProFound
-  asgr/ProUtils
-  asgr/Rfits
+  asgr/imager,
+  asgr/ProFound,
+  asgr/ProUtils,
+  asgr/Rfits,
   asgr/Rwcs
 Encoding: UTF-8
 LazyData: true
