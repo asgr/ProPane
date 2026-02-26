@@ -1,8 +1,8 @@
 Package: ProPane
 Type: Package
 Title: Image Warping Stacking and Tweaking
-Version: 1.9.3
-Date: 2026-02-24
+Version: 1.9.4
+Date: 2026-02-26
 Authors@R: c(
     person(given='Aaron', family='Robotham', email='aaron.robotham@uwa.edu.au',
         role=c('aut', 'cre'), comment=c(ORCID='0000-0003-0429-3579')),
@@ -13,6 +13,12 @@ Description: Warping and flat image stacking utilities.
 License: LGPL-3
 Imports: Rcpp (>= 1.0.0), Rfits (>= 1.8.13), Rwcs (>= 1.6.2), checkmate, magicaxis, data.table, celestial, foreach, doParallel, parallel
 Suggests: testthat, imager (>= 0.45.7), knitr, rmarkdown, Rfast2, ProFound, RANN, cmaes, ProUtils
+Remotes:
+  asgr/imager
+  asgr/ProFound
+  asgr/ProUtils
+  asgr/Rfits
+  asgr/Rwcs
 Encoding: UTF-8
 LazyData: true
 LinkingTo: Rcpp
