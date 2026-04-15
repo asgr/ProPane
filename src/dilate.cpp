@@ -10,19 +10,13 @@ IntegerMatrix dilate_cpp(IntegerMatrix segim, IntegerMatrix kern, IntegerVector 
   int kcol = kern.ncol();
   int krow_off = ((krow - 1) / 2);
   int kcol_off = ((kcol - 1) / 2);
-  bool checkseg = true;
   int max_segim = max(segim);
   IntegerMatrix segim_new(srow, scol);
   LogicalVector seglogic  (max_segim);
   
-  // if(expand(0) == 0){
-  //   expandall = true;
-  // }else{
-  //   expandall = false;
-  //   
-  // }
-  
-  if(expand(0) > 0){
+  bool do_expand = (expand(0) > 0);
+
+  if(do_expand){
     for(int k = 0; k < expand.length(); k++){
       if(expand(k) <= max_segim){
         seglogic(expand(k)-1) = true;
@@ -30,21 +24,29 @@ IntegerMatrix dilate_cpp(IntegerMatrix segim, IntegerMatrix kern, IntegerVector 
     }
   }
   
-  for (int i = 0; i < srow; i++) {
-    for (int j = 0; j < scol; j++) {
+  // Column-major iteration for cache locality (Rcpp matrices are column-major)
+  for (int j = 0; j < scol; j++) {
+    for (int i = 0; i < srow; i++) {
       if(segim(i,j) > 0){
-        if(expand(0) > 0){
+        bool checkseg = true;
+        if(do_expand){
           checkseg = seglogic(segim(i,j)-1);
         }
         if(checkseg){
-          for (int m = std::max(0, krow_off - i); m < std::min(krow, krow_off - (i - srow)); m++) {
-            for (int n = std::max(0, kcol_off - j); n < std::min(kcol, kcol_off - (j - scol)); n++) {
+          int m_start = std::max(0, krow_off - i);
+          int m_end = std::min(krow, krow_off - (i - srow));
+          int n_start = std::max(0, kcol_off - j);
+          int n_end = std::min(kcol, kcol_off - (j - scol));
+          int i_base = i - krow_off;
+          int j_base = j - kcol_off;
+          for (int m = m_start; m < m_end; m++) {
+            for (int n = n_start; n < n_end; n++) {
               if(kern(m,n) > 0){
                 if(m != krow_off || n != kcol_off){
-                  if(segim(i + m - krow_off,j + n - kcol_off) == 0){
-                    int xloc = i + m - krow_off;
-                    int yloc = j + n - kcol_off;
-                    if(segim(i,j) < segim_new(xloc,yloc) || segim_new(xloc,yloc) == 0) {
+                  int xloc = i_base + m;
+                  int yloc = j_base + n;
+                  if(segim(xloc,yloc) == 0){
+                    if(segim_new(xloc,yloc) == 0 || segim(i,j) < segim_new(xloc,yloc)) {
                       segim_new(xloc,yloc) = segim(i,j);
                     }
                   }
