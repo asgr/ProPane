@@ -36,8 +36,6 @@ static bool is_mask_set(Nullable<LogicalMatrix> mask, int i, int j)
 {
   if (mask.isNull())
     return false;
-  // Note: the Nullable -> LogicalMatrix conversion is lightweight (just a cast)
-  // but we rely on the compiler inlining this for the null case fast path
   return LogicalMatrix(mask)(i, j);
 }
 

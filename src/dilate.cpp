@@ -28,11 +28,7 @@ IntegerMatrix dilate_cpp(IntegerMatrix segim, IntegerMatrix kern, IntegerVector 
   for (int j = 0; j < scol; j++) {
     for (int i = 0; i < srow; i++) {
       if(segim(i,j) > 0){
-        bool checkseg = true;
-        if(do_expand){
-          checkseg = seglogic(segim(i,j)-1);
-        }
-        if(checkseg){
+        if(!do_expand || seglogic(segim(i,j)-1)){
           int m_start = std::max(0, krow_off - i);
           int m_end = std::min(krow, krow_off - (i - srow));
           int n_start = std::max(0, kcol_off - j);
