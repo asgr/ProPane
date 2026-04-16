@@ -32,13 +32,6 @@ static void check_required_size(NumericMatrix pre, IntegerVector offset, Numeric
     );
 }
 
-static bool is_mask_set(Nullable<LogicalMatrix> mask, int i, int j)
-{
-  if (mask.isNull())
-    return false;
-  return LogicalMatrix(mask)(i, j);
-}
-
 template<typename WeightGetter>
 static SEXP _stack_image_inVar(NumericMatrix post_image, NumericMatrix post_inVar, IntegerMatrix post_weight,
                                NumericMatrix pre_image, NumericMatrix pre_inVar, WeightGetter weight, IntegerVector offset,
