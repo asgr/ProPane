@@ -24,21 +24,11 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
     message('Frames being dumped to ', dump_dir)
   }
 
-  # if(supportsMulticore()){
-  #   plan('multicore', workers=cores)
-  # }else{
-  #   plan('multisession', workers=cores)
-  # }
-  #registerDoFuture()
-
   if(multitype=='fork'){
     registerDoParallel(cores=cores)
   }else if(multitype=='cluster'){
     registerDoParallel(cl=cores)
   }
-
-  # cl = makeCluster(cores, type=multitype)
-  # registerDoParallel(cl)
 
   Nim = length(image_list)
 
@@ -547,8 +537,6 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
 
   #This is an important branch, since it means we can clip out pixels.
   #Some of this code is currently quite slow for large matrices.
-
-  #browser()
 
   if(doclip & !is.null(post_stack_inVar)){
     message('Clipping out extreme cold/hot pixels')

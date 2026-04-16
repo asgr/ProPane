@@ -6,15 +6,22 @@ double mat_diff_sum(Rcpp::NumericMatrix mat1, Rcpp::NumericMatrix mat2, double s
   int nrow = mat1.nrow();
   int ncol = mat1.ncol();
   double mat_sum = 0;
-  Rcpp::NumericMatrix m(nrow,ncol);
-  for (int i = 0; i < nrow; i++) {
-    for (int j = 0; j < ncol; j++) {
-      if(i - delta_x >= 0 && i - delta_x < nrow){
-        if(j - delta_y >= 0 && j - delta_y < ncol){
-          if(std::isfinite(mat1(i,j)) && std::isfinite(mat2(i - delta_x, j - delta_y))){
-            mat_sum += pow((mat1(i, j) - mat2(i - delta_x, j - delta_y))/scale,2);
-          }
-        }
+  double scale_inv = 1.0 / scale;
+
+  // Precompute valid loop bounds to avoid per-element boundary checks
+  int i_start = std::max(0, delta_x);
+  int i_end = std::min(nrow, nrow + delta_x);
+  int j_start = std::max(0, delta_y);
+  int j_end = std::min(ncol, ncol + delta_y);
+
+  // Column-major iteration for cache locality (Rcpp matrices are column-major)
+  for (int j = j_start; j < j_end; j++) {
+    for (int i = i_start; i < i_end; i++) {
+      double v1 = mat1(i, j);
+      double v2 = mat2(i - delta_x, j - delta_y);
+      if(std::isfinite(v1) && std::isfinite(v2)){
+        double diff = (v1 - v2) * scale_inv;
+        mat_sum += diff * diff;
       }
     }
   }

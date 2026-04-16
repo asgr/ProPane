@@ -32,13 +32,6 @@ static void check_required_size(NumericMatrix pre, IntegerVector offset, Numeric
     );
 }
 
-static bool is_mask_set(Nullable<LogicalMatrix> mask, int i, int j)
-{
-  if (mask.isNull())
-    return false;
-  return LogicalMatrix(mask)(i, j);
-}
-
 template<typename WeightGetter>
 static SEXP _stack_image_inVar(NumericMatrix post_image, NumericMatrix post_inVar, IntegerMatrix post_weight,
                                NumericMatrix pre_image, NumericMatrix pre_inVar, WeightGetter weight, IntegerVector offset,
@@ -49,13 +42,19 @@ static SEXP _stack_image_inVar(NumericMatrix post_image, NumericMatrix post_inVa
   check_same_size(post_image, post_mask, "post_mask");
   check_same_size(pre_image, pre_inVar, "pre_inVar");
   check_required_size(pre_image, offset, post_image);
+
+  bool has_mask = !post_mask.isNull();
+  LogicalMatrix mask_mat;
+  if (has_mask) mask_mat = LogicalMatrix(post_mask);
+
   int post_j = offset[1] - 1;
   for (int j = 0; j < pre_image.ncol(); j++, post_j++) {
     int post_i = offset[0] - 1;
     for (int i = 0; i < pre_image.nrow(); i++, post_i++) {
       auto pre_image_pix = pre_image(i,j);
       auto pre_inVar_pix = pre_inVar(i,j);
-      auto do_stack = R_finite(pre_image_pix + pre_inVar_pix) && (pre_inVar_pix > 0) && !is_mask_set(post_mask, post_i, post_j);
+      bool do_stack = R_finite(pre_image_pix + pre_inVar_pix) && (pre_inVar_pix > 0) &&
+                      !(has_mask && mask_mat(post_i, post_j));
       if (do_stack) {
         post_image(post_i, post_j) += pre_image_pix * pre_inVar_pix;
         post_inVar(post_i, post_j) += pre_inVar_pix;
@@ -76,12 +75,17 @@ static SEXP _stack_image(NumericMatrix post_image, IntegerMatrix post_weight,
   check_same_size(post_image, post_weight, "post_weight");
   check_same_size(post_image, post_mask, "post_mask");
   check_required_size(pre_image, offset, post_image);
+
+  bool has_mask = !post_mask.isNull();
+  LogicalMatrix mask_mat;
+  if (has_mask) mask_mat = LogicalMatrix(post_mask);
+
   int post_j = offset[1] - 1;
   for (int j = 0; j < pre_image.ncol(); j++, post_j++) {
     int post_i = offset[0] - 1;
     for (int i = 0; i < pre_image.nrow(); i++, post_i++) {
       auto pre_image_pix = pre_image(i,j);
-      auto do_stack = R_finite(pre_image_pix) && !is_mask_set(post_mask, post_i, post_j);
+      bool do_stack = R_finite(pre_image_pix) && !(has_mask && mask_mat(post_i, post_j));
       if (do_stack) {
         auto weight_pix = weight(i,j);
         post_image(post_i, post_j) += pre_image_pix * weight_pix;
@@ -122,13 +126,13 @@ SEXP stack_image(NumericMatrix post_image, IntegerMatrix post_weight,
 
 // [[Rcpp::export(".stack_exp_cpp")]]
 SEXP stack_exp(NumericMatrix post_exp, NumericMatrix pre_exp, IntegerVector offset){
-  int do_stack;
+  int offset_x = offset[0] - 1;
+  int offset_y = offset[1] - 1;
 
   for (int j = 0; j < pre_exp.ncol(); j++) {
     for (int i = 0; i < pre_exp.nrow(); i++) {
-      do_stack = R_finite(pre_exp(i,j));
-      if(do_stack){
-        post_exp(i + offset[0] - 1, j + offset[1] - 1) += pre_exp(i,j);
+      if(R_finite(pre_exp(i,j))){
+        post_exp(i + offset_x, j + offset_y) += pre_exp(i,j);
       }
     }
   }
@@ -138,13 +142,15 @@ SEXP stack_exp(NumericMatrix post_exp, NumericMatrix pre_exp, IntegerVector offs
 // [[Rcpp::export(".stack_exp_mask_cpp")]]
 SEXP stack_exp_mask(NumericMatrix post_exp, NumericMatrix pre_exp, IntegerVector offset,
                     LogicalMatrix post_mask){
-  int do_stack;
+  int offset_x = offset[0] - 1;
+  int offset_y = offset[1] - 1;
 
   for (int j = 0; j < pre_exp.ncol(); j++) {
     for (int i = 0; i < pre_exp.nrow(); i++) {
-      do_stack = R_finite(pre_exp(i,j)) && (post_mask(i + offset[0] - 1, j + offset[1] - 1) == false);
-      if(do_stack){
-        post_exp(i + offset[0] - 1, j + offset[1] - 1) += pre_exp(i,j);
+      int post_i = i + offset_x;
+      int post_j = j + offset_y;
+      if(R_finite(pre_exp(i,j)) && !post_mask(post_i, post_j)){
+        post_exp(post_i, post_j) += pre_exp(i,j);
       }
     }
   }
