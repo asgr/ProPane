@@ -30,7 +30,7 @@ library(imager)
 Set the number of cores to use:
 
 ```{r}
-cores = 8L
+cores = 1L
 multitype = 'cluster'
 ```
 
