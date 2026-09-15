@@ -16,7 +16,7 @@ static void check_same_size(T a, Nullable<LogicalMatrix> b, const char *name)
 {
   if (b.isNull())
     return;
-  check_same_size(a, LogicalMatrix(b), name);
+  check_same_size(a, LogicalMatrix(b.get()), name);
 }
 
 static void check_required_size(NumericMatrix pre, IntegerVector offset, NumericMatrix post)
@@ -45,7 +45,7 @@ static SEXP _stack_image_inVar(NumericMatrix post_image, NumericMatrix post_inVa
 
   bool has_mask = !post_mask.isNull();
   LogicalMatrix mask_mat;
-  if (has_mask) mask_mat = LogicalMatrix(post_mask);
+  if (has_mask) mask_mat = LogicalMatrix(post_mask.get());
 
   int post_j = offset[1] - 1;
   for (int j = 0; j < pre_image.ncol(); j++, post_j++) {
@@ -78,7 +78,7 @@ static SEXP _stack_image(NumericMatrix post_image, IntegerMatrix post_weight,
 
   bool has_mask = !post_mask.isNull();
   LogicalMatrix mask_mat;
-  if (has_mask) mask_mat = LogicalMatrix(post_mask);
+  if (has_mask) mask_mat = LogicalMatrix(post_mask.get());
 
   int post_j = offset[1] - 1;
   for (int j = 0; j < pre_image.ncol(); j++, post_j++) {
