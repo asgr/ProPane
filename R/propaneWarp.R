@@ -42,19 +42,19 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
   }
 
   keyvalues_in = image_in$keyvalues
-  
+
   if(any(is.na(keyvalues_in))){
     keyvalues_in = keyvalues_in[!is.na(keyvalues_in)]
     class(keyvalues_in) = 'Rfits_keylist'
   }
-  
+
   header_in = Rfits_keyvalues_to_raw(keyvalues_in)
 
   if(any(is.na(keyvalues_out))){
     keyvalues_out = keyvalues_out[!is.na(keyvalues_out)]
     class(keyvalues_out) = 'Rfits_keylist'
   }
-  
+
   header_out = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_out))
 
   if(checkWCSequal){
@@ -426,9 +426,9 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
 
     image_out$crop = c(xlo=min_x_in, xhi=max_x_in, ylo=min_y_in, yhi=max_y_in) #we want to keep the subset location for potential later writing
   }
-  
+
   image_out$history = c(image_out$history, "Warped with propaneWarp")
-  
+
   image_out = Rfits_check_image(image_out)
 
   if(plot){
@@ -499,15 +499,14 @@ propaneRebin = function(image, scale = 1,interpolation = 6){
     names(image_out$keycomments) = image_out$keynames
     class(image_out) = c('Rfits_image', class(image_out))
     image_out = Rfits_check_image(image_out)
-    
+
     return(image_out)
   }else{
     image_resize = as.matrix(imager::resize(im=imager::as.cimg(image), size_x=size_x, size_y=size_y, interpolation_type=interpolation))
     norm = matrix(1, dim(image)[1], dim(image)[2])
     norm_resize = as.matrix(imager::resize(im=imager::as.cimg(norm), size_x=size_x, size_y=size_y, interpolation_type=interpolation))
     image_resize = (image_resize / norm_resize) / scale^2
-    image_resize = Rfits_check_image(image_resize)
-    
+
     return(image_resize)
   }
 }
@@ -520,7 +519,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
     magzero_out = propane_in$image$keyvalues$MAGZERO
     zero_point_scale = 1
   }
-  
+
   keyvalues_out$R_VER = propane_in$image$keyvalues$R_VER
   keyvalues_out$PANE_VER = propane_in$image$keyvalues$PANE_VER
   keyvalues_out$RWCS_VER = propane_in$image$keyvalues$RWCS_VER
