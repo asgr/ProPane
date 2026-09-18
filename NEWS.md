@@ -27,7 +27,7 @@ the default output is unchanged.
   ~2.4x over an 8-frame stack.
 
 - New `warpgrid` argument to `propaneWarp()`, defaulting to `"exact"` which
-  preserves 1.10.1 behaviour. `warpgrid = "auto"` (or a numeric lattice step)
+  preserves 1.10.1 behaviour. `warpgrid = "approx"` (or a numeric lattice step)
   evaluates the celestial transform on a coarse lattice and reconstructs the
   field as a least-squares affine plus a bilinearly interpolated residual,
   rather than transforming every output pixel. The per-pixel transform is about
