@@ -277,18 +277,53 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
     # 8183x1768 field (14.5M px, ~9.7s, mostly inside wcslib non-convergence)
     # and returned a normal-looking but all-NaN image. There is no data to
     # warp in that case, so we skip the crop, the field, and the warp.
-    degenerate_crop = (min_x_out > max_x_out || min_y_out > max_y_out) &&
-      # An explicitly supplied field is the caller overriding the geometry, so
-      # respect it and go through the normal path.
-      is.null(warpfield)
+    corners_empty = min_x_out > max_x_out || min_y_out > max_y_out
+
+    # The corner test alone is not proof: the bounds above come from four
+    # corners only, and a strongly distorted or folded projection can put every
+    # corner outside the input while the interior still overlaps it. So demand
+    # that a dense perimeter sample agrees before taking the fast path. If the
+    # two disagree we keep the old (expanded, slow, but bit-for-bit familiar)
+    # behaviour rather than risk blanking a frame that does have data in it.
+    #
+    # This is decided by geometry alone, so it also applies when the caller
+    # supplies warpfield=: a field maps output pixels to input pixels, and
+    # cannot conjure data into a frame that has no overlap with the input.
+    degenerate_crop = FALSE
+
+    if(corners_empty){
+      nper = 33L
+      ex = seq.int(1L, dim_out[1], length.out = nper)
+      ey = seq.int(1L, dim_out[2], length.out = nper)
+      perim = rbind(cbind(rep(ex, 2), c(rep(dim_out[2], nper), rep(1L, nper))),
+                    cbind(c(rep(dim_out[1], nper), rep(1L, nper)), rep(ey, 2)))
+
+      sky = suppressMessages({
+        h = header_out
+        Rwcs_p2s(perim[, 1], perim[, 2], header = h, pixcen = 'R', WCSref = WCSref_out)
+      })
+      pin = suppressMessages(Rwcs_s2p(sky, header = header_in, pixcen = 'R', WCSref = WCSref_in))
+
+      # Any non-finite projection means we cannot prove the frame is empty.
+      if(all(is.finite(pin))){
+        degenerate_crop = max(pin[, 1]) < 1L || min(pin[, 1]) > dim(image_in)[1] ||
+          max(pin[, 2]) < 1L || min(pin[, 2]) > dim(image_in)[2]
+      }
+
+      if(degenerate_crop){
+        message(sprintf(
+          paste0('tight crop is empty (x [%d, %d], y [%d, %d] over a %dx%d input): ',
+                 'the output frame does not overlap the input. ',
+                 'Returning %d of %d pixels as blank without warping.'),
+          min_x_out, max_x_out, min_y_out, max_y_out,
+          dim(image_in)[1], dim(image_in)[2], prod(dim_out), prod(dim_out)))
+      }else{
+        message('tight crop looks inverted but a dense perimeter check found possible overlap; warping normally.')
+      }
+    }
 
     if(degenerate_crop){
-      message(sprintf(
-        paste0('tight crop is empty (x [%d, %d], y [%d, %d] over a %dx%d input): ',
-               'the output frame does not overlap the input. ',
-               'Returning %d of %d pixels as blank without warping.'),
-        min_x_out, max_x_out, min_y_out, max_y_out,
-        dim(image_in)[1], dim(image_in)[2], prod(dim_out), prod(dim_out)))
+      NULL
     }
     else if(min_x_out != 1 | max_x_out != dim(image_in)[1] | min_y_out != 1 | max_y_out != dim(image_in)[2]){
       if(inherits(image_in, 'Rfits_pointer')){
