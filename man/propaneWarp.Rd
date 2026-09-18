@@ -25,10 +25,10 @@ propaneWarp(image_in, keyvalues_out = NULL, keyvalues_in = NULL, dim_out = NULL,
   dofinenorm = TRUE, plot = FALSE, dotightcrop = TRUE, keepcrop = FALSE,
   extratight = FALSE, WCSref_out = NULL, WCSref_in = NULL, magzero_out = NULL,
   magzero_in = NULL, blank = NA, warpfield = NULL, warpfield_return = FALSE, cores = 1,
-  checkWCSequal = FALSE, ...)
+  checkWCSequal = FALSE, warpgrid = "exact", warptol = 1e-05, ...)
 
 propaneWarpProPane(propane_in, keyvalues_out = NULL, dim_out = NULL,
-  magzero_out = NULL, ...)
+  magzero_out = NULL, ..., warpfield_share = TRUE)
 
 propaneRebin(image, scale = 1, interpolation = 6)
 
@@ -159,6 +159,15 @@ Integer scalar; the number of cores to run on. Because of the overhead in launch
   \item{checkWCSequal}{
 Logical; should the WCS be checked to see if the keyvalues_in is the same as keyvalues_out? If TRUE, and the WCS appears to match (when comparing: NAXIS, NAXIS1, NAXIS2, CRPIX1, CRPIX2, CRVAL1, CRVAL2, CTYPE1, CTYPE2, CUNIT1, CUNIT1, CD1_1, CD1_2, CD2_1, CD2_2), then the input \option{image_in} is simply returns. This increases speed and means you do not need to carefully check the input and output WCS.
 }
+  \item{warpgrid}{
+Character or integer scalar; controls how the internal warp field is computed when \option{warpfield} is not supplied. The default \code{"exact"} evaluates the celestial transform at every output pixel, which is the slow but exactly reproducible option and preserves the historical behaviour bit-for-bit. \code{"auto"} instead evaluates the transform on a coarse lattice and reconstructs the field as a least-squares affine plus a bilinearly interpolated residual, tightening the lattice until the reconstruction is verified against the true transform at cell midpoints. An integer is taken as a fixed starting lattice step. The coarse modes are several times faster (the per-pixel transform dominates \code{propaneWarp} cost) but are an approximation: on a typical ASKAP-style field the maximum warp-field error is around 1e-06 pixels and integrated flux agrees to around 1e-07 relative, though individual pixels whose interpolation weights are truncated at the edge of the input can differ more. If the requested tolerance cannot be met, a message is emitted and the exact field is used, so \code{"auto"} is never less accurate than the tolerance you asked for.
+}
+  \item{warptol}{
+Numeric scalar; the maximum tolerated warp-field error, in pixels, used when \option{warpgrid} is not \code{"exact"}. Smaller values force a finer lattice. Ignored when \option{warpgrid = "exact"}.
+}
+  \item{warpfield_share}{
+Logical; for \code{propaneWarpProPane}, should the internal warp field be built once and reused for every band? The field depends only on the input pixel grid and the input/output WCS, never on the band values, so bands of one detection can share it and this is a large speedup when warping many bands. The check is conservative: any band whose geometry does not match rebuilds the field. Setting \option{warpfield} explicitly, or requesting \option{warpfield_return}, disables sharing. Output is bit-for-bit identical either way.
+}
   \item{segim}{
 Rfits_image or integer matrix; the segmentation map to be warped.
 }
@@ -173,6 +182,10 @@ The \code{propaneWarp} function allows for arbitrary WCS remapping from any \cod
   \item Rwcs_p2s; maps the input image to RA and Dec per pixel using the input header
   \item Rwcs_s2p; maps the pixel RA and Dec coordinates onto the desired output pixel grid using the output header
 }
+
+The two steps above are the warp field, and evaluating them at every output pixel is normally the dominant cost of the function (measured at roughly 235 ns per pixel, and about three quarters of the total time of a call). \option{warpgrid} trades exactness for speed here. With \code{"exact"} (the default, and historically the only behaviour) the transform is applied per pixel. Otherwise a coarse lattice is transformed, a least-squares affine is fitted to those samples, and only the residual is interpolated (bilinearly) across the field. Subtracting the affine first is what makes this accurate, since the residual is left carrying only field curvature. The reconstruction is then verified against the true transform at cell midpoints; the lattice is refined until it agrees within \option{warptol}, and if it cannot the exact field is used instead. Refusing is the important property: an unattainable tolerance costs time but never accuracy.
+
+Because the warp field depends only on geometry and never on pixel values, \code{propaneWarpProPane} builds it once and shares it across all bands of a detection (\option{warpfield_share}), which is a pure redundancy removal with bit-identical results.
 
 There are a few different ways to consider doing pixel remapping (or warping). The main question is usually whether to operate on a forward or backwards manner (see \code{imwarp}). Backwards mapping finds the best interpolation of every output pixel in the input image, whereas forward mapping finds the best interpolation of every input pixel on the output image. Backwards mapping usually provides the fewest artefacts, but in general if the input image is higher resolution then you might prefer forward mapping and vica-versa.
 

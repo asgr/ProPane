@@ -149,6 +149,28 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// warpfield_interp
+NumericVector warpfield_interp(NumericVector Rx, NumericVector Ry, IntegerVector cxs, IntegerVector cys, double a0x, double ax_x, double ax_y, double a0y, double ay_x, double ay_y, int nx, int ny);
+RcppExport SEXP _ProPane_warpfield_interp(SEXP RxSEXP, SEXP RySEXP, SEXP cxsSEXP, SEXP cysSEXP, SEXP a0xSEXP, SEXP ax_xSEXP, SEXP ax_ySEXP, SEXP a0ySEXP, SEXP ay_xSEXP, SEXP ay_ySEXP, SEXP nxSEXP, SEXP nySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type Rx(RxSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type Ry(RySEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type cxs(cxsSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type cys(cysSEXP);
+    Rcpp::traits::input_parameter< double >::type a0x(a0xSEXP);
+    Rcpp::traits::input_parameter< double >::type ax_x(ax_xSEXP);
+    Rcpp::traits::input_parameter< double >::type ax_y(ax_ySEXP);
+    Rcpp::traits::input_parameter< double >::type a0y(a0ySEXP);
+    Rcpp::traits::input_parameter< double >::type ay_x(ay_xSEXP);
+    Rcpp::traits::input_parameter< double >::type ay_y(ay_ySEXP);
+    Rcpp::traits::input_parameter< int >::type nx(nxSEXP);
+    Rcpp::traits::input_parameter< int >::type ny(nySEXP);
+    rcpp_result_gen = Rcpp::wrap(warpfield_interp(Rx, Ry, cxs, cys, a0x, ax_x, ax_y, a0y, ay_x, ay_y, nx, ny));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_ProPane_dilate_cpp", (DL_FUNC) &_ProPane_dilate_cpp, 3},
@@ -160,6 +182,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_ProPane_stack_image", (DL_FUNC) &_ProPane_stack_image, 6},
     {"_ProPane_stack_exp", (DL_FUNC) &_ProPane_stack_exp, 3},
     {"_ProPane_stack_exp_mask", (DL_FUNC) &_ProPane_stack_exp_mask, 4},
+    {"_ProPane_warpfield_interp", (DL_FUNC) &_ProPane_warpfield_interp, 12},
     {NULL, NULL, 0}
 };
 

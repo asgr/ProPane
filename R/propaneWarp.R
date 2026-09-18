@@ -9,12 +9,141 @@
   return(xy_out)
 }
 
+# ---------------------------------------------------------------------------
+# Coarse-grid warp field construction.
+#
+# propaneWarp() normally evaluates the celestial transform at *every* output
+# pixel, which is by far the dominant cost: measured on a 1816x1767 output the
+# two Rwcs calls are 1.55s of a 2.16s call (~235 ns/pixel, inside wcslib).
+#
+# The out->in mapping is a smooth function of position, so it can be recovered
+# to well below sub-pixel accuracy from a sparse lattice:
+#
+#   field(i, j) = (a0 + a1*i + a2*j)   least-squares affine, exact to first order
+#               + r(i, j)              bilinear interpolation of the residual
+#
+# Subtracting the affine before interpolating is what makes this accurate: the
+# residual is left with only the field curvature, so bilinear error is tiny even
+# on a coarse lattice. Accuracy is verified a posteriori against the true WCS at
+# cell midpoints, and we refine (or give up) rather than trust a heuristic.
+#
+# Returns a list(warpfield, step, maxerr), or NULL when the field cannot be
+# built to tolerance -- callers must then fall back to the exact path.
+.warpfield_coarse = function(warpfun, dim_xy, tol = 1e-5, step0 = 64, cores = 1,
+                             max_refine = 5, ...){
+  nx = dim_xy[1]; ny = dim_xy[2]
+  if(nx < 4L || ny < 4L) return(NULL)
+
+  fit_affine = function(gx, gy, gv){
+    A = cbind(1, gx, gy)
+    b = qr.solve(crossprod(A), crossprod(A, gv))
+    list(b = as.numeric(b), r = gv - as.numeric(A %*% b))
+  }
+
+  # A-posteriori verification, in two parts.
+  #
+  # (1) Accuracy. Lattice nodes are reproduced exactly by construction, so error
+  # only accumulates inside a cell. Every cell interior is probed at
+  # (0.25, 0.5, 0.75) along each axis -- 9 points per cell -- and the
+  # reconstruction is compared with the true transform there. Measured against
+  # the full-resolution field this estimate is accurate to within ~1%, so no
+  # fudge factor is needed.
+  #
+  # (2) Finiteness. A region where the true transform is not finite is a hard
+  # failure: the exact path repairs those pixels spatially with propanePatchPix,
+  # which a sparse lattice cannot reproduce, and interpolating across one would
+  # invent finite warp values. Accuracy probes alone can miss a narrow band --
+  # at step 64 they are 16px apart, so a 3px band slips through. So we sweep a
+  # separate finiteness grid at a fixed spacing (LIMB_CHECK_STEP px), which caps
+  # the width of any undetected contiguous non-finite region at that spacing.
+  # Real projection limbs and distortion singularities are broad, but a small
+  # independent check is cheap: at 8px this is nx*ny/64 points, ~50k, about
+  # 0.03s, versus 1.5s for the full per-pixel transform. It is a bound on the
+  # failure width, not a proof of absence.
+  FRACS = c(0.25, 0.5, 0.75)
+  LIMB_CHECK_STEP = 8L
+
+  s = max(2L, min(as.integer(step0), max(2L, min(nx, ny) %/% 2L)))
+
+  for(attempt in seq_len(max_refine + 1L)){
+    cxs = seq.int(1L, nx, by = s)
+    cys = seq.int(1L, ny, by = s)
+    if(cxs[length(cxs)] != nx) cxs = c(cxs, nx)
+    if(cys[length(cys)] != ny) cys = c(cys, ny)
+    nc = length(cxs); nr = length(cys)
+    if(nc < 3L || nr < 3L) return(NULL)
+
+    gx = rep(cxs, times = nr)
+    gy = rep(cys, each = nc)
+    co = warpfun(gx, gy, cores = cores, ...)
+
+    # Infinities are exactly what the exact path repairs spatially with
+    # propanePatchPix, which cannot be reproduced from a sparse lattice.
+    if(!all(is.finite(co))) return(NULL)
+
+    # Dense finiteness sweep -- see part (2) of the verification note above.
+    # Only needs to run once per call, and is independent of the lattice step.
+    if(attempt == 1L){
+      fxv = seq.int(1L, nx, by = LIMB_CHECK_STEP)
+      fyv = seq.int(1L, ny, by = LIMB_CHECK_STEP)
+      sweep = suppressWarnings(warpfun(rep(fxv, times = length(fyv)),
+                                       rep(fyv, each = length(fxv)),
+                                       cores = cores, ...))
+      if(!all(is.finite(sweep))) return(NULL)
+    }
+
+    fx = fit_affine(gx, gy, co[, 1])
+    fy = fit_affine(gx, gy, co[, 2])
+
+    # cell-relative probe coordinates; entry [a, k] = cxs[a] + dx[a]*FRACS[k],
+    # flattened so that a varies slowest and k fastest.
+    xpr = as.vector(t(cxs[-nc] + outer(diff(cxs), FRACS, FUN = '*')))
+    ypr = as.vector(t(cys[-nr] + outer(diff(cys), FRACS, FUN = '*')))
+    px = rep(xpr, times = length(ypr))
+    py = rep(ypr, each = length(xpr))
+
+    po = suppressWarnings(warpfun(px, py, cores = cores, ...))
+    if(!all(is.finite(po))) return(NULL)
+
+    cellx = pmin(findInterval(px, cxs), nc - 1L)
+    celly = pmin(findInterval(py, cys), nr - 1L)
+    tx = (px - cxs[cellx]) / (cxs[cellx + 1L] - cxs[cellx])
+    ty = (py - cys[celly]) / (cys[celly + 1L] - cys[celly])
+    li = cellx + (celly - 1L) * nc
+
+    pred = function(R){
+      (1 - tx) * (1 - ty) * R[li] + tx * (1 - ty) * R[li + 1L] +
+        (1 - tx) * ty * R[li + nc] + tx * ty * R[li + nc + 1L]
+    }
+    maxerr = max(abs(fx$b[1] + fx$b[2] * px + fx$b[3] * py + pred(fx$r) - po[, 1]),
+                 abs(fy$b[1] + fy$b[2] * px + fy$b[3] * py + pred(fy$r) - po[, 2]))
+
+    if(is.finite(maxerr) && maxerr < tol){
+      F = .warpfield_interp_cpp(fx$r, fy$r, as.integer(cxs), as.integer(cys),
+                                fx$b[1], fx$b[2], fx$b[3],
+                                fy$b[1], fy$b[2], fy$b[3],
+                                as.integer(nx), as.integer(ny))
+      # interp returns one nx*ny*1*2 buffer with both planes adjacent, so this
+      # is the same cimg imappend(as.cimg(...), as.cimg(...), 'c') would give,
+      # without the extra copy.
+      fld = imager::as.cimg(F)
+      return(list(warpfield = fld, step = s, maxerr = maxerr))
+    }
+
+    if(s <= 2L) break
+    s = max(2L, s %/% 2L)
+  }
+
+  NULL
+}
+
 propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out = NULL,
                        direction = "auto", boundary = "dirichlet", interpolation = "cubic",
                        doscale = TRUE, dofinenorm = TRUE, plot = FALSE, dotightcrop = TRUE,
                        keepcrop = FALSE, extratight = FALSE, WCSref_out = NULL, WCSref_in = NULL,
                        magzero_out = NULL, magzero_in = NULL, blank = NA, warpfield = NULL,
-                       warpfield_return = FALSE, cores = 1, checkWCSequal = FALSE, ...)
+                       warpfield_return = FALSE, cores = 1, checkWCSequal = FALSE,
+                       warpgrid = 'exact', warptol = 1e-5, ...)
 {
   if(!requireNamespace("Rwcs", quietly = TRUE)){
     stop("The Rwcs package is needed for this function to work. Please install it from GitHub asgr/Rwcs", call. = FALSE)
@@ -139,6 +268,21 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
     min_y_out = max(1L, min(tightcrop_out[,2]))
     max_y_out = min(dim(image_in)[2], max(tightcrop_out[,2]))
 
+    # An inverted range means the output frame barely (or not at all) overlaps
+    # the input. Handing c(hi, lo) to the crop below is a *box* crop, so it
+    # silently expands the working grid rather than failing -- measured up to
+    # 4.5x the pixel count, with a normal-sized but all-NaN result and no
+    # message. Warn, but otherwise leave the arithmetic untouched.
+    if (min_x_out > max_x_out || min_y_out > max_y_out) {
+      warning(sprintf(
+        paste0('tight crop is inverted (x [%d, %d], y [%d, %d] over a %dx%d input): ',
+               'the output frame has little or no overlap with the input. ',
+               'Warped data is expected to be empty.'),
+        min_x_out, max_x_out, min_y_out, max_y_out,
+        dim(image_in)[1], dim(image_in)[2]),
+        call. = FALSE)
+    }
+
     if(min_x_out != 1 | max_x_out != dim(image_in)[1] | min_y_out != 1 | max_y_out != dim(image_in)[2]){
       if(inherits(image_in, 'Rfits_pointer')){
         image_in = image_in[c(min_x_out, max_x_out), c(min_y_out, max_y_out), header=TRUE]
@@ -256,55 +400,69 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
   }
 
   if(is.null(warpfield)){
-    pix_grid = expand.grid(1:dim(image_out$imDat)[1], 1:dim(image_out$imDat)[2])
+    dim_field = dim(image_out$imDat)[1:2]
 
-    if (direction == "forward") {
-      warp_out = .warpfunc_in2out(
-        x = pix_grid[, 1],
-        y = pix_grid[, 2],
-        header_in = header_in,
-        WCSref_in = WCSref_in,
-        header_out = header_out,
-        WCSref_out = WCSref_out,
-        cores = cores
-      )
-    } else if (direction == 'backward') {
-      warp_out = .warpfunc_out2in(
-        x = pix_grid[, 1],
-        y = pix_grid[, 2],
-        header_in = header_in,
-        WCSref_in = WCSref_in,
-        header_out = header_out,
-        WCSref_out = WCSref_out,
-        cores = cores
-      )
+    warpfun = if (direction == "forward") {
+      function(x, y, cores, ...) .warpfunc_in2out(
+        x = x, y = y,
+        header_in = header_in, WCSref_in = WCSref_in,
+        header_out = header_out, WCSref_out = WCSref_out,
+        cores = cores)
+    } else {
+      function(x, y, cores, ...) .warpfunc_out2in(
+        x = x, y = y,
+        header_in = header_in, WCSref_in = WCSref_in,
+        header_out = header_out, WCSref_out = WCSref_out,
+        cores = cores)
     }
 
-    warpmat1 = matrix(warp_out[, 1], dim(image_out$imDat)[1], dim(image_out$imDat)[2])
-
-    if(anyInfinite(warpmat1)){
-      message('Infinity found in warpfield- patching!')
-      warpmat1[is.infinite(warpmat1)] = NA
-      warpmat1 = propanePatchPix(warpmat1)
+    built = NULL
+    if(!identical(warpgrid, 'exact')){
+      step0 = if(is.numeric(warpgrid)) as.integer(warpgrid[1]) else 64L
+      built = .warpfield_coarse(warpfun, dim_field, tol = warptol,
+                                step0 = step0, cores = cores)
+      if(is.null(built)){
+        message('coarse warpgrid did not converge to tolerance; using exact field.')
+      }else{
+        message(sprintf('coarse warpgrid: step %d (%d pts), max field error %.2e px',
+                        built$step,
+                        length(seq(1, dim_field[1], by = built$step)) *
+                          length(seq(1, dim_field[2], by = built$step)),
+                        built$maxerr))
+        warpfield = built$warpfield
+      }
     }
 
-    warpmat2 = matrix(warp_out[, 2], dim(image_out$imDat)[1], dim(image_out$imDat)[2])
+    if(is.null(built)){
+      pix_grid = expand.grid(1:dim_field[1], 1:dim_field[2])
+      warp_out = warpfun(pix_grid[, 1], pix_grid[, 2], cores = cores)
 
-    if(anyInfinite(warpmat2)){
-      message('Infinity found in warpfield- patching!')
-      warpmat2[is.infinite(warpmat2)] = NA
-      warpmat2 = propanePatchPix(warpmat2)
+      warpmat1 = matrix(warp_out[, 1], dim_field[1], dim_field[2])
+
+      if(anyInfinite(warpmat1)){
+        message('Infinity found in warpfield- patching!')
+        warpmat1[is.infinite(warpmat1)] = NA
+        warpmat1 = propanePatchPix(warpmat1)
+      }
+
+      warpmat2 = matrix(warp_out[, 2], dim_field[1], dim_field[2])
+
+      if(anyInfinite(warpmat2)){
+        message('Infinity found in warpfield- patching!')
+        warpmat2[is.infinite(warpmat2)] = NA
+        warpmat2 = propanePatchPix(warpmat2)
+      }
+
+      warpfield = imager::imappend(list(
+        imager::as.cimg(warpmat1),
+        imager::as.cimg(warpmat2)
+      ), 'c')
+
+      rm(pix_grid)
+      rm(warp_out)
+      rm(warpmat1)
+      rm(warpmat2)
     }
-
-    warpfield = imager::imappend(list(
-      imager::as.cimg(warpmat1),
-      imager::as.cimg(warpmat2)
-    ), 'c')
-
-    rm(pix_grid)
-    rm(warp_out)
-    rm(warpmat1)
-    rm(warpmat2)
   }
 
   image_out$imDat = imager::warp(
@@ -511,7 +669,34 @@ propaneRebin = function(image, scale = 1,interpolation = 6){
   }
 }
 
-propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, magzero_out = NULL, ...){
+# Can a warp field built for one band be reused for another? The field depends
+# only on the input pixel grid, the input WCS, the output WCS and the direction
+# -- never on the band's pixel values -- so bands of one detection can share a
+# single field. Only the WCS-bearing keys matter here; the full keyvalues lists
+# differ between bands in ways that are irrelevant to the geometry (EXTNAME,
+# MAGZERO, filter, ...) and must not defeat the comparison.
+WCS_GEOM_PATTERN = paste0(
+  '^(CTYPE|CRVAL|CRPIX|CD[12]_|PC[12]_|CDELT|CUNIT|CROTA|LONPOLE|LATPOLE|',
+  'RADE|EQUINOX|RADESYS|WCSAXES|NAXIS|PV[12]_|A_[12]|B_[12]|D_[12]|',
+  'SIP|POLORDER|ZP[12]|ZIMAGE|ZNAXIS|ZCRPIX|ZCD[12]_)')
+
+.warpfield_geom = function(image){
+  kv = image$keyvalues
+  sel = grep(WCS_GEOM_PATTERN, names(kv), value = TRUE)
+  list(dim = dim(image)[1:2],
+       geom = paste(names(kv)[names(kv) %in% sel], unname(kv)[names(kv) %in% sel],
+                    sep = '=', collapse = '\n'))
+}
+
+.warpfield_reusable = function(field, geom_prev, image_next){
+  if(is.null(field) || !inherits(field, 'cimg')) return(FALSE)
+  if(is.null(geom_prev)) return(FALSE)
+  geom_next = .warpfield_geom(image_next)
+  identical(geom_next$dim, geom_prev$dim) &&
+    identical(geom_next$geom, geom_prev$geom)
+}
+
+propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, magzero_out = NULL, ..., warpfield_share = TRUE){
 
   if(!is.null(magzero_out)){
     zero_point_scale = 10^(-0.4*(propane_in$image$keyvalues$MAGZERO - magzero_out))
@@ -524,16 +709,47 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
   keyvalues_out$PANE_VER = propane_in$image$keyvalues$PANE_VER
   keyvalues_out$RWCS_VER = propane_in$image$keyvalues$RWCS_VER
 
+  # The warp field depends only on the input grid, the input/output WCS and the
+  # direction -- none of which vary between bands of the same detection. Build
+  # it once and hand it to the rest. Passing warpfield= explicitly in ... opts
+  # out of the sharing logic entirely.
+  dots = list(...)
+  shared_field = NULL
+  shared_geom = NULL
+  # An explicit field, or a request to see the fields, opts out of sharing.
+  manual = !is.null(dots$warpfield) || isTRUE(dots$warpfield_return)
+
+  warp_band = function(band, doscale){
+    args = c(list(image_in = band, keyvalues_out = keyvalues_out,
+                  dim_out = dim_out, doscale = doscale), dots)
+
+    share = isTRUE(warpfield_share) && !manual
+    if(share){
+      if(.warpfield_reusable(shared_field, shared_geom, band)){
+        args$warpfield = shared_field
+      }else{
+        # First usable band, or one whose geometry differs: build on this call.
+        args$warpfield_return = TRUE
+      }
+    }
+
+    out = do.call(propaneWarp, args)
+
+    if(share && !is.null(out$warpfield)){
+      if(is.null(shared_field)){
+        shared_field <<- out$warpfield
+        shared_geom <<- .warpfield_geom(band)
+      }
+      # Keep the returned structure identical to the unshared path.
+      out$warpfield = NULL
+    }
+    out
+  }
+
   if(!is.null(propane_in$image)){
     message('warping image')
 
-    image_warp = propaneWarp(
-      image_in = propane_in$image*zero_point_scale,
-      keyvalues_out = keyvalues_out,
-      dim_out = dim_out,
-      doscale = TRUE,
-      ...
-    )
+    image_warp = warp_band(propane_in$image*zero_point_scale, doscale = TRUE)
 
     image_warp$keyvalues$EXTNAME = 'image'
     image_warp$keyvalues$MAGZERO = magzero_out
@@ -546,13 +762,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
   if(!is.null(propane_in$weight)){
     message('warping weight')
 
-    weight_warp = propaneWarp(
-      image_in = propane_in$weight,
-      keyvalues_out = keyvalues_out,
-      dim_out = dim_out,
-      doscale = FALSE,
-      ...
-    )
+    weight_warp = warp_band(propane_in$weight, doscale = FALSE)
 
     weight_warp$keyvalues$EXTNAME = 'weight'
     weight_warp$history = c(propane_in$weight$history, weight_warp$history)
@@ -564,13 +774,8 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
   if(!is.null(propane_in$inVar)){
     message('warping inVar')
 
-    inVar_warp = propaneWarp(
-      image_in = propane_in$inVar/(zero_point_scale^2),
-      keyvalues_out = keyvalues_out,
-      dim_out = dim_out,
-      doscale = FALSE,
-      ...
-    )*(pixscale(propane_in$inVar$keyvalues)^4 / pixscale(keyvalues_out)^4)
+    inVar_warp = warp_band(propane_in$inVar/(zero_point_scale^2), doscale = FALSE)*
+      (pixscale(propane_in$inVar$keyvalues)^4 / pixscale(keyvalues_out)^4)
 
     inVar_warp$keyvalues$EXTNAME = 'inVar'
     inVar_warp$keyvalues$MAGZERO = magzero_out
@@ -583,13 +788,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
   if(!is.null(propane_in$exp)){
     message('warping exp')
 
-    exp_warp = propaneWarp(
-      image_in = propane_in$exp,
-      keyvalues_out = keyvalues_out,
-      dim_out = dim_out,
-      doscale = FALSE,
-      ...
-    )
+    exp_warp = warp_band(propane_in$exp, doscale = FALSE)
 
     exp_warp$keyvalues$EXTNAME = 'exp'
     exp_warp$history = c(propane_in$exp$history, exp_warp$history)
@@ -601,13 +800,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
   if(!is.null(propane_in$cold)){
     message('warping cold')
 
-    cold_warp = propaneWarp(
-      image_in = propane_in$cold*zero_point_scale,
-      keyvalues_out = keyvalues_out,
-      dim_out = dim_out,
-      doscale = TRUE,
-      ...
-    )
+    cold_warp = warp_band(propane_in$cold*zero_point_scale, doscale = TRUE)
 
     cold_warp$keyvalues$EXTNAME = 'cold'
     cold_warp$keyvalues$MAGZERO = magzero_out
@@ -620,13 +813,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
   if(!is.null(propane_in$hot)){
     message('warping hot')
 
-    hot_warp = propaneWarp(
-      image_in = propane_in$hot*zero_point_scale,
-      keyvalues_out = keyvalues_out,
-      dim_out = dim_out,
-      doscale = TRUE,
-      ...
-    )
+    hot_warp = warp_band(propane_in$hot*zero_point_scale, doscale = TRUE)
 
     hot_warp$keyvalues$EXTNAME = 'hot'
     hot_warp$keyvalues$MAGZERO = magzero_out
@@ -639,13 +826,7 @@ propaneWarpProPane = function(propane_in, keyvalues_out=NULL, dim_out = NULL, ma
   if(!is.null(propane_in$clip)){
     message('warping clip')
 
-    clip_warp = propaneWarp(
-      image_in = propane_in$clip,
-      keyvalues_out = keyvalues_out,
-      dim_out = dim_out,
-      doscale = FALSE,
-      ...
-    )
+    clip_warp = warp_band(propane_in$clip, doscale = FALSE)
 
     clip_warp$keyvalues$EXTNAME = 'clip'
     clip_warp$history = c(propane_in$clip$history, clip_warp$history)

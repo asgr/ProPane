@@ -37,3 +37,7 @@
     .Call(`_ProPane_stack_exp_mask`, post_exp, pre_exp, offset, post_mask)
 }
 
+.warpfield_interp_cpp <- function(Rx, Ry, cxs, cys, a0x, ax_x, ax_y, a0y, ay_x, ay_y, nx, ny) {
+    .Call(`_ProPane_warpfield_interp`, Rx, Ry, cxs, cys, a0x, ax_x, ax_y, a0y, ay_x, ay_y, nx, ny)
+}
+
