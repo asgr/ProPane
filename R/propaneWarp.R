@@ -497,11 +497,7 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
         if(is.null(built)){
           message('approx warpgrid did not converge to tolerance; using exact field.')
         }else{
-          message(sprintf('approx warpgrid: step %d (%d pts), max field error %.2e px',
-                          built$step,
-                          length(seq(1, dim_field[1], by = built$step)) *
-                            length(seq(1, dim_field[2], by = built$step)),
-                          built$maxerr))
+          #message(sprintf('approx warpgrid: step %d (%d pts), max field error %.2e px', built$step, length(seq(1, dim_field[1], by = built$step)) * length(seq(1, dim_field[2], by = built$step)), built$maxerr))
           warpfield = built$warpfield
         }
       }
