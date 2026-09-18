@@ -1,0 +1,16 @@
+*.o
+*.so
+*.a
+*.dylib
+
+*dcf
+
+.DS_Store
+
+ProPane.Rproj
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.positai
+.posit/assistant

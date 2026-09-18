@@ -1,0 +1,12 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+README.md
+vignettes/rsconnect
+rsconnect
+.github
+^\.positai$
+^\.claude$
+^\.posit/assistant$
+^bench$
+^\.history$
+^\.DS_Store$

@@ -244,6 +244,8 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
     stop('Missing NAXIS1 / NAXIS2 in header keyvalues! Specify dim_out.')
   }
 
+  degenerate_crop = FALSE
+
   if(dotightcrop){
     suppressMessages({
       BL_out = Rwcs_p2s(0, 0, header=header_out, pixcen='R', WCSref=WCSref_out)
@@ -268,22 +270,27 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
     min_y_out = max(1L, min(tightcrop_out[,2]))
     max_y_out = min(dim(image_in)[2], max(tightcrop_out[,2]))
 
-    # An inverted range means the output frame barely (or not at all) overlaps
-    # the input. Handing c(hi, lo) to the crop below is a *box* crop, so it
-    # silently expands the working grid rather than failing -- measured up to
-    # 4.5x the pixel count, with a normal-sized but all-NaN result and no
-    # message. Warn, but otherwise leave the arithmetic untouched.
-    if (min_x_out > max_x_out || min_y_out > max_y_out) {
-      warning(sprintf(
-        paste0('tight crop is inverted (x [%d, %d], y [%d, %d] over a %dx%d input): ',
-               'the output frame has little or no overlap with the input. ',
-               'Warped data is expected to be empty.'),
-        min_x_out, max_x_out, min_y_out, max_y_out,
-        dim(image_in)[1], dim(image_in)[2]),
-        call. = FALSE)
-    }
+    # An inverted range means the projected output frame has no pixels in
+    # common with the input. Handing c(hi, lo) to the crop below is a *box*
+    # crop, so it silently EXPANDS the working grid rather than failing: an
+    # 1816x1836 input warped against a WCS shifted by 10000 px built an
+    # 8183x1768 field (14.5M px, ~9.7s, mostly inside wcslib non-convergence)
+    # and returned a normal-looking but all-NaN image. There is no data to
+    # warp in that case, so we skip the crop, the field, and the warp.
+    degenerate_crop = (min_x_out > max_x_out || min_y_out > max_y_out) &&
+      # An explicitly supplied field is the caller overriding the geometry, so
+      # respect it and go through the normal path.
+      is.null(warpfield)
 
-    if(min_x_out != 1 | max_x_out != dim(image_in)[1] | min_y_out != 1 | max_y_out != dim(image_in)[2]){
+    if(degenerate_crop){
+      message(sprintf(
+        paste0('tight crop is empty (x [%d, %d], y [%d, %d] over a %dx%d input): ',
+               'the output frame does not overlap the input. ',
+               'Returning %d of %d pixels as blank without warping.'),
+        min_x_out, max_x_out, min_y_out, max_y_out,
+        dim(image_in)[1], dim(image_in)[2], prod(dim_out), prod(dim_out)))
+    }
+    else if(min_x_out != 1 | max_x_out != dim(image_in)[1] | min_y_out != 1 | max_y_out != dim(image_in)[2]){
       if(inherits(image_in, 'Rfits_pointer')){
         image_in = image_in[c(min_x_out, max_x_out), c(min_y_out, max_y_out), header=TRUE]
       }else{
@@ -298,55 +305,78 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
       }
     }
 
-    suppressMessages({
-      BL_in = Rwcs_p2s(0, 0,header=header_in, pixcen='R', WCSref=WCSref_in)
-      TL_in = Rwcs_p2s(0, dim(image_in)[2], header=header_in, pixcen='R', WCSref=WCSref_in)
-      TR_in = Rwcs_p2s(dim(image_in)[1], dim(image_in)[2], header=header_in, pixcen='R', WCSref=WCSref_in)
-      BR_in = Rwcs_p2s(dim(image_in)[1], 0, header=header_in, pixcen='R', WCSref=WCSref_in)
-    })
+    if(degenerate_crop){
+      # No overlap, so nothing can be warped. Keep the full requested output
+      # frame (no expansion, no CRPIX shift) and fill it with `blank`. The
+      # input is deliberately left alone: it may still be a lazy Rfits_pointer
+      # on disk, and we never need to read it.
+      min_x_in = 1L
+      max_x_in = dim_out[1]
+      min_y_in = 1L
+      max_y_in = dim_out[2]
 
-    corners_in = rbind(BL_in, TL_in, TR_in, BR_in)
-
-    suppressMessages({
-      tightcrop_in = ceiling(Rwcs_s2p(corners_in, header=header_out, pixcen='R', WCSref=WCSref_out))
-    })
-
-    if(is.na(tightcrop_in[1,1])){tightcrop_in[1,] = c(0,0)}
-    if(is.na(tightcrop_in[2,1])){tightcrop_in[2,] = c(0,dim_out[2])}
-    if(is.na(tightcrop_in[3,1])){tightcrop_in[3,] = c(dim_out[1],dim_out[2])}
-    if(is.na(tightcrop_in[4,1])){tightcrop_in[4,] = c(dim_out[1],0)}
-
-    min_x_in = max(1L, min(tightcrop_in[,1]))
-    max_x_in = max(min_x_in + dim(image_in)[1] - 1L, range(tightcrop_in[,1])[2])
-    min_y_in = max(1L, min(tightcrop_in[,2]))
-    max_y_in = max(min_y_in + dim(image_in)[2] - 1L, range(tightcrop_in[,2])[2])
-
-    # new code should be more efficient!
-
-    if(isTRUE(keyvalues_out$ZIMAGE)){
-      keyvalues_out$ZNAXIS1 = max_x_in - min_x_in + 1L
-      keyvalues_out$ZNAXIS2 = max_y_in - min_y_in + 1L
+      image_out = list(
+        imDat = matrix(as.double(blank), dim_out[1], dim_out[2]),
+        keyvalues = keyvalues_out,
+        hdr = Rfits_keyvalues_to_hdr(keyvalues_out),
+        header = Rfits_keyvalues_to_header(keyvalues_out),
+        raw = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_out)),
+        keynames = names(keyvalues_out),
+        keycomments = as.list(rep('', length(keyvalues_out)))
+      )
+      names(image_out$keycomments) = image_out$keynames
+      class(image_out) = c('Rfits_image', class(image_out))
     }else{
-      keyvalues_out$NAXIS1 = max_x_in - min_x_in + 1L
-      keyvalues_out$NAXIS2 = max_y_in - min_y_in + 1L
+      suppressMessages({
+        BL_in = Rwcs_p2s(0, 0,header=header_in, pixcen='R', WCSref=WCSref_in)
+        TL_in = Rwcs_p2s(0, dim(image_in)[2], header=header_in, pixcen='R', WCSref=WCSref_in)
+        TR_in = Rwcs_p2s(dim(image_in)[1], dim(image_in)[2], header=header_in, pixcen='R', WCSref=WCSref_in)
+        BR_in = Rwcs_p2s(dim(image_in)[1], 0, header=header_in, pixcen='R', WCSref=WCSref_in)
+      })
+
+      corners_in = rbind(BL_in, TL_in, TR_in, BR_in)
+
+      suppressMessages({
+        tightcrop_in = ceiling(Rwcs_s2p(corners_in, header=header_out, pixcen='R', WCSref=WCSref_out))
+      })
+
+      if(is.na(tightcrop_in[1,1])){tightcrop_in[1,] = c(0,0)}
+      if(is.na(tightcrop_in[2,1])){tightcrop_in[2,] = c(0,dim_out[2])}
+      if(is.na(tightcrop_in[3,1])){tightcrop_in[3,] = c(dim_out[1],dim_out[2])}
+      if(is.na(tightcrop_in[4,1])){tightcrop_in[4,] = c(dim_out[1],0)}
+
+      min_x_in = max(1L, min(tightcrop_in[,1]))
+      max_x_in = max(min_x_in + dim(image_in)[1] - 1L, range(tightcrop_in[,1])[2])
+      min_y_in = max(1L, min(tightcrop_in[,2]))
+      max_y_in = max(min_y_in + dim(image_in)[2] - 1L, range(tightcrop_in[,2])[2])
+
+      # new code should be more efficient!
+
+      if(isTRUE(keyvalues_out$ZIMAGE)){
+        keyvalues_out$ZNAXIS1 = max_x_in - min_x_in + 1L
+        keyvalues_out$ZNAXIS2 = max_y_in - min_y_in + 1L
+      }else{
+        keyvalues_out$NAXIS1 = max_x_in - min_x_in + 1L
+        keyvalues_out$NAXIS2 = max_y_in - min_y_in + 1L
+      }
+
+      keyvalues_out$CRPIX1 = keyvalues_out$CRPIX1 - min_x_in + 1L
+      keyvalues_out$CRPIX2 = keyvalues_out$CRPIX2 - min_y_in + 1L
+
+      header_out = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_out))
+
+      image_out = list(
+        imDat = matrix(c(blank,image_in$imDat[0]), max_x_in - min_x_in + 1L, max_y_in - min_y_in + 1L),
+        keyvalues = keyvalues_out,
+        hdr = Rfits_keyvalues_to_hdr(keyvalues_out),
+        header = Rfits_keyvalues_to_header(keyvalues_out),
+        raw = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_out)),
+        keynames = names(keyvalues_out),
+        keycomments = as.list(rep('', length(keyvalues_out)))
+      )
+      names(image_out$keycomments) = image_out$keynames
+      class(image_out) = c('Rfits_image', class(image_out))
     }
-
-    keyvalues_out$CRPIX1 = keyvalues_out$CRPIX1 - min_x_in + 1L
-    keyvalues_out$CRPIX2 = keyvalues_out$CRPIX2 - min_y_in + 1L
-
-    header_out = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_out))
-
-    image_out = list(
-      imDat = matrix(c(blank,image_in$imDat[0]), max_x_in - min_x_in + 1L, max_y_in - min_y_in + 1L),
-      keyvalues = keyvalues_out,
-      hdr = Rfits_keyvalues_to_hdr(keyvalues_out),
-      header = Rfits_keyvalues_to_header(keyvalues_out),
-      raw = Rfits_header_to_raw(Rfits_keyvalues_to_header(keyvalues_out)),
-      keynames = names(keyvalues_out),
-      keycomments = as.list(rep('', length(keyvalues_out)))
-    )
-    names(image_out$keycomments) = image_out$keynames
-    class(image_out) = c('Rfits_image', class(image_out))
   }else{
     if(inherits(image_in, 'Rfits_pointer')){
       image_in = image_in[,]
@@ -370,15 +400,22 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
     max_y_in = dim_out[2]
   }
 
-  dim_min_x_in = min(dim(image_in)[1], dim(image_out$imDat)[1])
-  dim_min_y_in = min(dim(image_in)[2], dim(image_out$imDat)[2])
+  if(degenerate_crop){
+    # The output is already the full `blank` frame. Paste the input over the
+    # origin would re-introduce un-warped data, and the warp itself has
+    # nothing to sample, so the whole resampling block is skipped.
+    image_in = NULL
+  }else{
+    dim_min_x_in = min(dim(image_in)[1], dim(image_out$imDat)[1])
+    dim_min_y_in = min(dim(image_in)[2], dim(image_out$imDat)[2])
 
-  if(anyInfinite(image_in$imDat)){
-    image_in$imDat[is.infinite(image_in$imDat)] = NA
+    if(anyInfinite(image_in$imDat)){
+      image_in$imDat[is.infinite(image_in$imDat)] = NA
+    }
+
+    image_out$imDat[1:dim_min_x_in, 1:dim_min_y_in] = image_in$imDat[1:dim_min_x_in, 1:dim_min_y_in]
+    rm(image_in)
   }
-
-  image_out$imDat[1:dim_min_x_in, 1:dim_min_y_in] = image_in$imDat[1:dim_min_x_in, 1:dim_min_y_in]
-  rm(image_in)
 
   if(!is.null(magzero_in) & !is.null(magzero_out)){
     image_out$imDat = image_out$imDat*10^(-0.4*(magzero_in - magzero_out))
@@ -399,97 +436,78 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
     }
   }
 
-  if(is.null(warpfield)){
-    dim_field = dim(image_out$imDat)[1:2]
+  if(!degenerate_crop){
+    if(is.null(warpfield)){
+      dim_field = dim(image_out$imDat)[1:2]
 
-    warpfun = if (direction == "forward") {
-      function(x, y, cores, ...) .warpfunc_in2out(
-        x = x, y = y,
-        header_in = header_in, WCSref_in = WCSref_in,
-        header_out = header_out, WCSref_out = WCSref_out,
-        cores = cores)
-    } else {
-      function(x, y, cores, ...) .warpfunc_out2in(
-        x = x, y = y,
-        header_in = header_in, WCSref_in = WCSref_in,
-        header_out = header_out, WCSref_out = WCSref_out,
-        cores = cores)
-    }
+      warpfun = if (direction == "forward") {
+        function(x, y, cores, ...) .warpfunc_in2out(
+          x = x, y = y,
+          header_in = header_in, WCSref_in = WCSref_in,
+          header_out = header_out, WCSref_out = WCSref_out,
+          cores = cores)
+      } else {
+        function(x, y, cores, ...) .warpfunc_out2in(
+          x = x, y = y,
+          header_in = header_in, WCSref_in = WCSref_in,
+          header_out = header_out, WCSref_out = WCSref_out,
+          cores = cores)
+      }
 
-    built = NULL
-    if(!identical(warpgrid, 'exact')){
-      step0 = if(is.numeric(warpgrid)) as.integer(warpgrid[1]) else 64L
-      built = .warpfield_coarse(warpfun, dim_field, tol = warptol,
-                                step0 = step0, cores = cores)
+      built = NULL
+      if(!identical(warpgrid, 'exact')){
+        step0 = if(is.numeric(warpgrid)) as.integer(warpgrid[1]) else 64L
+        built = .warpfield_coarse(warpfun, dim_field, tol = warptol,
+                                  step0 = step0, cores = cores)
+        if(is.null(built)){
+          message('coarse warpgrid did not converge to tolerance; using exact field.')
+        }else{
+          message(sprintf('coarse warpgrid: step %d (%d pts), max field error %.2e px',
+                          built$step,
+                          length(seq(1, dim_field[1], by = built$step)) *
+                            length(seq(1, dim_field[2], by = built$step)),
+                          built$maxerr))
+          warpfield = built$warpfield
+        }
+      }
+
       if(is.null(built)){
-        message('coarse warpgrid did not converge to tolerance; using exact field.')
-      }else{
-        message(sprintf('coarse warpgrid: step %d (%d pts), max field error %.2e px',
-                        built$step,
-                        length(seq(1, dim_field[1], by = built$step)) *
-                          length(seq(1, dim_field[2], by = built$step)),
-                        built$maxerr))
-        warpfield = built$warpfield
+        pix_grid = expand.grid(1:dim_field[1], 1:dim_field[2])
+        warp_out = warpfun(pix_grid[, 1], pix_grid[, 2], cores = cores)
+
+        warpmat1 = matrix(warp_out[, 1], dim_field[1], dim_field[2])
+
+        if(anyInfinite(warpmat1)){
+          message('Infinity found in warpfield- patching!')
+          warpmat1[is.infinite(warpmat1)] = NA
+          warpmat1 = propanePatchPix(warpmat1)
+        }
+
+        warpmat2 = matrix(warp_out[, 2], dim_field[1], dim_field[2])
+
+        if(anyInfinite(warpmat2)){
+          message('Infinity found in warpfield- patching!')
+          warpmat2[is.infinite(warpmat2)] = NA
+          warpmat2 = propanePatchPix(warpmat2)
+        }
+
+        warpfield = imager::imappend(list(
+          imager::as.cimg(warpmat1),
+          imager::as.cimg(warpmat2)
+        ), 'c')
+
+        rm(pix_grid)
+        rm(warp_out)
+        rm(warpmat1)
+        rm(warpmat2)
       }
     }
 
-    if(is.null(built)){
-      pix_grid = expand.grid(1:dim_field[1], 1:dim_field[2])
-      warp_out = warpfun(pix_grid[, 1], pix_grid[, 2], cores = cores)
-
-      warpmat1 = matrix(warp_out[, 1], dim_field[1], dim_field[2])
-
-      if(anyInfinite(warpmat1)){
-        message('Infinity found in warpfield- patching!')
-        warpmat1[is.infinite(warpmat1)] = NA
-        warpmat1 = propanePatchPix(warpmat1)
-      }
-
-      warpmat2 = matrix(warp_out[, 2], dim_field[1], dim_field[2])
-
-      if(anyInfinite(warpmat2)){
-        message('Infinity found in warpfield- patching!')
-        warpmat2[is.infinite(warpmat2)] = NA
-        warpmat2 = propanePatchPix(warpmat2)
-      }
-
-      warpfield = imager::imappend(list(
-        imager::as.cimg(warpmat1),
-        imager::as.cimg(warpmat2)
-      ), 'c')
-
-      rm(pix_grid)
-      rm(warp_out)
-      rm(warpmat1)
-      rm(warpmat2)
-    }
-  }
-
-  image_out$imDat = imager::warp(
-    im = imager::as.cimg(image_out$imDat),
-    warpfield = warpfield,
-    mode = switch(direction, backward = 0L, forward =
-                    2L),
-    interpolation = switch(
-      interpolation,
-      nearest = 0L,
-      linear = 1L,
-      cubic = 2L
-    ),
-    boundary_conditions = switch(
-      boundary,
-      dirichlet = 0L,
-      neumann = 1L,
-      periodic = 2L
-    )
-  )
-
-  if (dofinenorm) {
-    norm = matrix(1, dim(image_out$imDat)[1], dim(image_out$imDat)[2])
-    norm = imager::warp(
-      im = imager::as.cimg(norm),
+    image_out$imDat = imager::warp(
+      im = imager::as.cimg(image_out$imDat),
       warpfield = warpfield,
-      mode = switch(direction, backward = 0L, forward = 2L),
+      mode = switch(direction, backward = 0L, forward =
+                      2L),
       interpolation = switch(
         interpolation,
         nearest = 0L,
@@ -504,15 +522,36 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
       )
     )
 
-    image_out$imDat = image_out$imDat / norm
-    rm(norm)
-  }
+    if (dofinenorm) {
+      norm = matrix(1, dim(image_out$imDat)[1], dim(image_out$imDat)[2])
+      norm = imager::warp(
+        im = imager::as.cimg(norm),
+        warpfield = warpfield,
+        mode = switch(direction, backward = 0L, forward = 2L),
+        interpolation = switch(
+          interpolation,
+          nearest = 0L,
+          linear = 1L,
+          cubic = 2L
+        ),
+        boundary_conditions = switch(
+          boundary,
+          dirichlet = 0L,
+          neumann = 1L,
+          periodic = 2L
+        )
+      )
 
-  if (doscale) {
-    image_out$imDat = image_out$imDat * (pixscale_out / pixscale_in) ^ 2
-  }
+      image_out$imDat = image_out$imDat / norm
+      rm(norm)
+    }
 
-  image_out$imDat = as.matrix(image_out$imDat)
+    if (doscale) {
+      image_out$imDat = image_out$imDat * (pixscale_out / pixscale_in) ^ 2
+    }
+
+    image_out$imDat = as.matrix(image_out$imDat)
+  }
 
   if(dotightcrop==FALSE | keepcrop==FALSE){
     image_out = image_out[c(1L - (min_x_in - 1L), dim_out[1] - (min_x_in - 1L)),c(1L - (min_y_in - 1L), dim_out[2] - (min_y_in - 1L)), box=1] #box=1 just in case we have a single pixel left
@@ -553,7 +592,7 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
       max_y_in = dim_out[2]
     }
 
-    if(extratight){
+    if(extratight && !degenerate_crop){
       final_pix = which(!is.na(image_out$imDat), arr.ind = TRUE)
       crop_x_lo = min(final_pix[,1])
       crop_x_hi = max(final_pix[,1])

@@ -1,5 +1,20 @@
 # ProPane 1.10.2
 
+## Correctness
+
+- When the requested output frame does not overlap the input, `propaneWarp()`
+  now returns the full requested frame filled with `blank` and says so, instead
+  of warping. The tight-crop range for a non-overlapping frame is inverted
+  (`x [9998, 1816]` over an 1816-wide input), and that pair was being passed to
+  a *box* crop, which read it as a width and silently expanded the working grid:
+  a shift of 10000 px in `CRPIX1` built an 8183x1768 = 14.5M pixel warp field
+  (9.7s, much of it inside wcslib non-convergence) against a 3.2M pixel
+  reference, then returned a normal-looking block of NaN. Note this changes the
+  output of such calls: it is now `blank` rather than NaN, which also means
+  `blank` is finally honoured (it was previously overwritten by the warp), and
+  the returned header keeps the requested `CRPIX` and a full-frame crop rather
+  than inheriting the expansion. A warp with any overlap is unaffected.
+
 ## Speed
 
 `propaneWarp()` is substantially faster. Both changes are opt-in or bit-identical;

@@ -140,48 +140,84 @@ test_that("a supplied warpfield reproduces the internally built one", {
   expect_identical(.digest_matrix(r$imDat), g$digest)
 })
 
-test_that("non-overlapping target WCS warns instead of silently doing extra work", {
-  # 1.10.1 passes an inverted tight-crop range straight to the box crop, which
-  # silently *expands* the internal working grid: at CRPIX1-10000 the warp
-  # field grew to 8183x1768 = 14.5M px (9.7s) versus a 3.2M reference, while
-  # the returned image still looked normal-sized.
-  #
-  # We deliberately do NOT clamp or short-circuit here. The 1.10.1 output for
-  # these cases is 3.2M NaN (0/0 inside the dofinenorm divide), and every
-  # attempt to "fix" it changes bits: clamping the crop bounds moves them off
-  # the NaN edge, and returning all-blank loses the NaN vs 0/NA distinction
-  # that dofinenorm drives. Since steps 1-3 must stay bit-identical, the
-  # correct fix is a warning that surfaces the pathology.
+test_that("a non-overlapping target warp returns blank without building a field", {
+  # An inverted tight crop used to be handed straight to the *box* crop, which
+  # silently EXPANDS the working grid. At CRPIX1 - 10000 the warp field grew to
+  # 8183x1768 = 14.5M px (9.7s, mostly wcslib non-convergence) versus the
+  # 3.2M-px reference, and the returned image was a normal-sized block of NaN
+  # (0/0 inside the dofinenorm divide) with no explanation. There is no data to
+  # warp when the frames do not overlap, so we now skip the crop and the warp
+  # and return the requested frame filled with `blank`.
   for (cs in c("degenerate_pos", "degenerate_neg")) {
     g <- .golden()$cases[[cs]]
     fr <- .frames()
     kv_bad <- fr$ref$keyvalues
     kv_bad$CRPIX1 <- kv_bad$CRPIX1 + g$shift
 
-    w <- NULL
+    msgs <- NULL
+    t0 <- proc.time()[3]
+    # Muffle via the handler itself; wrapping in suppressMessages would consume
+    # the condition before this handler ever sees it.
     r <- withCallingHandlers(
-      suppressMessages(propaneWarp(fr$src, keyvalues_out = kv_bad,
-                                   dim_out = fr$dim, warpfield_return = TRUE)),
-      warning = function(c) { w <<- c(w, conditionMessage(c)); invokeRestart("muffleWarning") }
+      propaneWarp(fr$src, keyvalues_out = kv_bad,
+                  dim_out = fr$dim, blank = -99),
+      message = function(c) { msgs <<- c(msgs, conditionMessage(c))
+                              invokeRestart("muffleMessage") }
     )
+    dt <- proc.time()[3] - t0
 
-    # Output is bit-for-bit what 1.10.1 produced...
+    # The announced fast path, not a silent one.
+    expect_true(any(grepl("does not overlap", msgs)),
+                info = paste(cs, paste(msgs, collapse = " | ")))
+
+    # Correct full-size output frame, entirely blank.
     expect_identical(dim(r$imDat), g$out_dim, info = cs)
-    expect_identical(.digest_matrix(r$imDat), g$digest, info = cs)
-    expect_identical(sum(is.na(r$imDat)), g$nNA, info = cs)
-    kvn <- intersect(names(g$kv), names(r$keyvalues))
-    expect_identical(unname(r$keyvalues[kvn]), unname(g$kv[kvn]), info = cs)
+    expect_identical(sum(is.na(r$imDat)), 0L, info = cs)
+    expect_true(all(r$imDat == -99), info = cs)
 
-    # ...but the inflated work is now announced.
-    expect_true(any(grepl("overlap|crop", w)),
-                info = paste(cs, paste(w, collapse = " | ")))
+    # The header describes the frame that was asked for: no expansion and no
+    # CRPIX shift, since nothing was cropped.
+    kvn <- intersect(names(g$kv), names(r$keyvalues))
+    want <- g$kv[kvn]
+    want$CRPIX1 <- kv_bad$CRPIX1
+    want$XCUTLO <- 1L
+    want$XCUTHI <- fr$dim[1]
+    want$YCUTLO <- 1L
+    want$YCUTHI <- fr$dim[2]
+    expect_identical(unname(r$keyvalues[kvn]), unname(want), info = cs)
+
+    # No field was built at all, and the whole call is far cheaper than before.
+    expect_null(r$warpfield, info = cs)
+    expect_true(dt < 2, info = paste(cs, sprintf("%.2fs", dt)))
   }
 
-  # A normal, well-overlapping warp must not warn.
+  # `blank` is honoured, which the old NaN result never was.
   fr <- .frames()
-  expect_warning(suppressMessages(
+  kv_bad <- fr$ref$keyvalues
+  kv_bad$CRPIX1 <- kv_bad$CRPIX1 - 10000L
+  r0 <- suppressMessages(propaneWarp(fr$src, keyvalues_out = kv_bad,
+                                     dim_out = fr$dim, blank = 0))
+  expect_identical(sum(r0$imDat), 0)
+  expect_identical(sum(is.na(r0$imDat)), 0L)
+  rNA <- suppressMessages(propaneWarp(fr$src, keyvalues_out = kv_bad,
+                                      dim_out = fr$dim))
+  expect_identical(as.numeric(sum(is.na(rNA$imDat))), as.numeric(prod(fr$dim)))
+
+  # A warp with genuine overlap must stay quiet and un-shortcut.
+  expect_message(suppressMessages(
     propaneWarp(fr$src, keyvalues_out = fr$ref$keyvalues, dim_out = fr$dim)
   ), NA)
+
+  # ...and shifts just inside the overlap boundary still go the normal route.
+  for (sh in c(1400L, 1800L)) {
+    kvb <- fr$ref$keyvalues
+    kvb$CRPIX1 <- kvb$CRPIX1 + sh
+    expect_no_warning(suppressMessages(
+      r <- propaneWarp(fr$src, keyvalues_out = kvb, dim_out = fr$dim,
+                       warpfield_return = TRUE)
+    ))
+    expect_false(is.null(r$warpfield), info = paste0("sh=", sh))
+  }
 })
 
 test_that("propaneWarpProPane shares one warp field across bands, bit-identically", {

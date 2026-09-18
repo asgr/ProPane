@@ -91,7 +91,7 @@ Logical; if TRUE (default) then the image is scaled by the relative change the c
 Logical; should a \code{\link{Rwcs_image}} plot of the output be generated?
 }
   \item{dotightcrop}{
-Logical; should an internal tight crop be made. If the images are approximately the same angular size this should be left as FALSE (it will run faster), but when there is a big difference between the input and output WCS (the latter being much larger) then setting this to TRUE might speed the warping up a lot.
+Logical; should an internal tight crop be made. If the images are approximately the same angular size this should be left as FALSE (it will run faster), but when there is a big difference between the input and output WCS (the latter being much larger) then setting this to TRUE might speed the warping up a lot. If the projected output frame turns out not to overlap the input at all, the crop is empty and nothing can be warped; in that case a message is issued and the full requested frame is returned filled with \option{blank}.
 }
   \item{keepcrop}{
 Logical; if \option{dotightcrop} is TRUE, then this flag specifies if just the minimally cut down projection should be returned (TRUE; using less memory, but perhaps harder to work with) or the output should be fully cast onto the target WCS (FALSE).
