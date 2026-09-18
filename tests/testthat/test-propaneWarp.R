@@ -305,7 +305,7 @@ test_that("coarse warpgrid stays opt-in and converges on the bundled field", {
   fr <- .frames()
 
   r <- suppressMessages(propaneWarp(fr$src, keyvalues_out = fr$ref$keyvalues,
-                                    dim_out = fr$dim, warpgrid = "auto",
+                                    dim_out = fr$dim, warpgrid = "approx",
                                     warpfield_return = TRUE))
   expect_s3_class(r$warpfield, "cimg")
 
