@@ -36,7 +36,10 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
     Nbatch = Nim
   }
 
-  if(cores > Nbatch){
+  #With multitype='cluster', cores is a cluster object (a list) and cannot be
+  #compared with an integer. Only shrink it when the caller passed a core count;
+  #a cluster the caller built themselves is theirs to size.
+  if(is.numeric(cores) && cores > Nbatch){
     cores = Nbatch
   }
 
@@ -229,8 +232,16 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
 
     message('Projecting Images ',seq_start,' to ',seq_end,' of ',Nim)
 
-    pre_stack_image_list = foreach(i = seq_start:seq_end,
-                                   .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp'))%dopar%{
+    # All projections for one frame happen inside a single task. The warp field
+    # is ~nx*ny*2*8 bytes (65 MB for a 2060x2070 field) and is identical for the
+    # image, inVar, exp and weight warps of that frame, so holding it in a local
+    # keeps it off the wire: it used to be returned to the master and sent back
+    # out to every worker once per extra projection.
+    pre_stack_proj_list = foreach(i = seq_start:seq_end,
+                                  .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp'))%dopar%{
+
+      proj = list(image = NULL, inVar = NULL, exp = NULL, weight = NULL)
+
       needs_read = !is.null(mask_list) || !is.null(inVar_list)
       if(inherits(image_list[[i]], 'Rfits_pointer') && needs_read){
         temp_image = image_list[[i]][,]
@@ -294,16 +305,14 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
           Rfits_write_image(temp_warp, paste0(dump_dir,'/image_warp_',i,'.fits'))
         }
       })
-      return(temp_warp)
-    }
 
+      warpfield = temp_warp$warpfield
+      #Drop it from what goes back to the master; return_all users get the
+      #projected frames, not a field per frame.
+      temp_warp$warpfield = NULL
+      proj$image = temp_warp
 
-
-    if(!is.null(inVar_list)){
-      message('Projecting Inverse Variance ',seq_start,' to ',seq_end,' of ',Nim)
-
-      pre_stack_inVar_list = foreach(i = seq_start:seq_end,
-                                     .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp'))%dopar%{
+      if(!is.null(inVar_list)){
         if(inherits(image_list[[i]], 'Rfits_pointer')){
           temp_inVar = Rfits_create_image(matrix(0L, dim(image_list[[i]])[1], dim(image_list[[i]])[2]), image_list[[i]]$keyvalues)
         }else{
@@ -327,7 +336,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             doscale = FALSE,
             dotightcrop = TRUE,
             keepcrop = keepcrop,
-            warpfield = pre_stack_image_list[[i - seq_start + 1L]]$warpfield,
+            warpfield = warpfield,
             cores = cores_warp,
             ...
             )
@@ -344,19 +353,11 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             Rfits_write_image(temp_warp, paste0(dump_dir,'/inVar_warp_',i,'.fits'))
           }
         })
-        return(temp_warp)
+        temp_warp$warpfield = NULL
+        proj$inVar = temp_warp
       }
-    }
 
-
-
-    if(!is.null(exp_list)){
-      message('Projecting Exposure Times ',seq_start,' to ',seq_end,' of ',Nim)
-      if(length(exp_list) != Nim){
-        stop("Length of Exposure Times not equal to length of image_list!")
-      }
-      pre_stack_exp_list = foreach(i = seq_start:seq_end,
-                                   .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp', 'pre_stack_inVar_list'))%dopar%{
+      if(!is.null(exp_list)){
         if(inherits(image_list[[i]], 'Rfits_pointer')){
           temp_exp = Rfits_create_image(matrix(0L, dim(image_list[[i]])[1], dim(image_list[[i]])[2]), image_list[[i]]$keyvalues)
         }else{
@@ -381,7 +382,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             doscale = FALSE,
             dotightcrop = TRUE,
             keepcrop = keepcrop,
-            warpfield = pre_stack_image_list[[i - seq_start + 1L]]$warpfield,
+            warpfield = warpfield,
             cores = cores_warp,
             ...
           )
@@ -390,67 +391,70 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             Rfits_write_image(temp_warp, paste0(dump_dir,'/exp_warp_',i,'.fits'))
           }
         })
-        return(temp_warp)
+        temp_warp$warpfield = NULL
+        proj$exp = temp_warp
       }
-    }
 
-    #new weight projections (if relevant)
-
-    if(any(weight_image)){
-      message('Projecting Weights ',seq_start,' to ',seq_end,' of ',Nim)
-      pre_stack_weight_list = foreach(i = seq_start:seq_end, .noexport=c('post_stack_image', 'post_stack_weight', 'post_stack_inVar', 'post_stack_exp', 'pre_stack_inVar_list', 'pre_stack_exp_list'))%dopar%{
-        if(weight_image[i]){
-          if(inherits(image_list[[i]], 'Rfits_pointer')){
-            temp_weight = Rfits_create_image(matrix(0L, dim(image_list[[i]])[1], dim(image_list[[i]])[2]), image_list[[i]]$keyvalues)
-          }else{
-            temp_weight = image_list[[i]]
-          }
-
-          #need [] because this will assign a single value to all elements of a matrix
-          if(inherits(weight_list[[i]], 'Rfits_pointer')){
-            weight_list[[i]]$header = FALSE
-            temp_weight$imDat[] = weight_list[[i]][,]
-          }else if(inherits(weight_list[[i]], 'Rfits_image')){
-            temp_weight$imDat[] = weight_list[[i]]$imDat
-          }else{
-            temp_weight$imDat[] = weight_list[[i]]
-          }
-
-          suppressMessages({
-            temp_warp = propaneWarp(
-              image_in = temp_weight,
-              keyvalues_out = keyvalues_out,
-              dim_out = dim_out,
-              doscale = FALSE,
-              dotightcrop = TRUE,
-              keepcrop = keepcrop,
-              warpfield = pre_stack_image_list[[i - seq_start + 1L]]$warpfield,
-              cores = cores_warp,
-              ...
-            )
-
-            if(dump_frames){
-              Rfits_write_image(temp_warp, paste0(dump_dir,'/weight_warp_',i,'.fits'))
-            }
-          })
-          return(temp_warp)
+      if(weight_image[i]){
+        if(inherits(image_list[[i]], 'Rfits_pointer')){
+          temp_weight = Rfits_create_image(matrix(0L, dim(image_list[[i]])[1], dim(image_list[[i]])[2]), image_list[[i]]$keyvalues)
         }else{
-          return(weight_list[[i]])
+          temp_weight = image_list[[i]]
         }
+
+        #need [] because this will assign a single value to all elements of a matrix
+        if(inherits(weight_list[[i]], 'Rfits_pointer')){
+          weight_list[[i]]$header = FALSE
+          temp_weight$imDat[] = weight_list[[i]][,]
+        }else if(inherits(weight_list[[i]], 'Rfits_image')){
+          temp_weight$imDat[] = weight_list[[i]]$imDat
+        }else{
+          temp_weight$imDat[] = weight_list[[i]]
+        }
+
+        suppressMessages({
+          temp_warp = propaneWarp(
+            image_in = temp_weight,
+            keyvalues_out = keyvalues_out,
+            dim_out = dim_out,
+            doscale = FALSE,
+            dotightcrop = TRUE,
+            keepcrop = keepcrop,
+            warpfield = warpfield,
+            cores = cores_warp,
+            ...
+          )
+
+          if(dump_frames){
+            Rfits_write_image(temp_warp, paste0(dump_dir,'/weight_warp_',i,'.fits'))
+          }
+        })
+        temp_warp$warpfield = NULL
+        proj$weight = temp_warp
+      }else{
+        proj$weight = weight_list[[i]]
       }
 
-
-    }else{
-      pre_stack_weight_list = weight_list
+      rm(warpfield)
+      return(proj)
     }
+
+    #Unpack back into the per-projection lists the rest of the function expects.
+    pre_stack_image_list  = lapply(pre_stack_proj_list, `[[`, 'image')
+    pre_stack_inVar_list  = if(is.null(inVar_list)) NULL else lapply(pre_stack_proj_list, `[[`, 'inVar')
+    pre_stack_exp_list    = if(is.null(exp_list)) NULL else lapply(pre_stack_proj_list, `[[`, 'exp')
+    pre_stack_weight_list = lapply(pre_stack_proj_list, `[[`, 'weight')
+    pre_stack_proj_list   = NULL
 
     if(is.null(pre_stack_inVar_list)){
       message('Stacking Images ',seq_start,' to ',seq_end,' of ',Nim)
       for(i in 1:Nbatch_sub){
-        if(weight_image[i]){
+        #i is batch-local, but weight_image/weight_list are indexed across all Nim frames
+        i_stack = seq_start + i - 1L
+        if(weight_image[i_stack]){
           pre_weight = pre_stack_weight_list[[i]]$imDat
         }else{
-          pre_weight = weight_list[[i]]
+          pre_weight = weight_list[[i_stack]]
         }
         .stack_image_cpp(post_image = post_stack_image,
                          post_weight = post_stack_weight,
@@ -462,10 +466,11 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
     }else{
       message('Stacking Images and InVar ',seq_start,' to ',seq_end,' of ',Nim)
       for(i in 1:Nbatch_sub){
-        if(weight_image[i]){
+        i_stack = seq_start + i - 1L
+        if(weight_image[i_stack]){
           pre_weight = pre_stack_weight_list[[i]]$imDat
         }else{
-          pre_weight = weight_list[[i]]
+          pre_weight = weight_list[[i_stack]]
         }
         .stack_image_inVar_cpp(post_image = post_stack_image,
                                post_inVar = post_stack_inVar,
@@ -567,7 +572,10 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
 
     if(keep_extreme_pix){
       post_stack_cold[] = Inf # = matrix(Inf, dim_im[1], dim_im[2])
-      post_stack_hot[] -Inf # = matrix(-Inf, dim_im[1], dim_im[2])
+      #was `post_stack_hot[] -Inf`, which computes and discards: hot must be reset
+      #too, or the restack below compares against pass-1 extremes and can never
+      #find a new hot pixel, leaving clipped values in the hot layer.
+      post_stack_hot[] = -Inf # = matrix(-Inf, dim_im[1], dim_im[2])
     }else{
       post_stack_cold = NULL
       post_stack_hot = NULL
@@ -891,13 +899,13 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             mode(temp_mask_clip) = 'logical'
 
             if(dump_frames){
-              Rfits_write_image(temp_mask_clip, paste0(dump_dir,'/mask_warp_',i,'.fits'))
+              Rfits_write_image(temp_mask_clip, paste0(dump_dir,'/mask_warp_',i_stack,'.fits'))
             }
 
-            if(weight_image[i]){
+            if(weight_image[i_stack]){
               pre_weight = pre_stack_weight_list[[i]]$imDat
             }else{
-              pre_weight = weight_list[[i]]
+              pre_weight = weight_list[[i_stack]]
             }
             .stack_image_cpp(post_image = post_stack_image,
                              post_weight = post_stack_weight,
@@ -926,13 +934,13 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
             mode(temp_mask_clip) = 'logical'
 
             if(dump_frames){
-              Rfits_write_image(temp_mask_clip, paste0(dump_dir,'/mask_warp_',i,'.fits'))
+              Rfits_write_image(temp_mask_clip, paste0(dump_dir,'/mask_warp_',i_stack,'.fits'))
             }
 
-            if(weight_image[i]){
+            if(weight_image[i_stack]){
               pre_weight = pre_stack_weight_list[[i]]$imDat
             }else{
-              pre_weight = weight_list[[i]]
+              pre_weight = weight_list[[i_stack]]
             }
             .stack_image_inVar_cpp(post_image = post_stack_image,
                                    post_inVar = post_stack_inVar,

@@ -34,6 +34,17 @@ cores = 1L
 multitype = 'cluster'
 ```
 
+The warping and WCS routines underneath **ProPane** are themselves
+OpenMP-parallel (via `imager` and `Rwcs`), so each worker process starts its own
+thread pool. That is wasteful when you are also parallelising across frames: on a
+16-core machine, `cores = 4` means 4 workers x 16 threads doing many very small
+jobs, and the thread churn can dominate. Measured on the frames below, a
+`cores = 1` stack burned 57.9s of CPU for 12.2s of wall time, against 12.2s of CPU
+for 12.2s of wall with `OMP_NUM_THREADS = 1`. As a rule, set `OMP_NUM_THREADS` to
+`1` (or to `detectCores() / cores`) and let `cores` do the parallelising. **ProPane**
+deliberately does not set this for you, because someone warping a single large
+frame with `propaneWarp()` on one core does want those threads.
+
 The **ProPane** package comes with key utilities for warping between different WCS systems: **propaneWarp** (for warping individual frames once). **ProPane** also contains the various functions for creating large stacks of many warped frames (which is of class *ProPane*, which is roughly meant to suggest the idea of many *panes* of glass being stacked together). 
 
 ## A Stacking Case Study

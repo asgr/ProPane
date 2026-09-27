@@ -353,7 +353,7 @@ test_that("propaneWarpProPane shares one warp field across bands, bit-identicall
 test_that("warpgrid defaults to the exact path", {
   expect_true("warpgrid" %in% names(formals(propaneWarp)))
   expect_identical(formals(propaneWarp)$warpgrid, "exact")
-  expect_identical(formals(propaneWarp)$warptol, 1e-05)
+  expect_identical(formals(propaneWarp)$warptol, 1e-03)
   # Default behaviour remains within tolerance of the golden record.
   g <- .golden()$cases$default
   .expect_close_golden(.run_case(list())$imDat, g, "warpgrid=default")

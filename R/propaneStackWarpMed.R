@@ -100,9 +100,11 @@ propaneStackWarpFunc = function(
     if(!is.null(keyvalues_out)){
       keyvalues_sub = Rwcs_keyvalues_sub(keyvalues_out, xsub=xsub, ysub=ysub)
 
-      temp_overlap = which(foreach(j = 1:length(image_list), .combine = 'c')%dopar%{
+      #A nested %dopar% here pays a fork/scheduler round trip per chunk, while
+      #the work (a handful of Rwcs_overlap calls) is far cheaper than that.
+      temp_overlap = which(vapply(seq_along(image_list), function(j){
         Rwcs_overlap(image_list[[j]]$keyvalues, keyvalues_sub, buffer=0)
-      })
+      }, logical(1)))
     }
 
     if(length(temp_overlap) == 0L){
@@ -121,7 +123,7 @@ propaneStackWarpFunc = function(
       }
     }
 
-    image_list_cut = foreach(j = temp_overlap)%do%{ #not sure why this won't work in dopar... Rfits race conditions?
+    image_list_cut = lapply(temp_overlap, function(j){ #plain lapply: a nested foreach costs more here than the work
       if(!is.null(image_list[[j]]$keyvalues$XCUTLO) & useCUTLO){
         XCUTLO = image_list[[j]]$keyvalues$XCUTLO
       }else{
@@ -142,7 +144,7 @@ propaneStackWarpFunc = function(
       }else{
           return(imager::as.cimg(image_list[[j]][xrange, yrange]$imDat))
       }
-    }
+    })
 
     if(is.function(imager_func)){
       if('w' %in% names(formals(imager_func))){
@@ -203,9 +205,9 @@ propaneStackWarpFunc = function(
     }
 
     if(doweight | ifelse(is.character(imager_func), tolower(imager_func) == 'invar', FALSE)){
-      weight_list = foreach(j = 1:length(image_list_cut))%do%{
+      weight_list = lapply(seq_along(image_list_cut), function(j){
         return(imager::as.cimg(!is.na(image_list_cut[[j]])))
-      }
+      })
 
       weight_stack = as.matrix(imager::add(weight_list))
 
