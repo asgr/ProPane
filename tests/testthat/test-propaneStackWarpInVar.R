@@ -117,3 +117,125 @@ test_that("a tolerance needing a sub-step-4 lattice refuses rather than grinding
   expect_lt(r$maxerr, 1e-3)
   expect_gte(r$step, 4L)
 })
+
+## The cost floor clamps the predicted step rather than refusing on the
+## prediction alone: predicting a sub-floor step only says the s^2 law
+## extrapolates past it, not that step 4 would miss.
+
+test_that("a tolerance met at the cost-floor step is not refused", {
+  skip_on_cran()
+  suppressMessages({library(Rfits); library(Rwcs)})
+  ns = asNamespace('ProPane')
+  coarse = get('.warpfield_coarse', envir = ns)
+  out2in = get('.warpfunc_out2in', envir = ns)
+  src = suppressMessages(Rfits_read_image(file.path(
+    system.file('extdata/stack', package = 'ProPane'), 'image_1.fits')))
+  ref = suppressMessages(Rfits_read_image(file.path(
+    system.file('extdata/stack', package = 'ProPane'), 'image_2.fits')))
+  wf = function(x, y, cores = 1, ...)
+    out2in(x, y, header_in = Rfits_keyvalues_to_raw(src$keyvalues),
+           header_out = Rfits_header_to_raw(Rfits_keyvalues_to_header(ref$keyvalues)),
+           cores = cores)
+  # At step 8 this tol predicts a lattice finer than the floor, yet step 4
+  # measures 1.78e-08 and satisfies it. Refusing here would discard a field
+  # that is both accurate enough and cheaper than exact.
+  r = coarse(wf, c(900, 900), tol = 2.5e-8, step0 = 8L, cores = 1)
+  expect_false(is.null(r))
+  expect_equal(r$step, 4L)
+  expect_lt(r$maxerr, 2.5e-8)
+  # The floor is still respected: nothing finer than step 4 is ever built.
+  expect_gte(r$step, 4L)
+  # And a tolerance step 4 genuinely cannot meet is refused on the prediction,
+  # without paying for a floor-lattice build that would fail anyway.
+  expect_null(coarse(wf, c(900, 900), tol = 1e-8, step0 = 64L, cores = 1))
+  expect_match(get('.warpfield_refusal', envir = ns)(), 'finer than the cost-floor step 4')
+})
+
+## weight_image is derived from weight_list, so it must be trimmed by
+## which_overlap in step with it. Left untrimmed it indexes frames by input
+## position while weight_list indexes by trimmed position, so from the first
+## dropped frame the two disagree.
+
+test_that("weight_image is trimmed with weight_list across the overlap cut", {
+  skip_on_cran()
+  suppressMessages({library(Rfits); library(Rwcs)})
+  d = system.file('extdata/stack', package = 'ProPane')
+  # Read frames in rather than pointing at them: pointers carry per-read state
+  # (XCUT*) that makes repeated runs in one session non-reproducible.
+  read_all = function(shift4 = FALSE) {
+    il = lapply(file.path(d, paste0('image_', 1:8, '.fits')),
+                function(f) suppressMessages(Rfits_read_image(f)))
+    if (shift4) {
+      il[[4]]$keyvalues$CRVAL1 = il[[4]]$keyvalues$CRVAL1 + 5
+      il[[4]]$keyvalues$CRVAL2 = il[[4]]$keyvalues$CRVAL2 + 5
+    }
+    il
+  }
+  kv = Rwcs_setkeyvalues(CRVAL1 = 36.8962, CRVAL2 = -5.1906, pixscale = 0.3,
+                         NAXIS1 = 900, NAXIS2 = 900)
+  run = function(iml, wll) suppressMessages(suppressWarnings(propaneStackWarpInVar(
+    image_list = iml, keyvalues_out = kv, weight_list = wll, cores = 1,
+    multitype = 'fork', magzero_in = 30, magzero_out = 23.9, Nbatch = 2)))
+
+  # A matrix weight on ORIGINAL frame 5, which becomes trimmed index 4 once
+  # frame 4 falls out of the overlap; every other frame gets a scalar. The
+  # matrix must match frame 5's own dimensions (the frames are not uniform).
+  d5 = dim(read_all()[[5]]$imDat)
+  mk5 = matrix(1, d5[1], d5[2])
+  wl = lapply(1:8, function(i) if (i == 5) mk5 else 2L)
+
+  keep = c(1L, 2L, 3L, 5L, 6L, 7L, 8L)
+  auto = run(read_all(TRUE), wl)
+  expect_identical(as.integer(auto$which_overlap), keep)
+  expect_equal(auto$Nim, 7L)
+  # Hand-trimming is unambiguously aligned, so it is the known-good reference.
+  hand = run(read_all(TRUE)[keep], wl[keep])
+  expect_identical(as.numeric(auto$image$imDat), as.numeric(hand$image$imDat))
+  expect_identical(as.numeric(auto$weight$imDat), as.numeric(hand$weight$imDat))
+})
+
+## The else branch indexed the whole mask_list rather than element i, so a
+## plain-matrix mask hit `'list' object cannot be coerced to type 'double'`.
+
+test_that("a plain-matrix mask_list is applied", {
+  skip_on_cran()
+  suppressMessages({library(Rfits); library(Rwcs)})
+  d = system.file('extdata/stack', package = 'ProPane')
+  il = lapply(file.path(d, paste0('image_', 1:8, '.fits')),
+              function(f) suppressMessages(Rfits_read_image(f)))
+  kv = Rwcs_setkeyvalues(CRVAL1 = 36.8962, CRVAL2 = -5.1906, pixscale = 0.3,
+                         NAXIS1 = 900, NAXIS2 = 900)
+  # Per-frame dimensions are not uniform, so each mask must match its own frame.
+  mk = lapply(il, function(x) matrix(0L, dim(x$imDat)[1], dim(x$imDat)[2]))
+  # An all-zero mask must leave the stack unchanged.
+  base = suppressMessages(suppressWarnings(propaneStackWarpInVar(
+    image_list = il, keyvalues_out = kv, cores = 1, multitype = 'fork',
+    magzero_in = 30, magzero_out = 23.9, Nbatch = 8)))
+  masked = suppressMessages(suppressWarnings(propaneStackWarpInVar(
+    image_list = il, keyvalues_out = kv, mask_list = mk, cores = 1,
+    multitype = 'fork', magzero_in = 30, magzero_out = 23.9, Nbatch = 8)))
+  expect_identical(as.numeric(masked$image$imDat), as.numeric(base$image$imDat))
+  # And a fully-masked frame must contribute nothing.
+  mk_all = lapply(il, function(x) matrix(1L, dim(x$imDat)[1], dim(x$imDat)[2]))
+  full = suppressMessages(suppressWarnings(propaneStackWarpInVar(
+    image_list = il, keyvalues_out = kv, mask_list = mk_all, cores = 1,
+    multitype = 'fork', magzero_in = 30, magzero_out = 23.9, Nbatch = 8)))
+  expect_true(all(is.na(as.numeric(full$image$imDat))))
+  expect_equal(sum(as.numeric(full$weight$imDat), na.rm = TRUE), 0)
+})
+
+## With multitype = 'cluster' the Nbatch default inherits the cluster object, so
+## Nbatch was a list and every later comparison died before the projection.
+
+test_that("multitype = 'cluster' works with the default Nbatch", {
+  skip_on_cran()
+  suppressMessages({library(Rfits); library(Rwcs); library(parallel)})
+  f = .fr()
+  cl = makeCluster(2L)
+  on.exit(stopCluster(cl), add = TRUE)
+  s = suppressMessages(propaneStackWarpInVar(image_list = f$il,
+        keyvalues_out = f$kv, inVar_list = 0.000468, cores = cl,
+        multitype = 'cluster', magzero_in = 30, magzero_out = 23.9))
+  expect_equal(s$Nim, 8L)
+  expect_gt(sum(as.numeric(s$weight$imDat), na.rm = TRUE), 0)
+})

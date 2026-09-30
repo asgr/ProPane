@@ -42,6 +42,47 @@
   `propaneStackWarpQuanWt()` still `assertIntegerish(cores)` and so reject a
   cluster object outright; that looks deliberate and is left alone here.
 
+  That fix was incomplete: the `Nbatch` default is `cores`, so a cluster caller
+  who left `Nbatch` alone still died on the very next line (`if(Nbatch > Nim)` on
+  a list). The guard only ever helped callers who passed an explicit numeric
+  `Nbatch`. `Nbatch` now takes the cluster length when it inherits a non-numeric
+  `cores`. The progress message also printed the cluster object rather than its
+  size.
+
+  Left alone deliberately: `cores` is shrunk to `Nbatch` *after*
+  `registerDoParallel()` has already run, so that shrink affects only the message
+  and never the worker count. Moving the registration below the sizing would make
+  the shrink real, but it is a behaviour change with a performance trade-off of
+  its own (with `return_all = TRUE`, `Nbatch` is raised to `Nim` afterwards, so
+  the shrink would bite against a batch size that no longer applies). It is
+  pre-existing and orthogonal to the crash this commit was fixing.
+
+- `propaneStackWarpInVar()`: `weight_image` was derived from `weight_list` but
+  was not trimmed by `which_overlap` alongside it. Once any frame failed the
+  overlap check the two vectors disagreed on which frame was which, so from the
+  first dropped frame a scalar weight could be read as a matrix or vice versa --
+  either a silently wrong weight layer or a hard
+  `pre_weight has non-conforming size` error. This is the same class of
+  index-alignment bug as the batch-local counter fix above, on the other axis
+  (input position vs trimmed position rather than global vs batch-local).
+
+- `propaneStackWarpInVar()`: the `mask_list` fallback branch read `mask_list != 0`
+  instead of `mask_list[[i]] != 0`, so a documented plain-matrix mask died with
+  `'list' object cannot be coerced to type 'double'`. Present since 1.0.0, and
+  now covered on both the single-pass and re-project paths.
+
+- `.warpfield_coarse()` refused tolerances it could actually have met. The
+  cost-floor check ran on the *SAFETY-adjusted* predicted step, which aims
+  deliberately finer than the `s^2` law implies, so the prediction could fall
+  below the floor while the floor itself still satisfied the request: on a
+  900x900 field `warptol = 2.5e-8` predicted a sub-floor step from `s = 8` and
+  was refused, yet step 4 measures 1.78e-08 and passes. The floor is now tested
+  against the un-safetied prediction, and is clamped to rather than refused at,
+  which restores the design intent that the prediction only chooses where to look
+  and every candidate is still verified. A tolerance the floor genuinely cannot
+  reach is still refused, and now on the first probe rather than after building
+  a floor-sized lattice that would have failed anyway.
+
 ## Speed
 
 `propaneStackWarpInVar()` is faster and uses less memory. All comparisons below
@@ -76,7 +117,9 @@ inter-process communication.
   `1e-5` the coarse path could *never* be a win on a realistic field: bilinear
   error falls as the square of the lattice step, so meeting `1e-5` needs a step of
   ~4, and a step-4 field costs as much to build as the exact field while still
-  being an approximation. Measured on a 2060x2070 field, exact build is 0.70s
+  being an approximation. It is still *accepted* at that tolerance (it resolves at
+  the step-4 floor and honours its error claim), just no longer faster than
+  `"exact"`, so the default is the thing that makes the coarse path worth using. Measured on a 2060x2070 field, exact build is 0.70s
   against 0.58s at step 4 and 2.35s at step 2. The old code discovered this by
   halving 64 -> 32 -> 16 -> 8 -> 4 and paying for all of it: `warpgrid = 'approx'`
   at the default tolerance was *slower* than `"exact"` (3.85s vs 3.65s end to

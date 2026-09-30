@@ -32,13 +32,21 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
 
   Nim = length(image_list)
 
+  #With multitype='cluster', cores is a cluster object and the Nbatch default
+  #(`Nbatch = cores`) inherits it, so Nbatch would be a list and every later
+  #comparison/coercion would die. Size it from the cluster instead. An explicit
+  #numeric Nbatch is left alone, as is the cluster's own size.
+  if(!is.numeric(Nbatch)){
+    Nbatch = length(cores)
+  }
+
   if(Nbatch > Nim){
     Nbatch = Nim
   }
 
-  #With multitype='cluster', cores is a cluster object (a list) and cannot be
-  #compared with an integer. Only shrink it when the caller passed a core count;
-  #a cluster the caller built themselves is theirs to size.
+  #Only shrink a core *count* to the batch size; a cluster the caller built
+  #themselves is theirs to size. Note this happens after registration, so it
+  #affects the accounting below rather than the backend's worker count.
   if(is.numeric(cores) && cores > Nbatch){
     cores = Nbatch
   }
@@ -49,7 +57,9 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
 
   Nbatch = as.integer(Nbatch)
 
-  message('Stacking ', Nim,' images; Nbatch: ', Nbatch,'; cores: ',cores)
+  #A cluster object does not print usefully; report its size instead.
+  message('Stacking ', Nim,' images; Nbatch: ', Nbatch,'; cores: ',
+          if(is.numeric(cores)) cores else length(cores))
 
   if(length(magzero_in) == 1){
     magzero_in = rep(magzero_in, Nim)
@@ -177,6 +187,14 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
 
     weight_list = weight_list[which_overlap]
 
+    #weight_image is derived from weight_list, so it has to be trimmed in step
+    #with it. Left at its original length it indexes frames by their *input*
+    #position while weight_list is indexed by *trimmed* position, so from the
+    #first dropped frame onwards the two disagree: a scalar weight can be read
+    #as a matrix (or vice versa), giving a wrong weight layer or a
+    #non-conforming-size error in .stack_image_cpp.
+    weight_image = weight_image[which_overlap]
+
     magzero_in = magzero_in[which_overlap]
 
     if(!is.null(exp_list)){
@@ -259,7 +277,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
         }else if(inherits(mask_list[[i]], 'Rfits_image')){
           temp_image$imDat[mask_list[[i]]$imDat != 0] = NA
         }else{
-          temp_image$imDat[mask_list != 0] = NA
+          temp_image$imDat[mask_list[[i]] != 0] = NA
         }
       }
 
@@ -734,7 +752,7 @@ propaneStackWarpInVar = function(image_list=NULL, inVar_list=NULL, exp_list=NULL
               }else if(inherits(mask_list[[i]], 'Rfits_image')){
                 temp_image$imDat[mask_list[[i]]$imDat != 0] = NA
               }else{
-                temp_image$imDat[mask_list != 0] = NA
+                temp_image$imDat[mask_list[[i]] != 0] = NA
               }
             }
 

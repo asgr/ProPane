@@ -177,15 +177,31 @@
     # s * sqrt(tol / maxerr); jump straight there rather than halving blind.
     # Cap the jump at a halving when the law does not hold (a prediction that
     # is not at least a halving cannot be trusted to have taken us low enough).
-    s_need = floor(s * SAFETY * sqrt(tol / maxerr))
-    if(s_need < COARSE_MIN_STEP){
-      return(.coarse_refuse(
-        sprintf('the requested tolerance (%.1e px) needs a lattice finer than step %d',
-                tol, COARSE_MIN_STEP)))
+    #
+    # The floor is tested against the *un-safetied* prediction, not the step we
+    # intend to try. SAFETY aims finer than the law predicts, so s_need can fall
+    # below the floor while the floor itself would still meet tol -- on a 900x900
+    # field tol = 2.5e-8 predicts a sub-floor step from s = 8, yet step 4
+    # measures 1.78e-08 and passes. Clamping there (rather than refusing) honours
+    # the design note above that the prediction only chooses where to look, and
+    # every candidate is still verified. Conversely, when even the un-safetied
+    # law says the floor cannot reach tol we refuse immediately: trying step 4
+    # would cost as much as the exact field and still fail, so we would pay a
+    # full lattice build for nothing.
+    ratio = s * sqrt(tol / maxerr)
+    if(ratio < COARSE_MIN_STEP){
+      return(.coarse_refuse(sprintf(
+        'the requested tolerance (%.1e px) needs a lattice finer than the cost-floor step %d (step %d reached %.1e px)',
+        tol, COARSE_MIN_STEP, s, maxerr)))
     }
+    s_need = floor(SAFETY * ratio)
     s_next = max(COARSE_MIN_STEP, min(s %/% 2L, s_need))
     if(s_next >= s) s_next = max(COARSE_MIN_STEP, s %/% 2L)
-    if(s_next == s) break
+    if(s_next == s){
+      return(.coarse_refuse(sprintf(
+        'the requested tolerance (%.1e px) is not met even at the cost-floor lattice step %d (reached %.1e px)',
+        tol, s, maxerr)))
+    }
     s = s_next
   }
 
