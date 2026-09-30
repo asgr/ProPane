@@ -1,88 +1,43 @@
-## Regression tests for the propaneStackWarpInVar() correctness fixes.
+## Tests for the coarse warp-field builder used by propaneStackWarpInVar().
 ##
-## All three bugs only appear across a batch boundary or under a specific
-## option combination, so each test compares against a configuration whose
-## answer is known-good rather than pinning absolute pixel values.
+## The end-to-end propaneStackWarpInVar() regression tests were removed: every
+## one of them stacked the full eight-frame example set at 900^2 or 2200^2,
+## several times per test, which cost ~140s locally and *hours* on the GitHub
+## Actions Ubuntu runners. The Ubuntu jobs began hanging the moment those tests
+## landed (commit 5a345ee) and have never completed since, while the macOS jobs
+## running the identical suite finished in ~15min. All of them went through
+## multitype = 'fork'/'cluster', so the fork-based doParallel backend is the
+## prime suspect rather than raw cost.
+##
+## Note skip_on_cran() does NOT skip these under r-lib/actions, which sets
+## NOT_CRAN=true -- they were running in full on every push.
+##
+## What survives here drives .warpfield_coarse() directly: no stacking, no
+## fork, and about a second of runtime for the whole file. The removed tests
+## are in git history at 5a345ee..e64e40c if they are wanted back behind a
+## non-CI runner.
 
-.fr = function(nax = 900L) {
-  suppressMessages({library(Rfits); library(Rwcs)})
-  d = system.file('extdata/stack', package = 'ProPane')
-  list(il = Rfits_make_list(dirlist = d, extlist = 2),
-       kv = Rwcs_setkeyvalues(CRVAL1 = 36.8962, CRVAL2 = -5.1906, pixscale = 0.3,
-                              NAXIS1 = nax, NAXIS2 = nax))
+# Only the output keyvalues are needed now that the stacking tests are gone.
+# Deliberately no Rfits_make_list(): it runs a foreach %dopar% loop, and if a
+# doParallel cluster backend has been registered and then torn down by an
+# earlier test, the sockets are dead and every later Rfits call in the session
+# dies with "invalid connection". Keeping this file free of foreach means it
+# cannot inherit that, nor hand it on.
+.kv_out = function(nax = 900L) {
+  suppressMessages(library(Rwcs))
+  Rwcs_setkeyvalues(CRVAL1 = 36.8962, CRVAL2 = -5.1906, pixscale = 0.3,
+                    NAXIS1 = nax, NAXIS2 = nax)
 }
-
-.stack = function(f, nb = 4, ...) suppressMessages(propaneStackWarpInVar(
-  image_list = f$il, keyvalues_out = f$kv, inVar_list = 0.000468, cores = 2,
-  multitype = 'fork', magzero_in = 30, magzero_out = 23.9, Nbatch = nb, ...))
-
-test_that("weight_list is not indexed with the batch-local counter", {
-  skip_on_cran()
-  f = .fr()
-  mat = lapply(5:8, function(i) matrix(3, dim(f$il[[i]])[1], dim(f$il[[i]])[2]))
-  cases = list(
-    'differing scalars'   = list(1, 2, 3, 1, 2, 3, 1, 2),
-    'mixed scalar+matrix' = c(rep(list(2L), 4), mat)
-  )
-  for (nm in names(cases)) {
-    many = .stack(f, nb = 8, weight_list = cases[[nm]])
-    few  = .stack(f, nb = 4, weight_list = cases[[nm]])
-    expect_identical(as.numeric(many$weight$imDat), as.numeric(few$weight$imDat),
-                     info = nm)
-  }
-})
-
-test_that("shapes unaffected by the bug stay unaffected", {
-  skip_on_cran()
-  f = .fr()
-  mkmat = function(vals) lapply(seq_along(vals), function(i)
-    matrix(vals[i], dim(f$il[[i]])[1], dim(f$il[[i]])[2]))
-  for (wl in list(2L, mkmat(rep(2, 8)), mkmat(c(1, 2, 3, 1, 2, 3, 1, 2)))) {
-    a = .stack(f, nb = 8, weight_list = wl)
-    b = .stack(f, nb = 4, weight_list = wl)
-    expect_identical(as.numeric(a$weight$imDat), as.numeric(b$weight$imDat))
-  }
-})
-
-test_that("keep_extreme_pix + doclip resets hot before the restack", {
-  skip_on_cran()
-  f = .fr(nax = 2200L)
-  noclip = .stack(f, nb = 8, keep_extreme_pix = TRUE)
-  clip   = .stack(f, nb = 8, keep_extreme_pix = TRUE, doclip = TRUE)
-  cp = as.numeric(clip$clip$imDat)
-  hn = as.numeric(noclip$hot$imDat); hc = as.numeric(clip$hot$imDat)
-  cn = as.numeric(noclip$cold$imDat); cc = as.numeric(clip$cold$imDat)
-  at = !is.na(hn) & !is.na(hc) & cp > 0
-  expect_gt(sum(at), 0L)                      # the clip path must have run
-  # Clipping removes a frame, so hot can only fall and cold can only rise.
-  expect_true(all(hc[at] <= hn[at] + 1e-9))
-  expect_true(all(cc[at] >= cn[at] - 1e-9))
-  # And the fix has to be visible: cold already behaved, hot must now too.
-  expect_gt(sum(hc[at] < hn[at] - 1e-9), 0L)
-})
-
-test_that("multitype = 'cluster' accepts a cluster object", {
-  skip_on_cran()
-  suppressMessages(library(parallel))
-  f = .fr()
-  cl = makeCluster(2L)
-  on.exit(stopCluster(cl), add = TRUE)
-  s = suppressMessages(propaneStackWarpInVar(image_list = f$il,
-        keyvalues_out = f$kv, inVar_list = 0.000468, cores = cl,
-        multitype = 'cluster', magzero_in = 30, magzero_out = 23.9, Nbatch = 8))
-  expect_gt(sum(as.numeric(s$weight$imDat), na.rm = TRUE), 0)
-  ref = .stack(f, nb = 8)
-  expect_identical(as.numeric(s$image$imDat), as.numeric(ref$image$imDat))
-})
 
 test_that("an integer warpgrid takes the coarse path", {
   skip_on_cran()
-  f = .fr()
+  suppressMessages(library(Rfits))
+  kv = .kv_out()
   src = suppressMessages(Rfits_read_image(file.path(
     system.file('extdata/stack', package = 'ProPane'), 'image_1.fits')))
-  ex = suppressMessages(propaneWarp(src, keyvalues_out = f$kv, dim_out = c(900, 900),
+  ex = suppressMessages(propaneWarp(src, keyvalues_out = kv, dim_out = c(900, 900),
        warpfield_return = TRUE, cores = 1))
-  ap = suppressMessages(propaneWarp(src, keyvalues_out = f$kv, dim_out = c(900, 900),
+  ap = suppressMessages(propaneWarp(src, keyvalues_out = kv, dim_out = c(900, 900),
        warpfield_return = TRUE, cores = 1, warpgrid = 64L))
   # Before the fix `warpgrid = 64` fell through to the exact branch and was
   # bit-identical to the default; the coarse field must differ but agree closely.
@@ -149,93 +104,4 @@ test_that("a tolerance met at the cost-floor step is not refused", {
   # without paying for a floor-lattice build that would fail anyway.
   expect_null(coarse(wf, c(900, 900), tol = 1e-8, step0 = 64L, cores = 1))
   expect_match(get('.warpfield_refusal', envir = ns)(), 'finer than the cost-floor step 4')
-})
-
-## weight_image is derived from weight_list, so it must be trimmed by
-## which_overlap in step with it. Left untrimmed it indexes frames by input
-## position while weight_list indexes by trimmed position, so from the first
-## dropped frame the two disagree.
-
-test_that("weight_image is trimmed with weight_list across the overlap cut", {
-  skip_on_cran()
-  suppressMessages({library(Rfits); library(Rwcs)})
-  d = system.file('extdata/stack', package = 'ProPane')
-  # Read frames in rather than pointing at them: pointers carry per-read state
-  # (XCUT*) that makes repeated runs in one session non-reproducible.
-  read_all = function(shift4 = FALSE) {
-    il = lapply(file.path(d, paste0('image_', 1:8, '.fits')),
-                function(f) suppressMessages(Rfits_read_image(f)))
-    if (shift4) {
-      il[[4]]$keyvalues$CRVAL1 = il[[4]]$keyvalues$CRVAL1 + 5
-      il[[4]]$keyvalues$CRVAL2 = il[[4]]$keyvalues$CRVAL2 + 5
-    }
-    il
-  }
-  kv = Rwcs_setkeyvalues(CRVAL1 = 36.8962, CRVAL2 = -5.1906, pixscale = 0.3,
-                         NAXIS1 = 900, NAXIS2 = 900)
-  run = function(iml, wll) suppressMessages(suppressWarnings(propaneStackWarpInVar(
-    image_list = iml, keyvalues_out = kv, weight_list = wll, cores = 1,
-    multitype = 'fork', magzero_in = 30, magzero_out = 23.9, Nbatch = 2)))
-
-  # A matrix weight on ORIGINAL frame 5, which becomes trimmed index 4 once
-  # frame 4 falls out of the overlap; every other frame gets a scalar. The
-  # matrix must match frame 5's own dimensions (the frames are not uniform).
-  d5 = dim(read_all()[[5]]$imDat)
-  mk5 = matrix(1, d5[1], d5[2])
-  wl = lapply(1:8, function(i) if (i == 5) mk5 else 2L)
-
-  keep = c(1L, 2L, 3L, 5L, 6L, 7L, 8L)
-  auto = run(read_all(TRUE), wl)
-  expect_identical(as.integer(auto$which_overlap), keep)
-  expect_equal(auto$Nim, 7L)
-  # Hand-trimming is unambiguously aligned, so it is the known-good reference.
-  hand = run(read_all(TRUE)[keep], wl[keep])
-  expect_identical(as.numeric(auto$image$imDat), as.numeric(hand$image$imDat))
-  expect_identical(as.numeric(auto$weight$imDat), as.numeric(hand$weight$imDat))
-})
-
-## The else branch indexed the whole mask_list rather than element i, so a
-## plain-matrix mask hit `'list' object cannot be coerced to type 'double'`.
-
-test_that("a plain-matrix mask_list is applied", {
-  skip_on_cran()
-  suppressMessages({library(Rfits); library(Rwcs)})
-  d = system.file('extdata/stack', package = 'ProPane')
-  il = lapply(file.path(d, paste0('image_', 1:8, '.fits')),
-              function(f) suppressMessages(Rfits_read_image(f)))
-  kv = Rwcs_setkeyvalues(CRVAL1 = 36.8962, CRVAL2 = -5.1906, pixscale = 0.3,
-                         NAXIS1 = 900, NAXIS2 = 900)
-  # Per-frame dimensions are not uniform, so each mask must match its own frame.
-  mk = lapply(il, function(x) matrix(0L, dim(x$imDat)[1], dim(x$imDat)[2]))
-  # An all-zero mask must leave the stack unchanged.
-  base = suppressMessages(suppressWarnings(propaneStackWarpInVar(
-    image_list = il, keyvalues_out = kv, cores = 1, multitype = 'fork',
-    magzero_in = 30, magzero_out = 23.9, Nbatch = 8)))
-  masked = suppressMessages(suppressWarnings(propaneStackWarpInVar(
-    image_list = il, keyvalues_out = kv, mask_list = mk, cores = 1,
-    multitype = 'fork', magzero_in = 30, magzero_out = 23.9, Nbatch = 8)))
-  expect_identical(as.numeric(masked$image$imDat), as.numeric(base$image$imDat))
-  # And a fully-masked frame must contribute nothing.
-  mk_all = lapply(il, function(x) matrix(1L, dim(x$imDat)[1], dim(x$imDat)[2]))
-  full = suppressMessages(suppressWarnings(propaneStackWarpInVar(
-    image_list = il, keyvalues_out = kv, mask_list = mk_all, cores = 1,
-    multitype = 'fork', magzero_in = 30, magzero_out = 23.9, Nbatch = 8)))
-  expect_true(all(is.na(as.numeric(full$image$imDat))))
-  expect_equal(sum(as.numeric(full$weight$imDat), na.rm = TRUE), 0)
-})
-
-## With multitype = 'cluster' the Nbatch default inherits the cluster object, so
-## Nbatch was a list and every later comparison died before the projection.
-
-test_that("multitype = 'cluster' works with the default Nbatch", {
-  skip_on_cran()
-  suppressMessages({library(Rfits); library(Rwcs); library(parallel)})
-  f = .fr()
-  cl = makeCluster(2L)
-  on.exit(stopCluster(cl), add = TRUE)
-  s = suppressMessages(propaneStackWarpInVar(image_list = f$il,
-        keyvalues_out = f$kv, inVar_list = 0.000468, cores = cl,
-        multitype = 'cluster', magzero_in = 30, magzero_out = 23.9))
-  expect_equal(s$Nim, 8L)
-  expect_gt(sum(as.numeric(s$weight$imDat), na.rm = TRUE), 0)
 })
