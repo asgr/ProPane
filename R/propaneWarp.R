@@ -47,7 +47,7 @@
 .warpfield_coarse = function(warpfun, dim_xy, tol = 1e-3, step0 = 64, cores = 1,
                               max_refine = 5, ...){
   nx = dim_xy[1]; ny = dim_xy[2]
-  if(nx < 4L || ny < 4L) return(.coarse_refuse('the field is too small to interpolate'))
+  if(nx < 8L || ny < 8L) return(.coarse_refuse('the field is too small to interpolate'))
 
   fit_affine = function(gx, gy, gv){
     A = cbind(1, gx, gy)
