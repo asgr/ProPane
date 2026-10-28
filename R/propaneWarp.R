@@ -309,8 +309,20 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
     }
     dim_out = c(NAXIS1, NAXIS2)
   }else{
-    keyvalues_out$NAXIS1 = dim_out[1]
-    keyvalues_out$NAXIS2 = dim_out[2]
+    # Mirror the ZIMAGE rule used just above (and in propaneRebin, and in
+    # Rfits_check_image): on a tile-compressed frame NAXIS1/2 are the BINTABLE
+    # compressed row width in bytes and the table row count, not the image size.
+    # The requested frame belongs in ZNAXIS1/2. Overwriting NAXIS1/2 here left
+    # the header claiming e.g. a 15 x 10 image and a 15 x 10 compressed table
+    # while ZTILE1 was still 1816, and contradicted the branch above, which reads
+    # the *ZNAXIS* values back out. Non-ZIMAGE frames are unaffected.
+    if(isTRUE(keyvalues_out$ZIMAGE)){
+      keyvalues_out$ZNAXIS1 = dim_out[1]
+      keyvalues_out$ZNAXIS2 = dim_out[2]
+    }else{
+      keyvalues_out$NAXIS1 = dim_out[1]
+      keyvalues_out$NAXIS2 = dim_out[2]
+    }
   }
 
   if(is.null(dim_out)){
@@ -660,7 +672,11 @@ propaneWarp = function(image_in, keyvalues_out=NULL, keyvalues_in=NULL, dim_out 
       image_out$imDat = image_out$imDat * (pixscale_out / pixscale_in) ^ 2
     }
 
-    image_out$imDat = as.matrix(image_out$imDat)
+    #just to make sure we don't drop dimensions
+    image_out$imDat = matrix(image_out$imDat,
+                             nrow = dim(image_out$imDat)[1],
+                             ncol = dim(image_out$imDat)[2]
+                             )
   }
 
   if(dotightcrop==FALSE | keepcrop==FALSE){
@@ -766,14 +782,36 @@ propaneRebin = function(image, scale = 1,interpolation = 6){
     size_y = floor(imdim[2]*scale)
   }
 
+  # The resized cimg carries the new grid, so the matrix must be rebuilt at the
+  # *resized* shape. Taking nrow/ncol from the input would silently undo the
+  # scale. as.matrix() is not an option either: it squeezes a one-pixel-wide
+  # result to N x 1 and errors outright on 1 x 1, so the axes are set explicitly
+  # from the cimg that imager::resize() returned.
+  resize_mat = function(x, size_x, size_y){
+    r = imager::resize(im = imager::as.cimg(x), size_x = size_x, size_y = size_y,
+                       interpolation_type = interpolation)
+    matrix(r, nrow = dim(r)[1], ncol = dim(r)[2])
+  }
+
   if(inherits(image,'Rfits_image')){
-    image_resize = as.matrix(imager::resize(im=imager::as.cimg(image$imDat), size_x=size_x, size_y=size_y, interpolation_type=interpolation))
+
+    image_resize = resize_mat(image$imDat, size_x, size_y)
+
     norm = matrix(1, dim(image$imDat)[1], dim(image$imDat)[2])
-    norm_resize = as.matrix(imager::resize(im=imager::as.cimg(norm), size_x=size_x, size_y=size_y, interpolation_type=interpolation))
+
+    norm_resize = resize_mat(norm, size_x, size_y)
+
     image_resize = (image_resize / norm_resize) / scale^2
 
     keyvalues_out = image$keyvalues
 
+    # On a ZIMAGE frame NAXIS1/2 are NOT the image size: the extension is a
+    # tile-compressed BINTABLE whose NAXIS1 is the compressed row width in bytes
+    # and whose NAXIS2 is the table row count (for image_1.fits, 24 and 1836,
+    # against an 1816 x 1836 image). The image lives in ZNAXIS1/2, so that is
+    # what gets updated here. Writing the image size into NAXIS1/2 would
+    # describe a table that is not on disk. Rfits_check_image() and
+    # propaneWarp() follow the same rule.
     if(isTRUE(image$keyvalues$ZIMAGE)){
       keyvalues_out$ZNAXIS1 = dim(image_resize)[1]
       keyvalues_out$ZNAXIS2 = dim(image_resize)[2]
@@ -809,9 +847,13 @@ propaneRebin = function(image, scale = 1,interpolation = 6){
 
     return(image_out)
   }else{
-    image_resize = as.matrix(imager::resize(im=imager::as.cimg(image), size_x=size_x, size_y=size_y, interpolation_type=interpolation))
+
+    image_resize = resize_mat(image, size_x, size_y)
+
     norm = matrix(1, dim(image)[1], dim(image)[2])
-    norm_resize = as.matrix(imager::resize(im=imager::as.cimg(norm), size_x=size_x, size_y=size_y, interpolation_type=interpolation))
+
+    norm_resize = resize_mat(norm, size_x, size_y)
+
     image_resize = (image_resize / norm_resize) / scale^2
 
     return(image_resize)

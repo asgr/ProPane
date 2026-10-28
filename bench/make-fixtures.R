@@ -125,8 +125,14 @@ local({
       nNA = sum(is.na(mat)),
       sample_idx = idx,
       sample_val = mat[idx],
+      # ZNAXIS1/2 are recorded alongside NAXIS1/2 because these frames are
+      # tile-compressed: on a ZIMAGE frame NAXIS1/2 are the BINTABLE compressed
+      # row width (bytes) and row count, while the image size lives in ZNAXIS1/2.
+      # Recording both lets the test assert on whichever pair is authoritative
+      # without special-casing, and makes the distinction visible in the fixture.
       kv = r$keyvalues[intersect(
-        c("NAXIS1","NAXIS2","CRPIX1","CRPIX2","XCUTLO","XCUTHI","YCUTLO","YCUTHI","MAGZERO"),
+        c("ZIMAGE", "NAXIS1","NAXIS2","ZNAXIS1","ZNAXIS2",
+          "CRPIX1","CRPIX2","XCUTLO","XCUTHI","YCUTLO","YCUTHI","MAGZERO"),
         names(r$keyvalues))]
     )
     cat(sprintf("%-14s %s  %-12s %.2fs  sum=%.10g nNA=%d\n", nm,
@@ -159,8 +165,10 @@ local({
          nNA = sum(is.na(m$imDat)),
          allNA = all(is.na(m$imDat)),
          sum = sum(m$imDat, na.rm = TRUE),
-         kv = m$keyvalues[c("NAXIS1","NAXIS2","CRPIX1","CRPIX2",
-                            "XCUTLO","XCUTHI","YCUTLO","YCUTHI")],
+         kv = m$keyvalues[intersect(
+           c("ZIMAGE", "NAXIS1","NAXIS2","ZNAXIS1","ZNAXIS2",
+             "CRPIX1","CRPIX2","XCUTLO","XCUTHI","YCUTLO","YCUTHI"),
+           names(m$keyvalues))],
          wall = proc.time()[3] - t0)
   }
 

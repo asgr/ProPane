@@ -35,6 +35,17 @@ propaneStackWarpFunc = function(
     imager_func = imager::average
   }
 
+  # 'waverage' weights the mean per frame, so it needs the weights up front.
+  # Checked here rather than in the loop below because the loop body runs in
+  # parallel workers: a missing `weights_temp` there surfaced as the opaque
+  # 'task 1 failed - "object 'weights_temp' not found"' instead of naming the
+  # problem. The 'wsum' path has the same requirement and the same message,
+  # checked inside the body; this one is hoisted so both fail before any warping
+  # is done.
+  if(is.character(imager_func) && tolower(imager_func) == 'waverage' && is.null(weights)){
+    stop('weights must be specified for imager waverage', call. = FALSE)
+  }
+
   if(multitype=='fork'){
     registerDoParallel(cores=cores)
   }else if(multitype=='cluster'){

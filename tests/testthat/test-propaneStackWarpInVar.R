@@ -105,3 +105,28 @@ test_that("a tolerance met at the cost-floor step is not refused", {
   expect_null(coarse(wf, c(900, 900), tol = 1e-8, step0 = 64L, cores = 1))
   expect_match(get('.warpfield_refusal', envir = ns)(), 'finer than the cost-floor step 4')
 })
+
+test_that("propaneStackWarpFunc asks for weights up front when waverage needs them", {
+  # 'waverage' weights each frame by the supplied weights, so it cannot run
+  # without them. The check lives at the top of propaneStackWarpFunc rather than
+  # in the stacking loop because that loop runs in parallel workers: a missing
+  # `weights_temp` there surfaced as the opaque
+  #   'task 1 failed - "object 'weights_temp' not found"'
+  # instead of naming the actual problem.
+  #
+  # No files are read: the guard runs before Rfits_make_list and before any
+  # doParallel backend is registered, which is what keeps this test free of the
+  # fork-related fragility described at the top of this file.
+  expect_error(propaneStackWarpFunc(imager_func = "waverage"),
+               "weights must be specified for imager waverage", fixed = TRUE)
+
+  # The comparison is case-insensitive, matching how the loop tests it.
+  expect_error(propaneStackWarpFunc(imager_func = "WAverage"),
+               "weights must be specified for imager waverage", fixed = TRUE)
+
+  # The guard must not fire for a function-valued imager_func, where tolower()
+  # would error or compare against garbage. Those go on to complain about the
+  # missing file inputs instead, which proves the guard was passed over.
+  expect_error(suppressWarnings(propaneStackWarpFunc(imager_func = imager::average)),
+               "Missing filelist and dirlist")
+})
