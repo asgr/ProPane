@@ -43,12 +43,31 @@ local({
   # Deliberately-off target WCS offsets, used for the degenerate-crop probes
   # below (see `probe`).
 
-  # Cases whose 1.10.1 output is NOT reproducible run-to-run.
-  # direction="forward" uses CImg's forward scatter, which accumulates into the
-  # output without atomics: repeat runs at default threads give different
-  # results, and the answer also depends on OMP_NUM_THREADS. Backward warp is a
-  # pure gather and is bit-stable, so only the explicit-forward case is here
-  # ("auto" resolves to backward whenever pixscale_in >= pixscale_out).
+  # Cases that must always be recorded as non-reproducible, whatever the local
+  # re-run below happens to observe.
+  #
+  # direction="forward" uses CImg's forward-absolute scatter, which BLENDS into
+  # the output (set_linear_atXY, a read-modify-write with no atomics). Whether
+  # that is parallelised is a property of the CImg build, not of this package:
+  #
+  #   - stock CImg (what CRAN imager ships, and what CI installs) wraps the
+  #     scatter in cimg_pragma_openmp(parallel for ...), so two input pixels
+  #     landing in one output pixel race and contributions are lost. The result
+  #     depends on the thread schedule, and on OMP_NUM_THREADS;
+  #   - the asgr/imager fork patches those branches to "Kept serial", so the
+  #     scatter is deterministic and the race is invisible.
+  #
+  # THIS IS THE TRAP. Detecting reproducibility by re-running the same call in
+  # the same process only ever tests the build it was run on. On a serial fork
+  # the re-run always agrees, so this case gets recorded as exact and gated at
+  # GOLDEN_TOL (1e-9) -- and then fails on any stock-CImg machine, which is
+  # exactly what happened in CI. Measured cross-build spread on this geometry:
+  # flux agrees to 2.9e-5 and ~1.6% of sampled pixels differ (max 3.4e-2
+  # relative), which is a racy lost update rather than rounding.
+  #
+  # So reproducibility is asserted from the algorithm, not measured. Backward
+  # warp is a pure gather and stays bit-stable; only the explicit-forward case
+  # is here ("auto" resolves to backward whenever pixscale_in >= pixscale_out).
   NONDETERMINISTIC <- "forward"
   ND_REL_TOL <- 1e-3
 
@@ -102,15 +121,27 @@ local({
     mat <- r$imDat
     saveRDS(mat, file.path(outdir_full, paste0(nm, ".rds")))
 
-    # Re-run to find out, empirically, whether this case is reproducible.
+    # Find out empirically whether this case is reproducible -- but see the
+    # NONDETERMINISTIC note above: an agreeing re-run only proves something about
+    # the CImg build in use, so for a known-racy case this check is reported and
+    # then overridden. Everything else keeps the measured answer.
     d0 <- digest_matrix(mat)
     digs <- replicate(2, digest_matrix(
       suppressMessages(do.call(propaneWarp,
         c(list(image_in = im_src, keyvalues_out = kvo, dim_out = dim_ref), arg)))$imDat))
     repro <- all(digs == d0)
     if (!repro) {
-      cat(sprintf("%-14s NON-DETERMINISTIC in 1.10.1 (%d distinct digests over 3 runs)\n",
+      cat(sprintf("%-14s NON-DETERMINISTIC on this build (%d distinct digests over 3 runs)\n",
                   nm, length(unique(c(digs, d0)))))
+    }
+    if (nm %in% NONDETERMINISTIC) {
+      if (repro) {
+        cat(sprintf(paste0(
+          "%-14s racy CImg path, but this build agreed over 3 runs; recording\n",
+          "               it as nondeterministic anyway (serial CImg fork?).\n",
+          "               Pinning it here would fail on a stock-CImg build.\n"), nm))
+      }
+      repro <- FALSE
     }
 
     set.seed(20260916L)

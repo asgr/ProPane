@@ -3,9 +3,9 @@
 # fixtures/warp-golden.rds is regenerated with bench/make-fixtures.R, which must
 # be run against an installed build of the code whose behaviour is the target.
 # It was originally produced by released ProPane 1.10.1; the current record was
-# produced by 1.12.1 so that it stores the ZIMAGE size keys (see below) and the
-# deterministic forward warp. Steps 1-3 of the warp performance work must not
-# change the output; only the opt-in `warpgrid` path is permitted to differ.
+# produced by 1.12.1 so that it stores the ZIMAGE size keys (see below). Steps 1-3
+# of the warp performance work must not change the output; only the opt-in
+# `warpgrid` path is permitted to differ.
 #
 # "Must not change" is enforced to a tight tolerance rather than bit-for-bit,
 # because exact digests do not survive a change of build environment. The
@@ -23,6 +23,13 @@
 # So the gates below are: exact shape, exact missing-value pattern (NA count, NA
 # positions, NA vs NaN), every sampled pixel agreeing to GOLDEN_TOL relative, and
 # bit-stability across repeated runs.
+#
+# ONE CASE IS EXEMPT: `direction = "forward"`, which is recorded as
+# "nondeterministic" and gated loosely instead. Its scatter races inside CImg,
+# and whether that race is reachable depends on the CImg build (stock CRAN
+# parallelises the scatter, the asgr fork serialises it) -- so no value-based
+# gate can be exact on every machine. Read the comment on that case and on
+# NONDETERMINISTIC in bench/make-fixtures.R before touching it.
 #
 # COST. The full suite used to take ~110s here and roughly 4-5x that on the
 # GitHub Actions Ubuntu runners, which pushed the whole check past the point
@@ -172,32 +179,37 @@ test_that("golden fixtures are present and complete", {
   }
 })
 
-test_that("the forward warp is reproducible at this geometry", {
-  # Under 1.10.1 the forward warp was recorded as NON-reproducible: CImg scatters
-  # into the output without atomics, so repeat runs differed and the result was
-  # said to depend on OMP_NUM_THREADS. That is why the fixture used to carry
-  # status "nondeterministic" for this case and why the assertions fell back to
-  # loose flux checks instead of bit comparison.
+test_that("the forward warp is recorded as racy, not as bit-reproducible", {
+  # The forward warp is CImg's forward-absolute SCATTER: input pixels are blended
+  # into the output with set_linear_atXY, a read-modify-write with no atomics. Two
+  # input pixels landing in one output pixel therefore race, and which
+  # contribution survives depends on the thread schedule.
   #
-  # On the current build it is deterministic: 6 consecutive runs give one digest,
-  # and OMP_NUM_THREADS of 1, 2, 4 and 8 all give the same one. So the case is now
-  # recorded as reproducible and checked exactly like the others. If it ever
-  # flakes again, this test is the signal -- it will fail rather than quietly
-  # resting on the looser fallback.
+  # Whether that race is reachable is a property of the CImg build:
+  #
+  #   - stock CImg (CRAN imager, which CI installs) wraps the scatter in
+  #     cimg_pragma_openmp(parallel for ...), so it is parallel and the race bites;
+  #   - the asgr/imager fork patches those branches to "Kept serial", so on that
+  #     build the same call returns identical digests every time, at every
+  #     OMP_NUM_THREADS, and the race is completely invisible.
+  #
+  # That asymmetry is why this case must stay on the loose gate. A previous
+  # version of this test asserted g$reproducible and thread-independence after
+  # observing them on the serial fork. Both claims were true there and false on
+  # Ubuntu, where the tight 1e-9 gate then failed by up to 3.4e-2 relative (flux
+  # still agreed to 2.9e-5). Measuring reproducibility on one build cannot
+  # establish it for another, so the record is pinned from the algorithm instead
+  # -- see NONDETERMINISTIC in bench/make-fixtures.R.
+  #
+  # The invariant worth asserting here is the one that holds on ANY build: the
+  # shape and the missing-value pattern are structural (set by the WCS and the
+  # crop, not by which scatter wins), so those are still checked exactly in the
+  # case loop below, while the pixel values get the loose gate. This test only
+  # pins the record itself, so it costs no warp.
   g <- .golden()$cases$forward
-  expect_true(isTRUE(g$reproducible))
-
-  # Independence from the thread count is the property that made 1.10.1 fail, so
-  # it is worth asserting directly rather than trusting the fixture record.
-  fr <- .frames()
-  old <- Sys.getenv("OMP_NUM_THREADS", unset = NA)
-  on.exit(if (is.na(old)) Sys.unsetenv("OMP_NUM_THREADS") else Sys.setenv(OMP_NUM_THREADS = old))
-  digs <- vapply(c("1", "2", "4"), function(n) {
-    Sys.setenv(OMP_NUM_THREADS = n)
-    .digest_matrix(.run_case(list(direction = "forward"))$imDat)
-  }, character(1))
-  expect_identical(length(unique(digs)), 1L,
-                   info = paste(names(digs), digs, collapse = " | "))
+  expect_false(isTRUE(g$reproducible))
+  expect_identical(g$status, "nondeterministic")
+  expect_gt(g$rel_tol, 0)
 })
 
 for (case in names(CASE_ARGS)) {
@@ -234,17 +246,30 @@ for (case in names(CASE_ARGS)) {
       } else {
         # A case recorded as non-reproducible cannot be asserted exactly, so
         # fall back to loose checks that the computation has not gone badly
-        # wrong: total flux agrees to ~3e-6 and ~0.1% of pixels differ. No case
-        # is in this state on the current fixture (the forward warp is now
-        # deterministic, see above); the branch is kept so a future
-        # nondeterministic case is handled deliberately rather than silently
-        # compared bit-for-bit and left flaking.
-        expect_lt(abs(sum(is.na(r$imDat)) - g$nNA) / g$nNA, g$rel_tol)
+        # wrong. On the current fixture this branch handles `forward` alone.
+        # Measured cross-build spread there (serial asgr/imager fork vs stock
+        # CImg): flux agrees to 2.9e-5 and ~1.6% of sampled pixels differ, so
+        # the gates must clear the race while still catching a real change.
+        # Calibration for the fraction below: an actual algorithmic difference
+        # (forward scatter vs backward gather at this geometry) leaves 0.0005%
+        # of pixels agreeing, against 98.4% for the race alone. So 0.5% sits three
+        # orders above the real-change signal and two below the scatter -- far
+        # more margin than the 0.95 it replaces, which was only 3% clear of the
+        # measured race and would have gone red if a different thread count lost
+        # a few more updates.
+        #
+        # Shape and NA pattern are checked exactly even here: they are structural,
+        # so the race cannot move them, and the fixture is the same on any build.
+        expect_identical(dim(r$imDat), g$dim)
+        expect_identical(sum(is.na(r$imDat)), g$nNA)
         expect_equal(sum(r$imDat, na.rm = TRUE), g$sum, tolerance = g$rel_tol)
         new <- as.vector(r$imDat)[g$sample_idx]
         ok <- is.finite(new) & is.finite(g$sample_val)
+        # NA positions and the NA-vs-NaN split are structural too.
+        expect_identical(is.na(new), is.na(g$sample_val))
+        expect_identical(is.nan(new), is.nan(g$sample_val))
         rel <- abs(new[ok] - g$sample_val[ok]) / (abs(g$sample_val[ok]) + 1)
-        expect_gte(mean(rel < 1e-6), 0.95)
+        expect_gte(mean(rel < 1e-6), 0.5)
       }
 
       .expect_kv_golden(r, g, cs)

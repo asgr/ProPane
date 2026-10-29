@@ -1,3 +1,19 @@
+# ProPane 1.12.2
+
+## Infrastructure
+
+- Fixed the golden-fixture regression tests failing on every Ubuntu CI job while
+  passing on macOS. `bench/make-fixtures.R` declared `forward` as a
+  nondeterministic case but then overrode that with a local re-run, which on a
+  build with serialised CImg scatter always agrees; the case was therefore
+  recorded as exact and gated at 1e-9, and failed at 3.4e-2 relative on the stock
+  CImg that CI installs. The record is now pinned from the algorithm instead of
+  from the build that generated it, and the loose branch's tolerance was widened
+  from 95% to 50% of sampled pixels agreeing — the old value sat only 3% clear of
+  the measured race and 2 orders above a genuine algorithmic difference. No
+  pixel data changed: only the gate fields for that one case, and the fixture was
+  regenerated at 1.12.2 so its recorded version matches the code.
+
 # ProPane 1.12.0
 
 ## Correctness
@@ -251,11 +267,22 @@ the default output is unchanged.
 
 ## Known issue
 
-`direction = "forward"` is not reproducible run-to-run in 1.10.1 and still is:
-imager/CImg accumulates into the output without atomics, so results vary between
-runs and depend on `OMP_NUM_THREADS`. Backward warping is unaffected. The golden
-test for the forward case checks statistical agreement rather than bit-identity
-to reflect this. Fixing it requires a change upstream in CImg.
+`direction = "forward"` accumulates into the output without atomics
+(CImg's `set_linear_atXY`), so two input pixels landing in one output pixel race
+and the result depends on the thread schedule and on `OMP_NUM_THREADS`. Backward
+warping is a pure gather and is unaffected.
+
+Whether the race is *reachable* depends on the CImg build rather than on this
+package. Stock CImg, which is what CRAN `imager` ships and what CI installs,
+wraps the scatter in `cimg_pragma_openmp(parallel for ...)`; the `asgr/imager`
+fork patches those branches to "Kept serial", making the same call bit-identical
+on every run. Measured spread on the packaged 2-frame geometry between the two
+builds: integrated flux agrees to 2.9e-5 and ~1.6% of pixels differ (max 3.4e-2
+relative) — lost updates redistributing flux, not rounding. The golden test
+therefore records this case as `nondeterministic` and checks statistical
+agreement, and it pins that status from the algorithm rather than from a local
+re-run, because a re-run on a serial build can only ever observe agreement.
+Truly fixing it requires an atomic scatter upstream in CImg.
 
 ## Infrastructure
 

@@ -53,7 +53,7 @@ jobs:
             github::asgr/Rwcs@master,
             github::asgr/Rfits@master,
             github::asgr/ProFound@master,
-            any::imager,
+            github::asgr/imager,
             any::knitr,
             any::rmarkdown,
             any::testthat

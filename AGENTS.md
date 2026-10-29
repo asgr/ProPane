@@ -113,6 +113,13 @@ Tests are **golden-record regression tests**, not unit tests:
   asserts the coarse warp field either meets its tolerance or returns `NULL`.
 - Digests use `tools::md5sum` on raw doubles, deliberately avoiding a `Suggests`
   package, because CI installs hard dependencies only.
+- `direction = "forward"` is recorded as `nondeterministic` and gated loosely
+  (flux + ≥50% of sampled pixels). CImg's forward scatter has no atomics, and
+  whether the race is reachable depends on the CImg build: stock CRAN `imager`
+  parallelises it, the `asgr/imager` fork serialises it. **Never decide this
+  case's status by re-running it locally** — on a serial build every re-run
+  agrees and the case will pass locally and fail on Ubuntu. That is precisely
+  what happened in 1.12.1.
 
 Rules when touching warp behaviour:
 
