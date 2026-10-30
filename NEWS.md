@@ -1,3 +1,38 @@
+# ProPane 1.12.3
+
+## Output changes
+
+- **`direction = "forward"` now averages the source pixels that land in one
+  output pixel, instead of keeping whichever was scattered last.** Required
+  `imager` 1.0.10 (CImg 4.0.7). CImg's forward warp accumulated with
+  `set_linear_atXY()` without `is_added`, an iterated blend
+  `dest = w1*value + (1-w1)*dest`; at an integer destination `w1 = 1`, so it
+  degenerated to `dest = value`. A contracting forward warp therefore retained
+  one arbitrary source pixel per destination rather than the mean of its
+  contributors. CImg 4.0.6 added accumulate-then-normalise and 4.0.7 is what
+  `imager` 1.0.10 vendors.
+
+  Which pixels move, measured on the two packaged frames at the test geometry:
+  the forward case changes while **all ten other golden cases are bit-identical**.
+  This geometry only mildly contracts (input pixscale 0.3372838 against output
+  0.3372744), so the old loss was small here — flux moves by 2.6e-5 relative.
+  At a genuine 2x contraction the difference is large: forward and backward then
+  agree on 0.5% of pixels with a median relative deviation of 0.63, so forward
+  stacks (the drizzling case in the vignette) should be re-run rather than
+  assumed unchanged.
+
+## Infrastructure
+
+- The `forward` golden case is now recorded as reproducible and gated at
+  `GOLDEN_TOL` (1e-9) like every other case, because CImg 4.0.7's forward warp is
+  deterministic by construction. Verified independent of `OMP_NUM_THREADS` with
+  an OpenMP-enabled `imager` (measured at 1, 2, 4 and 8; the committed test
+  checks the 1 and 8 extremes). `bench/make-fixtures.R` no longer
+  lists it in `NONDETERMINISTIC`; that mechanism is retained for future use.
+  The test asserting the loose gate now asserts the tight one instead, and
+  checks thread-independence when imager reports OpenMP support (it is a no-op
+  otherwise, so the check is conditional rather than vacuous).
+
 # ProPane 1.12.2
 
 ## Infrastructure

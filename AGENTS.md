@@ -113,13 +113,17 @@ Tests are **golden-record regression tests**, not unit tests:
   asserts the coarse warp field either meets its tolerance or returns `NULL`.
 - Digests use `tools::md5sum` on raw doubles, deliberately avoiding a `Suggests`
   package, because CI installs hard dependencies only.
-- `direction = "forward"` is recorded as `nondeterministic` and gated loosely
-  (flux + ≥50% of sampled pixels). CImg's forward scatter has no atomics, and
-  whether the race is reachable depends on the CImg build: stock CRAN `imager`
-  parallelises it, the `asgr/imager` fork serialises it. **Never decide this
-  case's status by re-running it locally** — on a serial build every re-run
-  agrees and the case will pass locally and fail on Ubuntu. That is precisely
-  what happened in 1.12.1.
+- **Every case is now gated tightly**, `direction = "forward"` included. Up to
+  `imager` 1.0.9 forward was recorded as `nondeterministic` and gated loosely,
+  because CImg's forward scatter used an order-dependent blend and whether it
+  raced depended on the CImg build. `imager` 1.0.10 (CImg 4.0.7) accumulates in
+  a fixed serial order and normalises once, so it is deterministic *and* correct
+  (the old blend was last-write-wins at integer destinations).
+- The lesson that cost a red CI is worth keeping: **do not decide a case's
+  reproducibility by re-running it locally.** A re-run only tests the build it
+  runs on. That is why `bench/make-fixtures.R` has a `NONDETERMINISTIC` list
+  which overrides the measured answer — use it if a case ever becomes
+  build-dependent again, rather than widening a tolerance until CI is green.
 
 Rules when touching warp behaviour:
 
@@ -130,8 +134,9 @@ Rules when touching warp behaviour:
    `R CMD INSTALL . && Rscript bench/make-fixtures.R`, then commit the new
    fixture alongside the code change and say plainly in `NEWS.md` that pixels
    moved.
-3. Keep the suite fast (currently ~35 s locally; CI is 4–5× slower). Prefer
-   shrinking `dim_out` over dropping a case.
+3. Keep the suite fast (measured ~67 s locally at 1.12.3, before the
+   `contraction_fwd` case added ~10 s; CI is 4–5× slower). Prefer shrinking
+   `dim_out` over dropping a case.
 4. **Do not add `foreach`/`%dopar%` or `Rfits_make_list()` to tests.** A torn-down
    cluster backend leaves dead sockets that kill every later Rfits call in the
    session. This is why the end-to-end stacking tests were removed (see the

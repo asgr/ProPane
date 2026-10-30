@@ -43,32 +43,37 @@ local({
   # Deliberately-off target WCS offsets, used for the degenerate-crop probes
   # below (see `probe`).
 
-  # Cases that must always be recorded as non-reproducible, whatever the local
-  # re-run below happens to observe.
+  # Cases that must ALWAYS be recorded as non-reproducible, whatever the local
+  # re-run below happens to observe. Empty at present; see below for why.
   #
-  # direction="forward" uses CImg's forward-absolute scatter, which BLENDS into
-  # the output (set_linear_atXY, a read-modify-write with no atomics). Whether
-  # that is parallelised is a property of the CImg build, not of this package:
+  # HISTORY, because this bit us hard and the reasoning still matters.
   #
-  #   - stock CImg (what CRAN imager ships, and what CI installs) wraps the
-  #     scatter in cimg_pragma_openmp(parallel for ...), so two input pixels
-  #     landing in one output pixel race and contributions are lost. The result
-  #     depends on the thread schedule, and on OMP_NUM_THREADS;
-  #   - the asgr/imager fork patches those branches to "Kept serial", so the
-  #     scatter is deterministic and the race is invisible.
+  # Until imager 1.0.10, `direction = "forward"` was here. It uses CImg's
+  # forward-absolute scatter, which blended into the output
+  # (set_linear_atXY) with a read-modify-write that had no atomics. Whether that
+  # was parallelised was a property of the CImg build, not of this package:
+  # stock CImg wrapped the scatter in cimg_pragma_openmp(parallel for ...) so
+  # contributions raced and were lost, while the asgr fork patch serialised it
+  # and hid the problem entirely.
   #
-  # THIS IS THE TRAP. Detecting reproducibility by re-running the same call in
-  # the same process only ever tests the build it was run on. On a serial fork
-  # the re-run always agrees, so this case gets recorded as exact and gated at
-  # GOLDEN_TOL (1e-9) -- and then fails on any stock-CImg machine, which is
-  # exactly what happened in CI. Measured cross-build spread on this geometry:
-  # flux agrees to 2.9e-5 and ~1.6% of sampled pixels differ (max 3.4e-2
-  # relative), which is a racy lost update rather than rounding.
+  # The trap was that measuring reproducibility by re-running inside the same
+  # process can only ever test the build it runs on. On a serial build the
+  # re-run always agreed, the case got recorded as exact and gated at
+  # GOLDEN_TOL (1e-9), and it then failed on every stock-CImg machine -- which
+  # is precisely what turned CI red. Measured cross-build spread then: flux
+  # agreed to 2.9e-5 and ~1.6% of sampled pixels differed (max 3.4e-2
+  # relative), a racy lost update rather than rounding.
   #
-  # So reproducibility is asserted from the algorithm, not measured. Backward
-  # warp is a pure gather and stays bit-stable; only the explicit-forward case
-  # is here ("auto" resolves to backward whenever pixscale_in >= pixscale_out).
-  NONDETERMINISTIC <- "forward"
+  # imager 1.0.10 (CImg 4.0.7) removes the reason for the exemption: the scatter
+  # now accumulates with is_added into a separate `accu` count and normalises
+  # once at the end, in a fixed serial order. That is deterministic AND correct
+  # (the old blend degenerated to last-write-wins at integer destinations), so
+  # forward is now measured like every other case and pinned at GOLDEN_TOL.
+  #
+  # Keep this mechanism rather than deleting it: if a future CImg parallelises
+  # the accumulation, or reintroduces an order-dependent blend, the fix is to
+  # list the case here again -- not to widen a tolerance until CI goes green.
+  NONDETERMINISTIC <- character(0)
   ND_REL_TOL <- 1e-3
 
   cases <- list(
@@ -84,7 +89,11 @@ local({
     extratight     = list(keepcrop = TRUE, extratight = TRUE),
     noscale        = list(doscale = FALSE),
     magzero        = list(magzero_out = 25, magzero_in = 30),
-    warpfield_in   = list(prebuild_field = TRUE)
+    warpfield_in   = list(prebuild_field = TRUE),
+    # Contracting geometry (~4 sources per destination), the regime forward
+    # warping exists for. The loop below swaps in contraction_kv/dim_contraction
+    # for this name; the args are the same forward direction as `forward`.
+    contraction_fwd = list(direction = "forward")
   )
 
   outdir_full <- "/tmp/ProPane-warp-golden"
@@ -92,22 +101,54 @@ local({
 
   fixt <- list()
 
+  # ---------------------------------------------------------------------------
+  # Contraction geometry, used for the `contraction_fwd` case below.
+  #
+  # Every other case warps onto the reference frame, whose pixel scale is within
+  # 3e-5 of the input's (0.3372838 vs 0.3372744). That is a near-identity
+  # resampling, so at most a couple of source pixels share a destination and the
+  # forward scatter's behaviour is barely exercised. The forward-warp bug fixed
+  # in imager 1.0.10 -- last-write-wins instead of averaging -- therefore shows
+  # up there as a small pixel-level change with only a 2.6e-5 flux difference.
+  #
+  # This case doubles the output pixel scale instead, so roughly four source
+  # pixels land in every destination. That is the regime forward warping exists
+  # for (drizzling onto a coarser grid), and the regime where getting the
+  # scatter wrong actually loses data. It is derived from the reference header
+  # so it shares its sky position: CD is doubled, the pixel size halves in each
+  # axis, and CRPIX is adjusted to keep the same sky point at the frame centre.
+  # ---------------------------------------------------------------------------
+  contraction_kv <- im_ref$keyvalues
+  contraction_kv$CD1_1 <- im_ref$keyvalues$CD1_1 * 2
+  contraction_kv$CD1_2 <- im_ref$keyvalues$CD1_2 * 2
+  contraction_kv$CD2_1 <- im_ref$keyvalues$CD2_1 * 2
+  contraction_kv$CD2_2 <- im_ref$keyvalues$CD2_2 * 2
+  contraction_kv$CRPIX1 <- (im_ref$keyvalues$CRPIX1 + 0.5) / 2 - 0.5
+  contraction_kv$CRPIX2 <- (im_ref$keyvalues$CRPIX2 + 0.5) / 2 - 0.5
+  dim_contraction <- ceiling(dim_ref / 2)
+
   for (nm in names(cases)) {
     arg <- cases[[nm]]
     prebuild <- isTRUE(arg$prebuild_field)
     arg$prebuild_field <- NULL
     kvo <- im_ref$keyvalues
+    dim_use <- dim_ref
+
+    if (nm == "contraction_fwd") {
+      kvo <- contraction_kv
+      dim_use <- dim_contraction
+    }
 
     t0 <- proc.time()[3]
     if (prebuild) {
       arg$warpfield <- suppressMessages(
-        propaneWarp(im_src, keyvalues_out = kvo, dim_out = dim_ref,
+        propaneWarp(im_src, keyvalues_out = kvo, dim_out = dim_use,
                     warpfield_return = TRUE))$warpfield
     }
 
     r <- tryCatch(
       suppressMessages(do.call(propaneWarp,
-        c(list(image_in = im_src, keyvalues_out = kvo, dim_out = dim_ref), arg))),
+        c(list(image_in = im_src, keyvalues_out = kvo, dim_out = dim_use), arg))),
       error = function(e) e
     )
     dt <- proc.time()[3] - t0
@@ -121,14 +162,15 @@ local({
     mat <- r$imDat
     saveRDS(mat, file.path(outdir_full, paste0(nm, ".rds")))
 
-    # Find out empirically whether this case is reproducible -- but see the
-    # NONDETERMINISTIC note above: an agreeing re-run only proves something about
-    # the CImg build in use, so for a known-racy case this check is reported and
-    # then overridden. Everything else keeps the measured answer.
+    # Find out empirically whether this case is reproducible. That measurement is
+    # only trustworthy for a case whose determinism is a property of the
+    # algorithm rather than of the build, which is now true of every case here
+    # (see the NONDETERMINISTIC note above); anything listed there would have
+    # its answer overridden below.
     d0 <- digest_matrix(mat)
     digs <- replicate(2, digest_matrix(
       suppressMessages(do.call(propaneWarp,
-        c(list(image_in = im_src, keyvalues_out = kvo, dim_out = dim_ref), arg)))$imDat))
+        c(list(image_in = im_src, keyvalues_out = kvo, dim_out = dim_use), arg)))$imDat))
     repro <- all(digs == d0)
     if (!repro) {
       cat(sprintf("%-14s NON-DETERMINISTIC on this build (%d distinct digests over 3 runs)\n",
@@ -137,9 +179,9 @@ local({
     if (nm %in% NONDETERMINISTIC) {
       if (repro) {
         cat(sprintf(paste0(
-          "%-14s racy CImg path, but this build agreed over 3 runs; recording\n",
-          "               it as nondeterministic anyway (serial CImg fork?).\n",
-          "               Pinning it here would fail on a stock-CImg build.\n"), nm))
+          "%-14s build-dependent path, but this build agreed over 3 runs; recording\n",
+          "               it as nondeterministic anyway.\n",
+          "               Pinning it here would fail on a build where it is racy.\n"), nm))
       }
       repro <- FALSE
     }
@@ -225,7 +267,12 @@ local({
     created = Sys.time(),
     propaneversion = as.character(packageVersion(pkg)),
     src_frame = basename(frames[1]), ref_frame = basename(frames[2]),
-    dim_ref = dim_ref, cases = fixt
+    dim_ref = dim_ref,
+    # Stored rather than re-derived in the test, so the fixture and the test
+    # cannot drift apart on what "the contraction geometry" means.
+    contraction_kv = contraction_kv,
+    dim_contraction = dim_contraction,
+    cases = fixt
   ), file.path(retdir, "warp-golden.rds"), version = 2)
   cat("\nwrote", file.path(retdir, "warp-golden.rds"), "\n")
 })
