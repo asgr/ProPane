@@ -29,6 +29,10 @@ Other arguments to pass to \code{Rwcs_p2s}.
 }
 \details{
 Both functions return a full image, where pixel values are either the exact pixel scale (\code{propaneDistortPixscale}) or area (\code{propaneDistortPixarea}) of the relevant pixel. These full matrix outputs can be relatively expensive to compute for very big images, so consider using the \code{\link[Rfits]{pixscale}} and \code{\link[Rfits]{pixarea}} \code{Rfits} methods where you can inspect the extreme corners with the 'loc' option.
+
+The sky positions of three corners of each pixel (bottom-left, bottom-right, top-left) are found with \code{\link[Rwcs]{Rwcs_p2s}} and the two resulting sides taken to define a parallelogram on the sky. \code{propaneDistortPixarea} returns its area (the cross product of the sides), which is exact whatever the angle between them; \code{propaneDistortPixscale} returns the mean of the two side lengths, so a square pixel of side \eqn{s} reports \eqn{s}. The two are related by \eqn{area \approx scale^2} only for an (approximately) square pixel.
+
+Right ascension differences are wrapped across the 0/360 degree boundary, and cosine of the mean corner declination is applied once to the RA \emph{differences} rather than to each absolute RA. Both matter for fields that cross RA = 0, and the second matters for any field: without it the answer would depend on where the field sits in longitude. Results agree with \code{\link[Rfits]{pixarea}} and \code{\link[Rfits]{pixscale}} to numerical precision.
 }
 \value{
 An object of class Rfits_image, where the imDat part is either the pixel scale or pixel area as requested. This will match 1-1 with the original image.

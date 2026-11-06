@@ -1,5 +1,51 @@
 # ProPane 1.12.3
 
+## Correctness
+
+- **`propaneDistortPixarea()` and `propaneDistortPixscale()` returned wrong
+  values near RA = 0, and a longitude-dependent answer for every field.** Found
+  on a WWS FUV mosaic centred at RA 10, Dec -37.5, where the pixel-area map
+  showed a ridge at the 0/360 seam many orders of magnitude above the rest of
+  the image, and where a 180 deg shift of the same header in RA changed the map.
+
+  Three faults, all in how the sky offsets between the pixel corners were turned
+  into a size:
+
+  1. RA corner differences straddling the 0/360 seam were taken literally, so a
+     difference of -0.09 deg arrived as +359.91. On the mosaic above this affects
+     a 55-pixel-wide band (the RA extent of the field) and pushed the area to
+     3.3e8 asec2 against a true maximum of 9.0e4 — a factor of 3600. RA
+     differences are now wrapped into [-180, 180).
+  2. `cos(dec)` was applied to each corner's *absolute* RA instead of once to the
+     RA *difference*, which is wrong twice over: dimensionally, and because it
+     makes the answer depend on where the field sits in longitude. This is the
+     fault with the widest reach — on the mosaic it accounts for a median 5%
+     error, and on the same field shifted 180 deg for a median factor of 2.05
+     (the true area does not change). It also leaves the seam fault partly
+     unfixed: wrapping a difference that has already been scaled by a per-corner
+     `cos` does not recover the difference.
+  3. The area was the product of the two side lengths, i.e. a rectangle. Sky
+     pixels are parallelograms — across this field the two sides meet at 83 to
+     96 deg — so the cross product is used instead. The old form was out by a
+     median 2.3e-4 and by up to 6.8e-3 in the corners.
+
+  `propaneDistortPixscale()` keeps the mean of the two side lengths (the right
+  notion for a scale) but had faults 1 and 2 and takes the same fix: its range
+  was 208 to 5.8e5 asec where the true range is 208.7 to 300.1, and its value at
+  a given pixel changed by a median 42% when the field was shifted 180 deg in RA.
+  The aggregation of the two sides also changes from their RMS to their mean, to
+  match `Rfits::pixscale()`; that part is deliberately small — 4.7e-4 median and
+  6.9e-3 maximum relative on this field — and is separate from the faults above.
+
+  Measured against `Rfits::pixarea()` / `Rfits::pixscale()` — which already wrap
+  the seam and use the parallelogram area — both functions now agree to ~1e-13
+  relative at sampled pixels of both seam-crossing and seam-free fields. The
+  pixel-corner probes themselves are unchanged (`Rwcs_p2s` with
+  `pixcen = 'FITS'` at `x -/+ 0.5`, `y -/+ 0.5`); only the arithmetic on their
+  output changed. `tests/testthat/test-propaneDistort.R` gates the longitude
+  invariance, the seam, and the agreement with `Rfits`; the pre-fix code fails
+  the first two by 116% and a factor of 1794 respectively.
+
 ## Output changes
 
 - **`direction = "forward"` now averages the source pixels that land in one
