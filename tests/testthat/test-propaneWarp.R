@@ -144,6 +144,33 @@ GOLDEN_TOL <- 1e-9
   }
 }
 
+# Detect the imager build that the forward-warp golden record depends on.
+#
+# The record is bit-exact only against CImg 4.0.7 (imager 1.0.10), where the
+# forward-absolute scatter accumulates into an `accu` count and normalises once.
+# imager 1.0.9 and earlier, including asgr/imager's `master`, use a
+# read-modify-write blend that is last-write-wins at integer destinations, so a
+# forward warp loses contributions and moves flux by ~2.6e-5 relative -- enough
+# to fail the tight gate. This has already cost a red CI run: the workflow
+# installed `github::asgr/imager` (default branch `master` = 1.0.9) while the
+# record was generated against 1.0.10, so `forward` and `contraction_fwd` failed
+# on every job.
+#
+# The build is identified from the bundled CImg header rather than from
+# packageVersion(), because what matters is the vendored CImg, not the imager
+# version string: the asgr/imager fork ships 1.0.10 on `test_v4` and 1.0.9 on
+# `master`, and a future imager could rebundle either. Probing for the `is_added`
+# scatter argument is the same signal CImg itself uses.
+.has_accu_scatter <- function() {
+  if (!requireNamespace("imager", quietly = TRUE)) return(NA)
+  hdr <- system.file("include", "CImg.h", package = "imager")
+  if (!nzchar(hdr) || !file.exists(hdr)) return(NA)
+  txt <- tryCatch(readLines(hdr, warn = FALSE), error = function(e) NULL)
+  if (is.null(txt)) return(NA)
+  # `accu.assign(...)` inside the forward-absolute branch is unique to 4.0.7+.
+  any(grepl("accu.assign", txt, fixed = TRUE))
+}
+
 .run_case <- function(args) {
   fr <- .frames()
   suppressMessages(do.call(
@@ -207,6 +234,18 @@ test_that("the forward warp is recorded as bit-reproducible and thread-independe
   # found) makes cimg.use.openmp() a no-op, and comparing two serial runs would
   # pass without proving anything.
   g <- .golden()$cases$forward
+
+  # Fail with the reason rather than a bare 1100-unit sum mismatch. The record is
+  # bit-exact only on CImg 4.0.7+; see .has_accu_scatter() above. NA means the
+  # probe could not read the header, in which case say nothing rather than fail.
+  accu <- .has_accu_scatter()
+  if (!is.na(accu)) {
+    expect_true(accu,
+                info = paste("imager", as.character(packageVersion("imager")),
+                             "does not bundle CImg 4.0.7+ (no accu.assign scatter);",
+                             "the forward golden record requires it"))
+  }
+
   expect_true(isTRUE(g$reproducible))
   expect_identical(g$status, "ok")
   expect_identical(g$rel_tol, 0)

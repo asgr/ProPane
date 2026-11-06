@@ -1,4 +1,19 @@
-# ProPane 1.12.3
+# ProPane 1.12.5
+
+## Infrastructure
+
+- **CI now installs `asgr/imager@test_v4` (imager 1.0.10, CImg 4.0.7) instead of
+  the default branch.** The 1.0.10 record added in `09e426b` is bit-exact only
+  against that CImg, but the workflow still pulled `github::asgr/imager`, whose
+  default branch `master` is imager 1.0.9 with CImg 3.3.4. Against it the
+  forward scatter is a read-modify-write blend that is last-write-wins at integer
+  destinations, so `forward` and `contraction_fwd` moved flux by 2.6e-5 relative
+  — exactly the figure in the 1.12.3 note below — and both failed the tight gate
+  on all four CI jobs (`expected 42242592, got 42241492`, a difference of 1100).
+  `DESCRIPTION`'s `Remotes:` was pinned to match so the two cannot drift.
+  `tests/testthat/test-propaneWarp.R` now probes the bundled `CImg.h` for the
+  `accu.assign` scatter and reports a wrong build as such, rather than leaving a
+  bare sum mismatch to be diagnosed.
 
 ## Correctness
 
@@ -66,8 +81,6 @@
   agree on 0.5% of pixels with a median relative deviation of 0.63, so forward
   stacks (the drizzling case in the vignette) should be re-run rather than
   assumed unchanged.
-
-## Infrastructure
 
 - The `forward` golden case is now recorded as reproducible and gated at
   `GOLDEN_TOL` (1e-9) like every other case, because CImg 4.0.7's forward warp is

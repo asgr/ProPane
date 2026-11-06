@@ -119,6 +119,16 @@ Tests are **golden-record regression tests**, not unit tests:
   raced depended on the CImg build. `imager` 1.0.10 (CImg 4.0.7) accumulates in
   a fixed serial order and normalises once, so it is deterministic *and* correct
   (the old blend was last-write-wins at integer destinations).
+- **The tight forward gate needs imager 1.0.10, and CI must install exactly that.**
+  `asgr/imager`'s default branch is `master`, which is still 1.0.9 with CImg
+  3.3.4; 1.0.10 lives on `test_v4`. Installing the bare `github::asgr/imager`
+  therefore silently downgrades CI below the record and fails `forward` and
+  `contraction_fwd` with a 2.6e-5 flux difference (observed as a sum of
+  42242592 against the recorded 42241492). Both `.github/workflows/main.yml` and
+  `DESCRIPTION`'s `Remotes:` pin `asgr/imager@test_v4` for this reason. If
+  `test_v4` ever merges to `master`, drop the suffix from both together. The test
+  probes the bundled `CImg.h` for `accu.assign` (see `.has_accu_scatter()`), so a
+  wrong build is reported as a wrong build rather than as a pixel mismatch.
 - The lesson that cost a red CI is worth keeping: **do not decide a case's
   reproducibility by re-running it locally.** A re-run only tests the build it
   runs on. That is why `bench/make-fixtures.R` has a `NONDETERMINISTIC` list
